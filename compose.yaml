@@ -1,0 +1,46 @@
+name: foil-ctf
+
+services:
+  web:
+    build: ./app/web
+    networks:
+      - foil-net
+    depends_on:
+      - auth
+      - ctf
+      - sandbox
+      - database
+  notifier:
+    build: ./app/notifier
+    networks:
+      - foil-net
+    depends_on:
+      - auth
+      - database
+  auth:
+    build: ./app/auth
+    networks:
+      - foil-net
+    depends_on:
+      - database
+  ctf:
+    build: ./app/ctf
+    networks:
+      - foil-net
+    depends_on:
+      - auth
+      - database
+  sandbox:
+    build: ./app/sandbox
+    networks:
+      - foil-net
+    depends_on:
+      - auth
+      - database
+  database:
+    image: postgres:18
+    networks:
+      - foil-net
+
+network:
+  foil-net:
