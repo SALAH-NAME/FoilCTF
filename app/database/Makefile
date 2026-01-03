@@ -2,6 +2,8 @@ IMAGE 			:= foilctf_database
 VOLUME			:= foilctf_database
 MOUNTPOINT	:= /var/lib/postgresql
 
+# TODO(xenobas): Create a user per micro service in the database
+
 all: build run
 
 build:
