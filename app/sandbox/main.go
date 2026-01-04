@@ -16,7 +16,8 @@ func MakeRoutes(app *App) []Route {
 	var routes []Route
 
 	routes = append(routes, Route_List(app))
-	routes = append(routes, Route_Upload(app))
+	routes = append(routes, Route_Init(app))
+	routes = append(routes, Route_Build(app))
 	return routes
 }
 

@@ -174,7 +174,7 @@ type BuildOptions struct {
 
 type BuiltImage = entities.BuildReport
 
-func Podman_Build(ctx context.Context, containerFiles []string, opts BuildOptions) (*BuiltImage, error) {
+func Podman_Build(ctx context.Context, opts BuildOptions) (*BuiltImage, error) {
 	for _, file := range opts.ContainerFiles {
 		// NOTE(xenobas): Disallow stdin
 		if file == "/dev/stdin" {
@@ -200,7 +200,7 @@ func Podman_Build(ctx context.Context, containerFiles []string, opts BuildOption
 	buildOptions.SkipTLSVerify = opts.SkipTLSVerify
 	// TODO(xenobas): Log files { buildOptions.In, buildOptions.Out, buildOptions.Err }
 
-	return images.BuildFromServerContext(ctx, opts.ContainerFiles, buildOptions)
+	return images.Build(ctx, opts.ContainerFiles, buildOptions)
 }
 
 // TODO(xenobas): container logs streaming...
