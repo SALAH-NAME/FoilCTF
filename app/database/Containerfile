@@ -1,0 +1,7 @@
+FROM docker.io/library/postgres:18
+
+COPY --chmod=755 entrypoint.sh /usr/local/bin/container-entrypoint
+COPY --chmod=755 migrations.sh /usr/local/bin/container-migrations-manage
+
+USER postgres
+ENTRYPOINT [ "container-entrypoint" ]

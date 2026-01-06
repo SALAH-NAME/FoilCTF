@@ -17,3 +17,5 @@ logs
 build/
 node_modules/
 .cache/
+
+subject*.pdf
