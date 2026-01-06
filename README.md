@@ -4,7 +4,7 @@
 
 ## Description
 
-**FoilCTF** is a [description of what the project does]. The goal of this project is to [main objective]. 
+**FoilCTF** is a CTF hosting platform. The goal of this project is to let you create, manage, and run cybersecurity Capture The Flag (CTF) competitions.
 
 **Key Features:**
 - Feature 1
@@ -30,7 +30,7 @@
 - [Workflow and collaboration]
 
 **Tools Used:**
-- **Project Management:**
+- **Project Management:** Github Project / Google sheets
 - **Communication:** Discord
 - **Version Control:** Git/GitHub
 
