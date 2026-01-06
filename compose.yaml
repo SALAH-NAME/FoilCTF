@@ -7,8 +7,8 @@ services:
       context: .
       dockerfile: ./app/nginx/Containerfile
     ports:
-      - "80:80"
-      - "443:443"
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
     networks:
       - foil-net
     depends_on:
@@ -22,6 +22,7 @@ services:
       context: .
       dockerfile: ./app/front/Containerfile
     environment:
+      - NODE_ENV=${NODE_ENV:-development}
     networks:
       - foil-net
     restart: unless-stopped
@@ -32,9 +33,9 @@ services:
       context: .
       dockerfile: ./app/gateway/Containerfile
     environment:
-      - PORT=3000
+      - PORT=${GATEWAY_PORT:-3000}
       - JWT_SECRET=${JWT_SECRET:-changeme-secret-key}
-      - SERVICE_NAME=gateway
+      - SERVICE_NAME=${GATEWAY_SERVICE_NAME:-gateway}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
     networks:
       - foil-net
@@ -53,10 +54,11 @@ services:
       context: .
       dockerfile: ./app/user/Containerfile
     environment:
-      - PORT=3001
+      - PORT=${USER_SERVICE_PORT:-3001}
       - JWT_SECRET=${JWT_SECRET:-changeme-secret-key}
-      - SERVICE_NAME=user
+      - SERVICE_NAME=${USER_SERVICE_NAME:-user}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
+      - NODE_ENV=${NODE_ENV:-development}
     networks:
       - foil-net
     depends_on:
@@ -70,8 +72,8 @@ services:
       context: .
       dockerfile: ./app/challenge/Containerfile
     environment:
-      - PORT=3002
-      - SERVICE_NAME=challenge
+      - PORT=${CHALLENGE_SERVICE_PORT:-3002}
+      - SERVICE_NAME=${CHALLENGE_SERVICE_NAME:-challenge}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
     networks:
       - foil-net
@@ -86,8 +88,8 @@ services:
       context: .
       dockerfile: ./app/chat/Containerfile
     environment:
-      - PORT=3003
-      - SERVICE_NAME=chat
+      - PORT=${CHAT_SERVICE_PORT:-3003}
+      - SERVICE_NAME=${CHAT_SERVICE_NAME:-chat}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
     networks:
       - foil-net
@@ -102,8 +104,8 @@ services:
       context: .
       dockerfile: ./app/notification/Containerfile
     environment:
-      - PORT=3004
-      - SERVICE_NAME=notification
+      - PORT=${NOTIFICATION_SERVICE_PORT:-3004}
+      - SERVICE_NAME=${NOTIFICATION_SERVICE_NAME:-notification}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
     networks:
       - foil-net
@@ -118,8 +120,8 @@ services:
       context: .
       dockerfile: ./app/scoreboard/Containerfile
     environment:
-      - PORT=3005
-      - SERVICE_NAME=scoreboard
+      - PORT=${SCOREBOARD_SERVICE_PORT:-3005}
+      - SERVICE_NAME=${SCOREBOARD_SERVICE_NAME:-scoreboard}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
     networks:
       - foil-net
@@ -134,9 +136,9 @@ services:
       context: .
       dockerfile: ./app/sandbox/Containerfile
     environment:
-      - PORT=8080
-      - IMAGES_DIR=/data/images
-      - PODMAN_SOCKET=/run/podman/podman.sock
+      - PORT=${SANDBOX_SERVICE_PORT:-8080}
+      - IMAGES_DIR=${SANDBOX_IMAGES_DIR:-/data/images}
+      - PODMAN_SOCKET=${PODMAN_SOCKET:-/run/podman/podman.sock}
     # volumes:
     #   - sandbox-images:/data/images
     #   - /run/user/1000/podman/podman.sock:/run/podman/podman.sock
@@ -156,8 +158,8 @@ services:
     environment:
       - POSTGRES_DB=${DB_NAME:-foil_ctf}
       - POSTGRES_USER=${DB_ADMIN_USER:-postgres}
-      - POSTGRES_PASSWORD=${DB_ADMIN_PASSWORD:-changeme}
-      - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_PASSWORD=${DB_ADMIN_PASSWORD}
+      - PGDATA=${PGDATA:-/var/lib/postgresql/data/pgdata}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:

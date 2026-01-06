@@ -97,7 +97,7 @@ lint: ## Lint all code
 format: ## Format all code
 	@echo "Formatting..."
 
-typecheck: ## Type check all TypeScript code
+check: ## Type check all TypeScript code
 	@echo "Type checking..."
 
 health: ## Check health of all services

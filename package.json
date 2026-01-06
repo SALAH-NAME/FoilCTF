@@ -8,7 +8,7 @@
     "build": "pnpm run --recursive --filter './app/**' build",
     "clean": "pnpm run --recursive --filter './app/**' clean",
     "lint": "pnpm run --recursive --filter './app/**' lint",
-    "typecheck": "pnpm run --recursive --filter './app/**' typecheck"
+    "check": "pnpm run --recursive --filter './app/**' check"
   },
   "keywords": ["ctf", "microservices", "security", "competition"],
   "author": "FoilCTF developers",
