@@ -1,47 +1,216 @@
 name: foil-ctf
 
 services:
-  web:
-    build: ./app/web
+  # Reverse Proxy / Load Balancer
+  nginx:
+    build:
+      context: .
+      dockerfile: ./app/nginx/Containerfile
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
     networks:
       - foil-net
     depends_on:
-      - auth
-      - ctf
-      - notifier
-      - sandbox
-      - database
-  notifier:
-    build: ./app/notifier
-    networks:
-      - foil-net
-    depends_on:
-      - auth
-      - database
-  auth:
-    build: ./app/auth
-    networks:
-      - foil-net
-    depends_on:
-      - database
-  ctf:
-    build: ./app/ctf
-    networks:
-      - foil-net
-    depends_on:
-      - auth
-      - database
-  sandbox:
-    build: ./app/sandbox
-    networks:
-      - foil-net
-    depends_on:
-      - auth
-      - database
-  database:
-    image: postgres:18
-    networks:
-      - foil-net
+      - gateway
+      - frontend
+    restart: unless-stopped
 
-network:
+  # Frontend (React + Vite)
+  frontend:
+    build:
+      context: .
+      dockerfile: ./app/front/Containerfile
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+    networks:
+      - foil-net
+    restart: unless-stopped
+
+  # API Gateway
+  gateway:
+    build:
+      context: .
+      dockerfile: ./app/gateway/Containerfile
+    environment:
+      - PORT=${GATEWAY_PORT:-3000}
+      - JWT_SECRET=${JWT_SECRET:-changeme-secret-key}
+      - SERVICE_NAME=${GATEWAY_SERVICE_NAME:-gateway}
+      - LOG_LEVEL=${LOG_LEVEL:-warn}
+    networks:
+      - foil-net
+    depends_on:
+      - user
+      - challenge
+      - chat
+      - notification
+      - scoreboard
+      - sandbox
+    restart: unless-stopped
+
+  # User Service (Authentication & User Management)
+  user:
+    build:
+      context: .
+      dockerfile: ./app/user/Containerfile
+    environment:
+      - PORT=${USER_SERVICE_PORT:-3001}
+      - JWT_SECRET=${JWT_SECRET:-changeme-secret-key}
+      - SERVICE_NAME=${USER_SERVICE_NAME:-user}
+      - LOG_LEVEL=${LOG_LEVEL:-warn}
+      - NODE_ENV=${NODE_ENV:-development}
+    networks:
+      - foil-net
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Challenge Service
+  challenge:
+    build:
+      context: .
+      dockerfile: ./app/challenge/Containerfile
+    environment:
+      - PORT=${CHALLENGE_SERVICE_PORT:-3002}
+      - SERVICE_NAME=${CHALLENGE_SERVICE_NAME:-challenge}
+      - LOG_LEVEL=${LOG_LEVEL:-warn}
+    networks:
+      - foil-net
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Chat Service (with WebSocket)
+  chat:
+    build:
+      context: .
+      dockerfile: ./app/chat/Containerfile
+    environment:
+      - PORT=${CHAT_SERVICE_PORT:-3003}
+      - SERVICE_NAME=${CHAT_SERVICE_NAME:-chat}
+      - LOG_LEVEL=${LOG_LEVEL:-warn}
+    networks:
+      - foil-net
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Notification Service
+  notification:
+    build:
+      context: .
+      dockerfile: ./app/notification/Containerfile
+    environment:
+      - PORT=${NOTIFICATION_SERVICE_PORT:-3004}
+      - SERVICE_NAME=${NOTIFICATION_SERVICE_NAME:-notification}
+      - LOG_LEVEL=${LOG_LEVEL:-warn}
+    networks:
+      - foil-net
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Scoreboard Service (with WebSocket)
+  scoreboard:
+    build:
+      context: .
+      dockerfile: ./app/scoreboard/Containerfile
+    environment:
+      - PORT=${SCOREBOARD_SERVICE_PORT:-3005}
+      - SERVICE_NAME=${SCOREBOARD_SERVICE_NAME:-scoreboard}
+      - LOG_LEVEL=${LOG_LEVEL:-warn}
+    networks:
+      - foil-net
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Sandbox Service (Go - Container Management)
+  sandbox:
+    build:
+      context: .
+      dockerfile: ./app/sandbox/Containerfile
+    environment:
+      - PORT=${SANDBOX_SERVICE_PORT:-8080}
+      - IMAGES_DIR=${SANDBOX_IMAGES_DIR:-/data/images}
+      - PODMAN_SOCKET=${PODMAN_SOCKET:-/run/podman/podman.sock}
+    # volumes:
+    #   - sandbox-images:/data/images
+    #   - /run/user/1000/podman/podman.sock:/run/podman/podman.sock
+    networks:
+      - foil-net
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+    # privileged: true  #  it may be required for Podman operations
+
+  # PostgreSQL Database
+  database:
+    build:
+      context: .
+      dockerfile: ./app/database/Containerfile
+    environment:
+      - POSTGRES_DB=${DB_NAME:-foil_ctf}
+      - POSTGRES_USER=${DB_ADMIN_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_ADMIN_PASSWORD}
+      - PGDATA=${PGDATA:-/var/lib/postgresql/data/pgdata}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - foil-net
+    ports:
+      - "5432:5432"  # For development access
+    # healthcheck:
+    restart: unless-stopped
+
+  # Prometheus (Metrics Collection)
+  prometheus:
+    image: prom/prometheus:latest
+    # command:
+    #   - '--config.file=/etc/prometheus/prometheus.yml'
+    #   - ...
+
+    # volumes:
+    #   - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    #   - prometheus-data:/prometheus
+    networks:
+      - foil-net
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  # Grafana (Metrics Visualization)
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - foil-net
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+
+
+networks:
   foil-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  sandbox-images:
+  prometheus-data:
+  grafana-data:
+  elasticsearch-data:
