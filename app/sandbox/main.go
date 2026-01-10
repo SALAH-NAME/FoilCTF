@@ -12,13 +12,22 @@ type Route struct {
 	handler fiber.Handler
 }
 
-func MakeRoutes(app *App) []Route {
-	var routes []Route
+func MakeRoutes(app *App) (routes, containers, images []Route) {
+	routes = append(routes, Route_Image_Create(app))
+	routes = append(routes, Route_Container_Create(app))
 
-	routes = append(routes, Route_List(app))
-	routes = append(routes, Route_Init(app))
-	routes = append(routes, Route_Build(app))
-	return routes
+	images = append(images, Route_Image_List(app))
+	images = append(images, Route_Image_Inspect(app))
+	images = append(images, Route_Image_Build(app))
+	images = append(images, Route_Image_Delete(app))
+
+	containers = append(containers, Route_Container_List(app))
+	containers = append(containers, Route_Container_Inspect(app))
+	containers = append(containers, Route_Container_Start(app))
+	containers = append(containers, Route_Container_Stop(app))
+	containers = append(containers, Route_Container_Delete(app))
+
+	return routes, containers, images
 }
 
 func main() {
@@ -29,8 +38,8 @@ func main() {
 	}
 	defer app.Terminate()
 
-	routes := MakeRoutes(app)
-	app.RegisterRoutes(routes)
+	routes, containers, images := MakeRoutes(app)
+	app.RegisterRoutes(routes, containers, images)
 
 	app.Listen()
 }

@@ -25,11 +25,10 @@ func (app *App) Init() error {
 		return err
 	}
 
-	dbUser, dbPass := os.Getenv("DB_USER"), os.Getenv("DB_PASS")
-	if dbUser == "" {
-		return errors.New("required environment variable \"DB_USER\" is not set")
+	dbUri, podmanUri, podmanDir := os.Getenv("DATABASE_URI"), os.Getenv("PODMAN_URI"), os.Getenv("PODMAN_DIR")
+	if dbUri == "" {
+		return errors.New("required environment variable \"DATABASE_URI\" is not set")
 	}
-	podmanUri, podmanDir := os.Getenv("PODMAN_URI"), os.Getenv("PODMAN_DIR")
 	if podmanUri == "" {
 		return errors.New("required environment variable \"PODMAN_URI\" is not set")
 	}
@@ -49,7 +48,7 @@ func (app *App) Init() error {
 		return err
 	}
 
-	app.database, err = Database_Connect(dbUser, dbPass)
+	app.database, err = Database_Connect(dbUri)
 	if err != nil {
 		return err
 	}
@@ -71,9 +70,22 @@ func (app *App) Terminate() error {
 	return nil
 }
 
-func (app *App) RegisterRoutes(routes []Route) {
+func (app *App) RegisterRoutes(routes, containers, images []Route) {
+	groupApi := app.server.Group("/api/sandbox")
 	for _, route := range routes {
-		app.server.Add(route.methods, route.pattern, route.handler)
+		groupApi.Add(route.methods, route.pattern, route.handler)
+	}
+
+	groupContainers := groupApi.Group("/containers")
+	groupContainers.Use("/:Name<identifier>", Middleware_Container_Exists(app))
+	for _, route := range containers {
+		groupContainers.Add(route.methods, route.pattern, route.handler)
+	}
+
+	groupImages := groupApi.Group("/images")
+	groupImages.Use("/api/sandbox/images/:Name<identifier>", Middleware_Image_Exists(app))
+	for _, route := range images {
+		groupImages.Add(route.methods, route.pattern, route.handler)
 	}
 }
 
