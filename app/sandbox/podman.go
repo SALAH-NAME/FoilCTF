@@ -24,7 +24,7 @@ func Podman_Connect(uri string) (context.Context, error) {
 type PortMapping = podmanNetworkTypes.PortMapping
 
 type ListContainer struct {
-	ID    string   `json:"id"`
+	Id    string   `json:"id"`
 	State string   `json:"state"`
 	Names []string `json:"names,omitempty"`
 
@@ -42,7 +42,7 @@ type ListContainer struct {
 	ExitedAt  time.Time `json:"exited_at"`
 }
 
-func Podman_List(ctx context.Context) ([]ListContainer, error) {
+func Podman_Container_List(ctx context.Context) ([]ListContainer, error) {
 	var filters map[string][]string
 
 	listOpts := new(containers.ListOptions).WithAll(true).WithFilters(filters)
@@ -54,7 +54,7 @@ func Podman_List(ctx context.Context) ([]ListContainer, error) {
 	var listContainers []ListContainer
 	for _, container := range containers {
 		listContainers = append(listContainers, ListContainer{
-			ID:    container.ID,
+			Id:    container.ID,
 			Pid:   container.Pid,
 			State: container.State,
 			Names: container.Names,
@@ -75,39 +75,265 @@ func Podman_List(ctx context.Context) ([]ListContainer, error) {
 	return listContainers, nil
 }
 
-func Podman_Inspect(ctx context.Context, nameOrID string) (*define.InspectContainerData, error) {
+type InspectedContainer struct {
+	Id        string `json:"id"`
+	Path      string `json:"path"`
+	Namespace string `json:"namespace"`
+
+	Args         []string `json:"args"`
+	Dependencies []string `json:"dependencies"`
+
+	IsInfra   bool `json:"is_infra"`
+	IsService bool `json:"is_service"`
+
+	SizeRw     *int64 `json:"size_rw,omitempty"`
+	SizeRootFs int64  `json:"size_root_fs"`
+
+	RestartCount int32 `json:"restart_count"`
+
+	Image     string `json:"image"`
+	ImageName string `json:"image_name"`
+
+	OCIRuntime    string `json:"oci_runtime"`
+	OCIConfigPath string `json:"oci_config_path"`
+
+	CreatedAt time.Time `json:"created_at"`
+
+	State  *InspectedContainerState  `json:"state"`
+	Config *InspectedContainerConfig `json:"config"`
+	Mounts []InspectedContainerMount `json:"mounts"`
+	// TODO(xenobas): NetworkSettings
+}
+type InspectedContainerConfig struct {
+	Image       string            `json:"image"`
+	Labels      map[string]string `json:"labels"`
+	Annotations map[string]string `json:"annotations"`
+
+	Hostname   string `json:"hostname"`
+	DomainName string `json:"domain_name"`
+	User       string `json:"user"`
+
+	Umask    string `json:"umask,omitempty"`
+	Timezone string `json:"timezone,omitempty"`
+
+	Cmd        []string `json:"cmd"`
+	Entrypoint []string `json:"entrypoint"`
+
+	Env          []string `json:"env"`
+	Volumes      []string `json:"volumes"`
+	Secrets      []string `json:"secrets"` // TODO(xenobas): Does this need the full details of libpod.define.InspectSecret
+	ExposedPorts []string `json:"exposed_ports"`
+
+	WorkDir       string   `json:"work_dir"`
+	StopSignal    string   `json:"stop_signal"`
+	CreateCommand []string `json:"create_command"`
+
+	// TODO(xenobas): Healthcheck stuff
+
+	Tty         bool `json:"tty"`
+	OpenStdin   bool `json:"open_stdin"`
+	SystemdMode bool `json:"systemd_mode"`
+
+	Timeout     uint `json:"timeout"`
+	StopTimeout uint `json:"stop_timeout"`
+
+	Passwd *bool `json:"passwd,omitempty"`
+}
+type InspectedContainerMount struct {
+	Type string `json:"type"`
+	Name string `json:"name,omitempty"`
+
+	RW          bool   `json:"read_write"`
+	Propagation string `json:"propagation"`
+
+	Driver  string   `json:"driver"`
+	Mode    string   `json:"mode"`
+	Options []string `json:"options"`
+
+	Source      string `json:"source"`
+	Destination string `json:"destination"`
+
+	SubPath string `json:"sub_path,omitempty"`
+}
+type InspectedContainerState struct {
+	Status    string `json:"status"`
+	Pid       int    `json:"pid"`
+	ConmonPid int    `json:"conmon_pid"`
+
+	Dead       bool `json:"dead"`
+	OOMKilled  bool `json:"oom_killed"`
+	Paused     bool `json:"paused"`
+	Restarting bool `json:"restarting"`
+	Running    bool `json:"running"`
+
+	ExitCode int    `json:"exit_code"`
+	Error    string `json:"error"`
+
+	StartedAt      time.Time `json:"started_at"`
+	FinishedAt     time.Time `json:"finished_at"`
+	CheckpointedAt time.Time `json:"checkpointed_at"`
+	RestoredAt     time.Time `json:"restored_at"`
+}
+
+func (container *InspectedContainer) ParseInspectContainerData(data *define.InspectContainerData) *InspectedContainer {
+	container.Id = data.ID
+	container.Path = data.Path
+	container.Namespace = data.Namespace
+
+	container.Args = data.Args
+	container.Dependencies = data.Dependencies
+
+	container.IsInfra = data.IsInfra
+	container.IsService = data.IsService
+
+	container.SizeRw = data.SizeRw
+	container.SizeRootFs = data.SizeRootFs
+
+	container.RestartCount = data.RestartCount
+
+	container.Image = data.Image
+	container.ImageName = data.ImageName
+
+	container.OCIRuntime = data.OCIRuntime
+	container.OCIConfigPath = data.OCIConfigPath
+
+	container.CreatedAt = data.Created
+
+	if data.State != nil {
+		state := new(InspectedContainerState)
+
+		state.Status = data.State.Status
+		state.Pid = data.State.Pid
+		state.ConmonPid = data.State.ConmonPid
+
+		state.Dead = data.State.Dead
+		state.OOMKilled = data.State.OOMKilled
+		state.Paused = data.State.Paused
+		state.Restarting = data.State.Restarting
+		state.Running = data.State.Running
+
+		state.ExitCode = int(data.State.ExitCode)
+		state.Error = data.State.Error
+
+		state.StartedAt = data.State.StartedAt
+		state.FinishedAt = data.State.FinishedAt
+		state.CheckpointedAt = data.State.CheckpointedAt
+		state.RestoredAt = data.State.RestoredAt
+
+		container.State = state
+	}
+
+	if data.Config != nil {
+		config := new(InspectedContainerConfig)
+
+		config.Image = data.Config.Image
+		config.Labels = data.Config.Labels
+		config.Annotations = data.Config.Annotations
+
+		config.Hostname = data.Config.Hostname
+		config.DomainName = data.Config.DomainName
+		config.User = data.Config.User
+
+		config.Umask = data.Config.Umask
+		config.Timezone = data.Config.Timezone
+
+		config.Cmd = data.Config.Cmd
+		config.Entrypoint = data.Config.Entrypoint
+
+		config.Env = data.Config.Env
+		for volume := range data.Config.Volumes {
+			config.Volumes = append(config.Volumes, volume)
+		}
+		for _, secret := range data.Config.Secrets {
+			config.Secrets = append(config.Secrets, secret.Name)
+		}
+		for port := range data.Config.ExposedPorts {
+			config.ExposedPorts = append(config.ExposedPorts, port)
+		}
+
+		config.WorkDir = data.Config.WorkingDir
+		config.StopSignal = data.Config.StopSignal
+		config.CreateCommand = data.Config.CreateCommand
+
+		config.Tty = data.Config.Tty
+		config.OpenStdin = data.Config.OpenStdin
+		config.SystemdMode = data.Config.SystemdMode
+
+		config.Timeout = data.Config.Timeout
+		config.StopTimeout = data.Config.StopTimeout
+
+		if data.Config.Passwd != nil {
+			config.Passwd = new(bool)
+			*config.Passwd = *data.Config.Passwd
+		}
+
+		container.Config = config
+	}
+	for _, mount := range data.Mounts {
+		container.Mounts = append(container.Mounts, InspectedContainerMount{
+			Type: mount.Type,
+			Name: mount.Name,
+
+			RW:          mount.RW,
+			Propagation: mount.Propagation,
+
+			Driver:  mount.Driver,
+			Mode:    mount.Mode,
+			Options: mount.Options,
+
+			Source:      mount.Source,
+			Destination: mount.Destination,
+
+			SubPath: mount.SubPath,
+		})
+	}
+
+	return container
+}
+
+func Podman_Container_Inspect(ctx context.Context, nameOrId string) (*InspectedContainer, error) {
 	inspectOpts := new(containers.InspectOptions).WithSize(true)
-	return containers.Inspect(ctx, nameOrID, inspectOpts)
+	inspectData, err := containers.Inspect(ctx, nameOrId, inspectOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	container := new(InspectedContainer)
+	return container.ParseInspectContainerData(inspectData), nil
 }
 
-func Podman_Start(ctx context.Context, nameOrID string) error {
+func Podman_Container_Start(ctx context.Context, nameOrId string) error {
 	startOpts := new(containers.StartOptions)
-	return containers.Start(ctx, nameOrID, startOpts)
+	return containers.Start(ctx, nameOrId, startOpts)
 }
 
-func Podman_Stop(ctx context.Context, nameOrID string) error {
+func Podman_Container_Stop(ctx context.Context, nameOrId string, timeout uint) error {
 	stopOpts := new(containers.StopOptions)
-	return containers.Stop(ctx, nameOrID, stopOpts)
+	stopOpts = stopOpts.WithTimeout(timeout)
+	
+	return containers.Stop(ctx, nameOrId, stopOpts)
 }
 
-type CreateOptions struct {
-	Name        string `json:"Name"`
-	Hostname    string `json:"Hostname,omitempty"` // FALLBACK: "{containerID}"
-	StopTimeout uint   `json:"StopTimeout"`        // FALLBACK: Always SIGKILL instead of SIGSTOP
+type ContainerCreateOptions struct {
+	Hostname    string `json:"hostname,omitempty"` // FALLBACK: "{containerID}"
+	StopTimeout uint   `json:"stop_timeout"`       // FALLBACK: Always SIGKILL instead of SIGSTOP
 
-	Image            string `json:"Image"`
-	WorkDir          string `json:"WorkDir,omitempty"` // FALLBACK: "/"
-	CreateWorkingDir bool   `json:"WorkDirCreate"`
+	Image            string `json:"image"`
+	WorkDir          string `json:"work_dir,omitempty"` // FALLBACK: "/"
+	CreateWorkingDir bool   `json:"work_dir_create"`
 
-	User string `json:"User,omitempty"` // FALLBACK: "root"
+	User string `json:"user,omitempty"` // FALLBACK: "root"
 
-	PortMappings []PortMapping `json:"Ports,omitempty"` // FALLBACK: no ports published
+	PortMappings []PortMapping `json:"ports,omitempty"` // FALLBACK: no ports published
+	// TODO(xenobas): Re bind this struct to be our own definition
 
-	LimitMemory *spec.LinuxMemory `json:"LimitMemory,omitempty"` // FALLBACK: unlimited
-	LimitCPU    *spec.LinuxCPU    `json:"LimitCPU,omitempty"`    // FALLBACK: unlimited
-	LimitPids   *spec.LinuxPids   `json:"LimitPids,omitempty"`   // FALLBACK: unlimited
+	LimitMemory *spec.LinuxMemory `json:"limit_memory,omitempty"` // FALLBACK: unlimited
+	// TODO(xenobas): Re bind this struct to be our own definition
+	LimitCPU *spec.LinuxCPU `json:"limit_cpu,omitempty"` // FALLBACK: unlimited
+	// TODO(xenobas): Re bind this struct to be our own definition
+	LimitPids *spec.LinuxPids `json:"limit_pids,omitempty"` // FALLBACK: unlimited
+	// TODO(xenobas): Re bind this struct to be our own definition
 
-	// TODO(xenobas): Since we are using external packages for types like Linux*, and PortMapping, we cannot control the casing of the response... we fix it later.
 	// TODO(xenobas): Do we need?
 	// -	ContainerBasicConfig::Terminal
 	// -	ContainerBasicConfig::Remove[Image]
@@ -115,16 +341,22 @@ type CreateOptions struct {
 	// -	ContainerNetworkConfig::HostAdd
 	// -	ContainerResourceConfig::BlockIO
 	// -	ContainerResourceConfig::Devices
-	// -	ContainerResourceConfig::
+}
+
+type ContainerRemoveOptions = containers.RemoveOptions
+
+func Podman_Container_Remove(ctx context.Context, nameOrId string, opts *ContainerRemoveOptions) error {
+	_, err := containers.Remove(ctx, nameOrId, opts)
+	return err
 }
 
 type CreatedContainer = entities.ContainerCreateResponse
 
-func Podman_Create(ctx context.Context, opts CreateOptions) (CreatedContainer, error) {
+func Podman_Container_Create(ctx context.Context, name string, opts ContainerCreateOptions) (CreatedContainer, error) {
 	s := new(specgen.SpecGenerator)
 
 	// SECTION: ContainerBasicConfig
-	s.Name = opts.Name
+	s.Name = name
 	s.Hostname = opts.Hostname
 	if opts.StopTimeout > 0 {
 		s.StopTimeout = new(uint)
@@ -159,9 +391,70 @@ func Podman_Create(ctx context.Context, opts CreateOptions) (CreatedContainer, e
 	}
 
 	// TODO(xenobas): ContainerHealthCheckConfig
+	s.HealthLogDestination = "/home/xenobas/projects/FoilCTF/app/sandbox/health.log"
 
-	createOpts := new(containers.CreateOptions)
-	return containers.CreateWithSpec(ctx, s, createOpts)
+	return containers.CreateWithSpec(ctx, s, nil)
+}
+
+func Podman_Container_Exists(ctx context.Context, nameOrId string) (bool, error) {
+	return containers.Exists(ctx, nameOrId, nil)
+}
+
+/// SECTION: Images
+
+type ListImage struct {
+	Id       string            `json:"id"`
+	Os       string            `json:"os,omitempty"`
+	Names    []string          `json:"names,omitempty"`
+	Labels   map[string]string `json:"labels"`
+	RepoTags []string          `json:"repo_tags,omitempty"`
+
+	Size        int64 `json:"size"`
+	SharedSize  int   `json:"size_shared"`
+	VirtualSize int64 `json:"size_virtual,omitempty"`
+
+	Containers int `json:"containers"`
+
+	ReadOnly bool `json:"read_only"`
+	Dangling bool `json:"dangling"`
+
+	// TODO(xenobas): Do we add IsManifestList ?
+
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func Podman_Image_List(ctx context.Context) ([]ListImage, error) {
+	var filters map[string][]string
+
+	listOptions := new(images.ListOptions).WithFilters(filters)
+	imgs, err := images.List(ctx, listOptions)
+	if err != nil {
+		return []ListImage{}, err
+	}
+
+	var listImages []ListImage
+	for _, image := range imgs {
+		listImages = append(listImages, ListImage{
+			Id:       image.ID,
+			Os:       image.Os,
+			Names:    image.Names,
+			Labels:   image.Labels,
+			RepoTags: image.RepoTags,
+
+			Size:        image.Size,
+			SharedSize:  image.SharedSize,
+			VirtualSize: image.VirtualSize,
+
+			Containers: image.Containers,
+
+			ReadOnly: image.ReadOnly,
+			Dangling: image.Dangling,
+
+			CreatedAt: time.UnixMilli(image.Created),
+		})
+	}
+
+	return listImages, nil
 }
 
 type BuildOptions struct {
@@ -174,7 +467,7 @@ type BuildOptions struct {
 
 type BuiltImage = entities.BuildReport
 
-func Podman_Build(ctx context.Context, containerFiles []string, opts BuildOptions) (*BuiltImage, error) {
+func Podman_Image_Build(ctx context.Context, opts BuildOptions) (*BuiltImage, error) {
 	for _, file := range opts.ContainerFiles {
 		// NOTE(xenobas): Disallow stdin
 		if file == "/dev/stdin" {
@@ -200,7 +493,102 @@ func Podman_Build(ctx context.Context, containerFiles []string, opts BuildOption
 	buildOptions.SkipTLSVerify = opts.SkipTLSVerify
 	// TODO(xenobas): Log files { buildOptions.In, buildOptions.Out, buildOptions.Err }
 
-	return images.BuildFromServerContext(ctx, opts.ContainerFiles, buildOptions)
+	return images.Build(ctx, opts.ContainerFiles, buildOptions)
 }
 
-// TODO(xenobas): container logs streaming...
+type InspectedImage struct {
+	Id           string `json:"id"`
+	Os           string `json:"os"`
+	Architecture string `json:"arch"`
+	User         string `json:"user,omitempty"`
+
+	Config *InspectedImageConfig `json:"config"`
+
+	NamesHistory []string  `json:"names_history"`
+	RepoTags     []string  `json:"repo_tags,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+
+	Size        int64 `json:"size,omitempty"`
+	VirtualSize int64 `json:"size_virtual,omitempty"`
+
+	Version string `json:"version,omitempty"`
+	Author  string `json:"version,omitempty"`
+}
+type InspectedImageConfig struct {
+	User   string   `json:"user,omitempty"`
+	Labels []string `json:"labels"`
+
+	Env          []string `json:"env,omitempty"`
+	WorkDir      string   `json:"work_dir,omitempty"`
+	ExposedPorts []string `json:"exposed_ports,omitempty"`
+	Volumes      []string `json:"volumes,omitempty"`
+
+	Entrypoint []string `json:"entrypoint,omitempty"`
+	Cmd        []string `json:"cmd,omitempty"`
+	StopSignal string   `json:"stop_signal,omitempty"`
+}
+
+func (image *InspectedImage) ParseImageInspectReport(data *entities.ImageInspectReport) {
+	if data.Config != nil {
+		config := new(InspectedImageConfig)
+		config.User = data.Config.User
+
+		for label := range data.Config.Labels {
+			config.Labels = append(config.Labels, label)
+		}
+		for exposedPort := range data.Config.ExposedPorts {
+			config.ExposedPorts = append(config.ExposedPorts, exposedPort)
+		}
+		for volume := range data.Config.Volumes {
+			config.Volumes = append(config.Volumes, volume)
+		}
+		config.Env = data.Config.Env
+		config.WorkDir = data.Config.WorkingDir
+
+		config.Entrypoint = data.Config.Entrypoint
+		config.Cmd = data.Config.Cmd
+		config.StopSignal = data.Config.StopSignal
+
+		image.Config = config
+	}
+
+	image.Id = data.ID
+	image.Os = data.Os
+	image.Architecture = data.Architecture
+	image.User = data.User
+
+	image.NamesHistory = data.NamesHistory
+	image.RepoTags = data.RepoTags
+	image.CreatedAt = *data.Created
+
+	image.Size = data.Size
+	image.VirtualSize = data.VirtualSize
+
+	image.Version = data.Version
+	image.Author = data.Author
+}
+
+func Podman_Image_Inspect(ctx context.Context, nameOrId string, calculateSize bool) (*InspectedImage, error) {
+	getOptions := new(images.GetOptions).WithSize(calculateSize)
+	data, err := images.GetImage(ctx, nameOrId, getOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	image := new(InspectedImage)
+	image.ParseImageInspectReport(data)
+
+	return image, nil
+}
+
+func Podman_Image_Remove(ctx context.Context, nameOrId string) error {
+	_, errs := images.Remove(ctx, []string{nameOrId}, nil)
+	if len(errs) > 0 {
+		return errs[0]
+	}
+	return nil
+}
+
+func Podman_Image_Exists(ctx context.Context, nameOrId string) (bool, error) {
+	return images.Exists(ctx, nameOrId, nil)
+}
