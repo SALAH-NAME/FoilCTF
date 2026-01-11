@@ -1,1 +1,26 @@
-FROM node:24.12-alpine3.23
+FROM node:24.12.0-alpine3.23
+
+# RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /app
+
+
+RUN corepack enable pnpm
+
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.json ./
+COPY app/packages ./app/packages
+COPY app/user ./app/user
+
+RUN pnpm install --frozen-lockfile
+
+RUN pnpm --filter @foil/shared build
+
+RUN pnpm --filter @foil/user-service build
+
+# RUN ls -la /app/app/user/dist/ || echo "dist folder not found"
+
+WORKDIR /app/app/user
+
+EXPOSE 3001
+
+CMD ["pnpm", "start"]
