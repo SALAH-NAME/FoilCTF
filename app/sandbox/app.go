@@ -13,8 +13,10 @@ import (
 )
 
 type App struct {
+	server			*fiber.App
+	serverAddr	string
+
 	podman   context.Context
-	server   *fiber.App
 	database *sql.DB
 
 	dirImages string
@@ -25,6 +27,11 @@ func (app *App) Init() error {
 	err := env.Load()
 	if err != nil {
 		return err
+	}
+
+	app.serverAddr = os.Getenv("SERVER_ADDR")
+	if app.serverAddr == "" {
+		app.serverAddr = ":8080"
 	}
 
 	dbUri, podmanUri, podmanDirImages, podmanDirHealth := os.Getenv("DATABASE_URI"), os.Getenv("PODMAN_URI"), os.Getenv("PODMAN_DIR_IMAGES"), os.Getenv("PODMAN_DIR_HEALTH")
@@ -48,8 +55,9 @@ func (app *App) Init() error {
 		return errors.New("Could not get absolute path from \"PODMAN_DIR_IMAGES\" environment variable")
 	}
 
-	log.Printf("PODMAN_DIR_IMAGES: %q", app.dirImages)
-	log.Printf("PODMAN_DIR_HEALTH: %q", app.dirHealth)
+	log.Printf("\"ENV\" :: PODMAN_DIR_IMAGES :: %q", app.dirImages)
+	log.Printf("\"ENV\" :: PODMAN_DIR_HEALTH :: %q", app.dirHealth)
+	log.Printf("\"ENV\" :: SERVER_ADDR: %q\n", app.serverAddr)
 
 	if err := os.MkdirAll(app.dirHealth, 0750); err != nil {
 		return err
@@ -74,9 +82,9 @@ func (app *App) Init() error {
 
 		ReadBufferSize: 16 * 1024,
 		WriteBufferSize: 4 * 1024,
-	}) // TODO(xenobas): Replace logging with our own solution
+	})
 	app.server.RegisterCustomConstraint(&Constraint_Identifier{})
-	app.server.Use(Middleware_Authorization)
+	app.server.Use(Middleware_Authorization(app))
 
 	return nil
 }
@@ -93,6 +101,7 @@ func (app *App) Terminate() error {
 
 func (app *App) RegisterRoutes(routes, containers, images []Route) {
 	groupApi := app.server.Group("/api/sandbox")
+	groupApi.Use(Middleware_Logger(app))
 	for _, route := range routes {
 		groupApi.Add(route.methods, route.pattern, route.handler)
 	}
@@ -111,7 +120,7 @@ func (app *App) RegisterRoutes(routes, containers, images []Route) {
 }
 
 func (app *App) Listen() error {
-	return app.server.Listen(":8080", fiber.ListenConfig{
-		DisableStartupMessage: false,
+	return app.server.Listen(app.serverAddr, fiber.ListenConfig{
+		DisableStartupMessage: true,
 	})
 }

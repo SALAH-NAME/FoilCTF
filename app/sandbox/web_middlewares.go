@@ -2,15 +2,27 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	fiber "github.com/gofiber/fiber/v3"
 	// "github.com/gofiber/fiber/v3/client"
 )
 
-func Middleware_Authorization(c fiber.Ctx) error {
-	// TODO(xenobas): Send request to auth service and get user details with the corresponding Authorization token
-	// TODO(xenobas): Figure out where to store the user details
-	return c.Next()
+func Middleware_Logger(app *App) (func (c fiber.Ctx) error) {
+	_ = app
+	return func (c fiber.Ctx) error {
+		req := c.Req()
+		log.Printf("%q :: %s", req.Method(), req.OriginalURL())
+
+		return c.Next()
+	}
+}
+
+func Middleware_Authorization(app *App) (func (c fiber.Ctx) error) { // TODO(xenobas): Implement
+	_ = app
+	return func (c fiber.Ctx) error {
+		return c.Next()
+	}
 }
 
 func Middleware_Container_Exists(app *App) (func (c fiber.Ctx) error) {
