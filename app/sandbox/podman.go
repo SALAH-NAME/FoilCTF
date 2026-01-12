@@ -310,7 +310,7 @@ func Podman_Container_Start(ctx context.Context, nameOrId string) error {
 func Podman_Container_Stop(ctx context.Context, nameOrId string, timeout uint) error {
 	stopOpts := new(containers.StopOptions)
 	stopOpts = stopOpts.WithTimeout(timeout)
-	
+
 	return containers.Stop(ctx, nameOrId, stopOpts)
 }
 
@@ -352,7 +352,7 @@ func Podman_Container_Remove(ctx context.Context, nameOrId string, opts *Contain
 
 type CreatedContainer = entities.ContainerCreateResponse
 
-func Podman_Container_Create(ctx context.Context, name string, opts ContainerCreateOptions) (CreatedContainer, error) {
+func Podman_Container_Create(ctx context.Context, name string, healthLogDestination string, opts ContainerCreateOptions) (CreatedContainer, error) {
 	s := new(specgen.SpecGenerator)
 
 	// SECTION: ContainerBasicConfig
@@ -390,8 +390,8 @@ func Podman_Container_Create(ctx context.Context, name string, opts ContainerCre
 		s.ResourceLimits.Pids = opts.LimitPids
 	}
 
-	// TODO(xenobas): ContainerHealthCheckConfig
-	s.HealthLogDestination = "/home/xenobas/projects/FoilCTF/app/sandbox/health.log"
+	// SECTION: ContainerHealthCheckConfig
+	s.HealthLogDestination = healthLogDestination
 
 	return containers.CreateWithSpec(ctx, s, nil)
 }

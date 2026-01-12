@@ -31,7 +31,7 @@ func Route_Image_Create(app *App) Route {
 		}
 		// TODO(xenobas): Validate file size
 
-		archivePath := filepath.Join(app.imagesDir, archiveName)
+		archivePath := filepath.Join(app.dirImages, archiveName)
 		if _, err := os.Stat(archivePath); !os.IsNotExist(err) {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("Image \"%s\" already exists", archiveName)})
 		}
@@ -84,7 +84,7 @@ func Route_Image_Build(app *App) Route {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid \"name\" parameter"})
 		}
 
-		imagePath := filepath.Join(app.imagesDir, imageDir)
+		imagePath := filepath.Join(app.dirImages, imageDir)
 		if _, err := os.Stat(imagePath); os.IsNotExist(err) {
 			return c.SendStatus(fiber.StatusNotFound)
 		}

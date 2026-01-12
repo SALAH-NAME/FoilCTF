@@ -20,7 +20,7 @@ func Route_Container_Create(app *App) Route {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
 
-		container, err := Podman_Container_Create(app.podman, containerName, containerCreateOpts)
+		container, err := Podman_Container_Create(app.podman, containerName, app.dirHealth, containerCreateOpts)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}

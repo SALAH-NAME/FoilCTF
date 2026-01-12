@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -16,7 +17,8 @@ type App struct {
 	server   *fiber.App
 	database *sql.DB
 
-	imagesDir string
+	dirImages string
+	dirHealth string
 }
 
 func (app *App) Init() error {
@@ -25,21 +27,34 @@ func (app *App) Init() error {
 		return err
 	}
 
-	dbUri, podmanUri, podmanDir := os.Getenv("DATABASE_URI"), os.Getenv("PODMAN_URI"), os.Getenv("PODMAN_DIR")
+	dbUri, podmanUri, podmanDirImages, podmanDirHealth := os.Getenv("DATABASE_URI"), os.Getenv("PODMAN_URI"), os.Getenv("PODMAN_DIR_IMAGES"), os.Getenv("PODMAN_DIR_HEALTH")
 	if dbUri == "" {
 		return errors.New("required environment variable \"DATABASE_URI\" is not set")
 	}
 	if podmanUri == "" {
 		return errors.New("required environment variable \"PODMAN_URI\" is not set")
 	}
-	if podmanDir == "" {
-		return errors.New("required environment variable \"PODMAN_DIR\" is not set")
+	if podmanDirImages == "" {
+		return errors.New("required environment variable \"PODMAN_DIR_IMAGES\" is not set")
+	}
+	if podmanDirHealth == "" {
+		return errors.New("required environment variable \"PODMAN_DIR_HEALTH\" is not set")
 	}
 
-	if app.imagesDir, err = filepath.Abs(podmanDir); err != nil {
-		return errors.New("Could not get absolute path from \"PODMAN_DIR\" environment variable")
+	if app.dirHealth, err = filepath.Abs(podmanDirHealth); err != nil {
+		return errors.New("Could not get absolute path from \"PODMAN_DIR_HEALTH\" environment variable")
 	}
-	if err := os.MkdirAll(app.imagesDir, 0750); err != nil {
+	if app.dirImages, err = filepath.Abs(podmanDirImages); err != nil {
+		return errors.New("Could not get absolute path from \"PODMAN_DIR_IMAGES\" environment variable")
+	}
+
+	log.Printf("PODMAN_DIR_IMAGES: %q", app.dirImages)
+	log.Printf("PODMAN_DIR_HEALTH: %q", app.dirHealth)
+
+	if err := os.MkdirAll(app.dirHealth, 0750); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(app.dirImages, 0750); err != nil {
 		return err
 	}
 
@@ -53,7 +68,13 @@ func (app *App) Init() error {
 		return err
 	}
 
-	app.server = fiber.New() // TODO(xenobas): Replace logging with our own solution
+	app.server = fiber.New(fiber.Config{
+		CaseSensitive: true,
+		BodyLimit: 4 * 1024 * 1024,
+
+		ReadBufferSize: 16 * 1024,
+		WriteBufferSize: 4 * 1024,
+	}) // TODO(xenobas): Replace logging with our own solution
 	app.server.RegisterCustomConstraint(&Constraint_Identifier{})
 	app.server.Use(Middleware_Authorization)
 
@@ -83,12 +104,14 @@ func (app *App) RegisterRoutes(routes, containers, images []Route) {
 	}
 
 	groupImages := groupApi.Group("/images")
-	groupImages.Use("/api/sandbox/images/:Name<identifier>", Middleware_Image_Exists(app))
+	groupImages.Use("/:Name<identifier>", Middleware_Image_Exists(app))
 	for _, route := range images {
 		groupImages.Add(route.methods, route.pattern, route.handler)
 	}
 }
 
 func (app *App) Listen() error {
-	return app.server.Listen(":8080") // TODO(xenobas): Turn this to an environment variable
+	return app.server.Listen(":8080", fiber.ListenConfig{
+		DisableStartupMessage: false,
+	})
 }
