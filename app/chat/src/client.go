@@ -9,10 +9,11 @@ import (
 
 
 type Client struct {
-	Id string
-	h *Hub
-	connection *websocket.Conn
-	send chan Message
+	Id			string
+	Name		string
+	h			*Hub
+	connection 	*websocket.Conn
+	send chan 	Message
 }
 
 func newClient(conn *websocket.Conn, hub *Hub) *Client{

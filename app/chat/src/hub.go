@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
-
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -40,7 +37,12 @@ func (h* Hub) serveWs(w http.ResponseWriter, r *http.Request) {
 		log.Println("error while upgrading http connection")
 		return
 	}
+	name := r.URL.Query().Get("name")
+	if name == "" {
+		name = "Anonymous"
+	}
 	joinedClient := newClient(conn, h)
+	joinedClient.Name = name
 	h.register <- joinedClient
 	go joinedClient.writeToConnectionTunnel()
 	go joinedClient.readFromConnectionTunnel()
@@ -58,46 +60,25 @@ func (h *Hub) Run() {
 				}
 				switch(EventMessage.Event) {
 					case "message": {
-						EventMessage.Id = uuid.New().String()
-						EventMessage.SentTime = time.Now()
-						h.historyTracker[EventMessage.Id] = EventMessage
-						broadcast(h, &EventMessage, "")
+						handleMessageEvent(h, &EventMessage)
 					}
 					case "typing": {
-						broadcast(h, &EventMessage, EventMessage.SenderId)
+						handleTypingEvent(h, &EventMessage)
 					}
 					case "edit": {
-						oldMessage, exists := h.historyTracker[EventMessage.Id]
-						if exists && (oldMessage.DeletedAt == nil){
-							if(time.Since(oldMessage.SentTime).Minutes() < 1) {
-								now:= time.Now()
-								oldMessage.EditedAt = &now
-								oldMessage.Content = EventMessage.Content
-								oldMessage.IsEdited = true
-								broadcast(h, &oldMessage, "")
-							}
-						}
+						handleEditEvent(h, &EventMessage)
 					}
 					case "delete": {
-						oldMessage, exists := h.historyTracker[EventMessage.Id]
-						if exists && (oldMessage.DeletedAt == nil){
-							now:= time.Now()
-							oldMessage.DeletedAt = &now
-							h.historyTracker[oldMessage.Id] = oldMessage
-						}
+						handleDeleteEvent(h, &EventMessage)
 					}
 				}
 				fmt.Println((EventMessage))
 			}
-			case mes2 := <- h.register:
-			{
-				h.clients[mes2] = true
-				fmt.Println("hello ", mes2)
+			case client := <- h.register: {
+				handleJoinEvent(h, client)
 			}
-			case mes3 := <- h.unregister:
-			{
-				delete(h.clients, mes3)
-				fmt.Println("goodbye", mes3)
+			case client := <- h.unregister: {
+				handleLeaveEvent(h, client)
 			}
 		}
 
