@@ -6,7 +6,7 @@ import (
 
 type Message struct {
 	Id			string		`json:"id"`
-	SenderId	string		`json:"sender_id",omitempty`
+	SenderId	string		`json:"sender_id,omitempty"`
 	Event 		string		`json:"event"`
 	Name 		string		`json:"name"`
 	Content 	string		`json:"content"`

@@ -21,6 +21,7 @@ type Hub struct {
 
 func NewHub() Hub {
 	return Hub {
+		historyTracker: make(map[string]Message),
 		MessageChannel: make(chan Message),
 		register: make(chan *Client, 10),
 		unregister: make(chan *Client, 10),
