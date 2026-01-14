@@ -45,7 +45,7 @@ func handleMessageEvent(h *Hub, EventMessage *Message) {
 func handleEditEvent(h *Hub, EventMessage *Message) {
 	oldMessage, exists := h.historyTracker[EventMessage.Id]
 	if exists && (oldMessage.DeletedAt == nil){
-		if(time.Since(oldMessage.SentTime).Minutes() < 1) {
+		if(oldMessage.SenderId == EventMessage.SenderId && time.Since(oldMessage.SentTime).Minutes() < 1) {
 			now:= time.Now()
 			oldMessage.EditedAt = &now
 			oldMessage.Content = EventMessage.Content
@@ -57,10 +57,11 @@ func handleEditEvent(h *Hub, EventMessage *Message) {
 
 func handleDeleteEvent(h *Hub, EventMessage *Message) {
 	oldMessage, exists := h.historyTracker[EventMessage.Id]
-	if exists && (oldMessage.DeletedAt == nil){
+	if exists && (oldMessage.DeletedAt == nil) && oldMessage.SenderId == EventMessage.SenderId{
 		now:= time.Now()
 		oldMessage.DeletedAt = &now
 		h.historyTracker[oldMessage.Id] = oldMessage
+		broadcast(h, &oldMessage, "")
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 type Client struct {
 	Id			string
 	Name		string
+	Role		string
 	h			*Hub
 	connection 	*websocket.Conn
 	send chan 	Message

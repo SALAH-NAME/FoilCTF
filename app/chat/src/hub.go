@@ -4,16 +4,19 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
+
 	"github.com/gorilla/websocket"
 )
 
 type Hub struct {
-	historyTracker map[string]Message //temporary, should switch to db 
-	MessageChannel chan Message
-	register chan *Client
-	unregister chan *Client
-	clients map[*Client]bool
-	upgrader websocket.Upgrader
+	historyTracker		map[string]Message //temporary, should switch to db 
+	MessageChannel		chan Message
+	register chan		*Client
+	unregister			chan *Client
+	clients				map[*Client]bool
+	upgrader			websocket.Upgrader
+	mutex				sync.Mutex
 }
 
 func NewHub() Hub {
@@ -31,7 +34,7 @@ func NewHub() Hub {
 	}
 }
 
-func (h* Hub) serveWs(w http.ResponseWriter, r *http.Request) {
+func (h* Hub) serveChat(w http.ResponseWriter, r *http.Request) {
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if(err != nil) {
 		log.Println("error while upgrading http connection")
