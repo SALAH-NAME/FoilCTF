@@ -2,12 +2,16 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"log"
+	"net/http"
+	"time"
+
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
 type Hub struct {
+	historyTracker map[string]Message //temporary, should switch to db 
 	MessageChannel chan Message
 	register chan *Client
 	unregister chan *Client
@@ -45,14 +49,44 @@ func (h *Hub) Run() {
 
 	for {
 		select {
-			case mes1, ok := <- h.MessageChannel:
+			case EventMessage, ok := <- h.MessageChannel:
 			{
 				if !ok {
-					fmt.Print("finished")
+					fmt.Print("salat lhfla")
 					return;
 				}
-				broadcast(h, &mes1)
-				fmt.Println((mes1))
+				switch(EventMessage.Event) {
+					case "message": {
+						EventMessage.Id = uuid.New().String()
+						EventMessage.SentTime = time.Now()
+						h.historyTracker[EventMessage.Id] = EventMessage
+						broadcast(h, &EventMessage, "")
+					}
+					case "typing": {
+						broadcast(h, &EventMessage, EventMessage.SenderId)
+					}
+					case "edit": {
+						oldMessage, exists := h.historyTracker[EventMessage.Id]
+						if exists && (oldMessage.DeletedAt == nil){
+							if(time.Since(oldMessage.SentTime).Minutes() < 1) {
+								now:= time.Now()
+								oldMessage.EditedAt = &now
+								oldMessage.Content = EventMessage.Content
+								oldMessage.IsEdited = true
+								broadcast(h, &oldMessage, "")
+							}
+						}
+					}
+					case "delete": {
+						oldMessage, exists := h.historyTracker[EventMessage.Id]
+						if exists && (oldMessage.DeletedAt == nil){
+							now:= time.Now()
+							oldMessage.DeletedAt = &now
+							h.historyTracker[oldMessage.Id] = oldMessage
+						}
+					}
+				}
+				fmt.Println((EventMessage))
 			}
 			case mes2 := <- h.register:
 			{

@@ -3,11 +3,13 @@ package main
 import (
 	"log"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
 
 type Client struct {
+	Id string
 	h *Hub
 	connection *websocket.Conn
 	send chan Message
@@ -15,6 +17,7 @@ type Client struct {
 
 func newClient(conn *websocket.Conn, hub *Hub) *Client{
 	return &Client {
+		Id: uuid.New().String(),
 		h: hub,
 		connection: conn,
 		send: make(chan Message),
@@ -43,6 +46,7 @@ func (c *Client) readFromConnectionTunnel() {
 			log.Println("something went wrong while sending the message")
 			break;
 		}
+		msg.SenderId = c.Id
 		c.h.MessageChannel <- msg
 	}
 }
