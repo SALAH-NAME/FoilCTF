@@ -1,4 +1,6 @@
-name: foil-ctf
+# REFERENCE: https://compose-spec.github.io/compose-spec/03-compose-file.html
+# NOTE: Env interpolation is only supported on docker-compose's engine
+name: foilctf
 
 services:
   # Reverse Proxy / Load Balancer
@@ -10,7 +12,7 @@ services:
       - "${NGINX_HTTP_PORT:-80}:80"
       - "${NGINX_HTTPS_PORT:-443}:443"
     networks:
-      - foil-net
+      - foilctf_net
     depends_on:
       - gateway
       - frontend
@@ -24,7 +26,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
     networks:
-      - foil-net
+      - foilctf_net
     restart: unless-stopped
 
   # API Gateway
@@ -38,7 +40,7 @@ services:
       - SERVICE_NAME=${GATEWAY_SERVICE_NAME:-gateway}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
     networks:
-      - foil-net
+      - foilctf_net
     depends_on:
       - user
       - challenge
@@ -60,7 +62,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-warn}
       - NODE_ENV=${NODE_ENV:-development}
     networks:
-      - foil-net
+      - foilctf_net
     depends_on:
       database:
         condition: service_healthy
@@ -76,7 +78,7 @@ services:
       - SERVICE_NAME=${CHALLENGE_SERVICE_NAME:-challenge}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
     networks:
-      - foil-net
+      - foilctf_net
     depends_on:
       database:
         condition: service_healthy
@@ -92,7 +94,7 @@ services:
       - SERVICE_NAME=${CHAT_SERVICE_NAME:-chat}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
     networks:
-      - foil-net
+      - foilctf_net
     depends_on:
       database:
         condition: service_healthy
@@ -108,7 +110,7 @@ services:
       - SERVICE_NAME=${NOTIFICATION_SERVICE_NAME:-notification}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
     networks:
-      - foil-net
+      - foilctf_net
     depends_on:
       database:
         condition: service_healthy
@@ -124,7 +126,7 @@ services:
       - SERVICE_NAME=${SCOREBOARD_SERVICE_NAME:-scoreboard}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
     networks:
-      - foil-net
+      - foilctf_net
     depends_on:
       database:
         condition: service_healthy
@@ -143,30 +145,40 @@ services:
     #   - sandbox-images:/data/images
     #   - /run/user/1000/podman/podman.sock:/run/podman/podman.sock
     networks:
-      - foil-net
+      - foilctf_net
     depends_on:
       database:
         condition: service_healthy
     restart: unless-stopped
     # privileged: true  #  it may be required for Podman operations
 
-  # PostgreSQL Database
+  # PostgreSQL Database Service
   database:
+    container_name: foilctf_database
     build:
-      context: .
-      dockerfile: ./app/database/Containerfile
+      tags:
+        - "foilctf/database:latest"
+      context: app/database/
+      dockerfile: Containerfile
     environment:
-      - POSTGRES_DB=${DB_NAME:-foil_ctf}
-      - POSTGRES_USER=${DB_ADMIN_USER:-postgres}
-      - POSTGRES_PASSWORD=${DB_ADMIN_PASSWORD}
-      - PGDATA=${PGDATA:-/var/lib/postgresql/data/pgdata}
+      PGDATA: ${DATABASE_VOLUME_DATA_MOUNT:-/var/lib/postgresql/data}
+      PGLOGS: ${DATABASE_LOGS:-/var/lib/postgresql/logs}
+      POSTGRES_DB: ${DATABASE_NAME:-foilctf}
+      POSTGRES_USER: ${DATABASE_ADMIN_USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_ADMIN_PASS:-postgres}
+      # DATABASE_MIGRATIONS_MOUNT: ${DATABASE_VOLUME_MIGRATIONS_MOUNT:-/migrations}
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres:${DATABASE_VOLUME_DATA_MOUNT}
+      - migrations:${DATABASE_VOLUME_MIGRATIONS_MOUNT}
     networks:
-      - foil-net
+      - foilctf_net
     ports:
       - "5432:5432"  # For development access
-    # healthcheck:
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $$POSTGRES_DB -U $$POSTGRES_USER"]
+      interval: "10s"
+      timeout: "5s"
+      retries: 5
     restart: unless-stopped
 
   # Prometheus (Metrics Collection)
@@ -180,7 +192,7 @@ services:
     #   - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     #   - prometheus-data:/prometheus
     networks:
-      - foil-net
+      - foilctf_net
     ports:
       - "9090:9090"
     restart: unless-stopped
@@ -195,21 +207,29 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
     networks:
-      - foil-net
+      - foilctf_net
     ports:
       - "3001:3000"
     depends_on:
       - prometheus
     restart: unless-stopped
 
-
-
 networks:
-  foil-net:
+  foilctf_net:
+    name: foilctf_net
     driver: bridge
 
 volumes:
-  postgres-data:
+  postgres:
+    driver_opts:
+      o: "bind"
+      type: "none"
+      device: "${DATABASE_VOLUME_DATA_DIR?}"
+  migrations: # TODO: read only
+    driver_opts:
+      o: "bind"
+      type: "none"
+      device: "${DATABASE_VOLUME_MIGRATIONS_DIR?}"
   sandbox-images:
   prometheus-data:
   grafana-data:
