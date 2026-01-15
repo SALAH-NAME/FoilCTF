@@ -14,8 +14,5 @@
 		"typescript": "5.9.3"
 	},
 
-	"main": "dist/index.js",
-	"exports": {
-		".": "dist/index.js"
-	}
+	"main": "./src"
 }

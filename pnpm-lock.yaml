@@ -27,7 +27,7 @@ importers:
   app/web:
     dependencies:
       '@foilctf/libs':
-        specifier: workspace:1.0.0
+        specifier: workspace:*
         version: link:../libs
       react:
         specifier: ^19.2.0
