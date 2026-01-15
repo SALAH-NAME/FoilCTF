@@ -131,6 +131,9 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE TABLE IF NOT EXISTS notification_users (
   notification_id  INTEGER NOT NULL,
   notified_id      VARCHAR(64) NOT NULL,
+
+  is_read  BOOLEAN DEFAULT FALSE NOT NULL,
+
   PRIMARY KEY (notification_id, notified_id),
 
   CONSTRAINT constraint_notified FOREIGN KEY (notified_id) REFERENCES users,

@@ -1,6 +1,6 @@
 {
   "name": "foil-ctf",
-    "version": "0.1.0",
+  "version": "0.1.0",
   "private": true,
   "description": "CTF Hosting Platform",
   "scripts": {
@@ -10,7 +10,12 @@
     "lint": "pnpm run --recursive --filter './app/**' lint",
     "check": "pnpm run --recursive --filter './app/**' check"
   },
-  "keywords": ["ctf", "microservices", "security", "competition"],
+  "keywords": [
+    "ctf",
+    "microservices",
+    "security",
+    "competition"
+  ],
   "author": "FoilCTF developers",
   "license": "BSD-3-Clause",
   "engines": {
@@ -18,8 +23,12 @@
     "pnpm": ">=10.27.0"
   },
   "devDependencies": {
+    "@types/pg": "^8.16.0",
     "eslint": "",
     "prettier": "",
     "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
   }
 }

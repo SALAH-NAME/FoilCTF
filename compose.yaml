@@ -104,9 +104,16 @@ services:
       context: .
       dockerfile: ./app/notification/Containerfile
     environment:
+      - DB_HOST=database
       - PORT=${NOTIFICATION_SERVICE_PORT:-3004}
       - SERVICE_NAME=${NOTIFICATION_SERVICE_NAME:-notification}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_ADMIN_USER}
+      - DB_PASSWORD=${DB_ADMIN_PASSWORD}
+      - DB_NAME=${DB_NAME}
+    ports:
+      - "3004:3004"
     networks:
       - foil-net
     depends_on:
@@ -152,9 +159,10 @@ services:
 
   # PostgreSQL Database
   database:
-    build:
-      context: .
-      dockerfile: ./app/database/Containerfile
+    # build:
+    #   context: ./app/database
+    #   dockerfile: Containerfile
+    image: postgres:15-alpine
     environment:
       - POSTGRES_DB=${DB_NAME:-foil_ctf}
       - POSTGRES_USER=${DB_ADMIN_USER:-postgres}
@@ -166,7 +174,11 @@ services:
       - foil-net
     ports:
       - "5432:5432"  # For development access
-    # healthcheck:
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_ADMIN_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   # Prometheus (Metrics Collection)
