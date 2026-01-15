@@ -7,7 +7,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-
 type Client struct {
 	Id			string
 	Name		string
@@ -53,7 +52,7 @@ func (c *Client) readFromConnectionTunnel() {
 		}
 		if !c.rateLimiter.Allow() {
 			log.Printf("user %s is spamming!", c.Name)
-			continue
+			continue // ignore spamming users or should i send them to unregister channel? emm
 		}
 		msg.SenderId = c.Id
 		c.h.MessageChannel <- msg
