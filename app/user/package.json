@@ -1,10 +1,10 @@
 {
-  "name": "retry",
+  "name": "@foilctf/user",
   "version": "1.0.0",
-  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon dist/index.js"
+    "start": "nodemon ../dist/index.js"
+
   },
   "author": "",
   "license": "ISC",
