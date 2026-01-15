@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-
+	"golang.org/x/time/rate"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
@@ -15,14 +15,17 @@ type Client struct {
 	h			*Hub
 	connection 	*websocket.Conn
 	send chan 	Message
+	rateLimiter *rate.Limiter
 }
 
 func newClient(conn *websocket.Conn, hub *Hub) *Client{
 	return &Client {
 		Id: uuid.New().String(),
 		h: hub,
+		Role: "", //temporary
 		connection: conn,
 		send: make(chan Message),
+		rateLimiter: rate.NewLimiter(3, 6),
 	}
 }
 
@@ -47,6 +50,10 @@ func (c *Client) readFromConnectionTunnel() {
 		if(err != nil) {
 			log.Println("something went wrong while sending the message")
 			break;
+		}
+		if !c.rateLimiter.Allow() {
+			log.Printf("user %s is spamming!", c.Name)
+			continue
 		}
 		msg.SenderId = c.Id
 		c.h.MessageChannel <- msg
