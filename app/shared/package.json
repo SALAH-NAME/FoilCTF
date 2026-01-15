@@ -1,0 +1,16 @@
+{
+	"name": "@foilctf/shared",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "tsx watch src/index.ts",
+		"build": "tsc",
+		"start": "node dist/index.js",
+		"clean": "rm -rf dist",
+		"check": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"typescript": "5.9.3"
+	}
+}
