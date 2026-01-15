@@ -1,7 +1,7 @@
 {
-	"name": "@foilctf/challenge",
+	"name": "@foilctf/libs",
 	"version": "1.0.0",
-	"private": true,
+	"private": false,
 	"type": "module",
 	"scripts": {
 		"check": "tsc --noEmit",
@@ -13,7 +13,9 @@
 	"devDependencies": {
 		"typescript": "5.9.3"
 	},
-	"dependencies": {
-		"@foil/libs": "workspace:*"
+
+	"main": "dist/index.js",
+	"exports": {
+		".": "dist/index.js"
 	}
 }
