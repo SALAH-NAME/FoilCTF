@@ -153,6 +153,7 @@ services:
     # privileged: true  #  it may be required for Podman operations
 
   # PostgreSQL Database Service
+  # REFERENCE: https://github.com/docker-library/docs/blob/master/postgres/README.md
   database:
     container_name: foilctf_database
     build:
@@ -160,16 +161,25 @@ services:
         - "foilctf/database:latest"
       context: app/database/
       dockerfile: Containerfile
-    environment:
+    environment: # TODO(xenobas): POSTGRES_HOST_AUTH_METHOD, POSTGRES_INITDB_ARGS for networking
+      # Data
       PGDATA: ${DATABASE_VOLUME_DATA_MOUNT:-/var/lib/postgresql/data}
       PGLOGS: ${DATABASE_LOGS:-/var/lib/postgresql/logs}
+      # Connection
       POSTGRES_DB: ${DATABASE_NAME:-foilctf}
       POSTGRES_USER: ${DATABASE_ADMIN_USER:-postgres}
       POSTGRES_PASSWORD: ${DATABASE_ADMIN_PASS:-postgres}
-      # DATABASE_MIGRATIONS_MOUNT: ${DATABASE_VOLUME_MIGRATIONS_MOUNT:-/migrations}
+      # Scripts
+      DATABASE_MIGRATIONS_MOUNT: ${DATABASE_VOLUME_MIGRATIONS_MOUNT:-/migrations}
+      # Users
+      DATABASE_DEVELOPER_USER: ${DATABASE_DEVELOPER_USER?}
+      DATABASE_DEVELOPER_PASS: ${DATABASE_DEVELOPER_PASS?}
     volumes:
       - postgres:${DATABASE_VOLUME_DATA_MOUNT}
-      - migrations:${DATABASE_VOLUME_MIGRATIONS_MOUNT}
+      - type: volume
+        source: migrations
+        target: ${DATABASE_VOLUME_MIGRATIONS_MOUNT}
+        read_only: true
     networks:
       - foilctf_net
     ports:

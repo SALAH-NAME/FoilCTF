@@ -22,7 +22,7 @@ rm:
 	podman container rm $(NAME)
 
 inspect:
-	@podman container inspect $(NAME)
+	podman container inspect $(NAME)
 
 logs:
 	podman container logs $(NAME)

@@ -7,8 +7,7 @@ function command_internal_list {
 }
 
 DATABASE_NAME="${DATABASE_NAME:-foilctf}"
-DATABASE_ARGS="--dbname='$POSTGRES_DB' --user='$POSTGRES_USER' --pass='$POSTGRES_PASSWORD'"
-DATABASE_MIGRATIONS_FILE="${DATABASE_MIGRATIONS_FILE:-$DATABASE_MIGRATIONS_MOUNT/migration.id}"
+DATABASE_MIGRATIONS_FILE="${DATABASE_MIGRATIONS_FILE:-$PGDATA/foilctf.migration.id}"
 function command_internal_apply {
 	ID_LAST=$(cat "$DATABASE_MIGRATIONS_FILE" 2>/dev/null || echo "-1")
 	for FILE in $(command_internal_list); do
@@ -17,7 +16,7 @@ function command_internal_apply {
 		ID=$(echo "$SLUG" | cut -c '-3')
 		TITLE=$(echo "$SLUG" | cut -c '5-')
 		if [[ "$ID" -gt "$ID_LAST" ]]; then
-			psql $DATABASE_ARGS --file="$FILE" 1>/dev/null
+			psql --dbname="$POSTGRES_DB" --username="$POSTGRES_USER" --file="$FILE" 1>/dev/null
 			if [[ $? -eq 0 ]]; then
 				echo "Migration" "'$TITLE'" "has been applied successfully"
 				echo "$ID" > "$DATABASE_MIGRATIONS_FILE"
