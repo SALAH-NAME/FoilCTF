@@ -24,14 +24,14 @@ type Client struct {
 
 func newClient(conn *websocket.Conn, hub *Hub, userId string, userRole string, userName string, idRoom int) *Client{
 	return &Client {
-		Id: userId,
-		Name: userName,
-		roomId: idRoom,
-		Role: userRole,
-		h: hub,
-		connection: conn,
-		send: make(chan Message),
-		rateLimiter: rate.NewLimiter(3, 6),
+		Id:				userId,
+		Name:			userName,
+		roomId: 		idRoom,
+		Role: 			userRole,
+		h: 				hub,
+		connection: 	conn,
+		send:			make(chan Message),
+		rateLimiter:	rate.NewLimiter(3, 6),
 	}
 }
 
@@ -63,7 +63,7 @@ func (c *Client) readFromConnectionTunnel() {
 			continue
 		}
 		cleanContent := strings.TrimSpace(msg.Content)
-		if cleanContent == ""  || utf8.RuneCountInString(cleanContent) > 500 {
+		if (msg.Event == "message" || msg.Event == "edit" ) && (cleanContent == ""  || utf8.RuneCountInString(cleanContent) > 500) {
 			log.Printf("user %s sent either an empty or exceeding limit message", c.Name)
 			continue
 		}
