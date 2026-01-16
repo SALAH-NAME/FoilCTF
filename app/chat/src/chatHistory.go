@@ -1,13 +1,10 @@
 package main
 
 import (
-	// "fmt"
-	// "log"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
-	// "github.com/gorilla/websocket"
 )
 
 type historyResponse struct {

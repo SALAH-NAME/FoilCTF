@@ -46,12 +46,15 @@ func (h* Hub) serveChat(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized: Missing user ID",  http.StatusUnauthorized)
 		return
 	}
+	if userRole != "organizer" && userRole != "participant" {
+		http.Error(w, "Forbidden",  http.StatusForbidden)
+		return		
+	}
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if(err != nil) {
 		log.Println("error while upgrading http connection")
 		return
 	}
-
 	roomIdStr := r.URL.Query().Get("room")
 	roomId, err := strconv.Atoi(roomIdStr)
 	if err != nil {

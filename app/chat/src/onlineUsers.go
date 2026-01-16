@@ -5,13 +5,15 @@ import (
 	// "log"
 	"encoding/json"
 	"net/http"
+	"time"
 	// "github.com/gorilla/websocket"
 )
 
 type UserRespose struct {
-	Id		int `json:"id"`
-	Name	string `json:"name"`
-	Role	string `json:"role"`
+	Id			int			`json:"id"`
+	Name		string		`json:"name"`
+	Role		string 		`json:"role"`
+	LastSeen 	time.Time	`json:"last_seen"`
 }
 
 type onlineUsersResponse struct {
@@ -39,6 +41,7 @@ func (h *Hub) HandleOnlineUsers() []UserRespose {
 			Id: user.Id,
 			Name: user.Name,
 			Role: user.Role,
+			LastSeen: user.lastSeen,
 		})
 	}
 	return onlineUsers

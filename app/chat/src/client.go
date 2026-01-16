@@ -2,19 +2,24 @@ package main
 
 import (
 	"log"
-	"golang.org/x/time/rate"
+	"strings"
+	"time"
+	"unicode/utf8"
+
 	"github.com/gorilla/websocket"
+	"golang.org/x/time/rate"
 )
 
 type Client struct {
-	Id			int
-	Name		string
-	roomId		int
-	Role		string
-	h			*Hub
-	connection 	*websocket.Conn
-	send chan 	Message
-	rateLimiter *rate.Limiter
+	Id				int
+	Name			string
+	roomId			int
+	Role			string
+	h				*Hub
+	connection 		*websocket.Conn
+	send chan 		Message
+	rateLimiter		*rate.Limiter
+	lastSeen		time.Time
 }
 
 func newClient(conn *websocket.Conn, hub *Hub, userId int, userRole string, userName string, idRoom int) *Client{
@@ -52,12 +57,19 @@ func (c *Client) readFromConnectionTunnel() {
 			log.Println("something went wrong while sending the message")
 			break;
 		}
+		c.lastSeen = time.Now()
 		if !c.rateLimiter.Allow() {
 			log.Printf("user %s is spamming!", c.Name)
 			continue
 		}
+		cleanContent := strings.TrimSpace(msg.Content)
+		if cleanContent == ""  || utf8.RuneCountInString(cleanContent) > 500 {
+			log.Printf("user %s sent either an empty or exceeding limit message", c.Name)
+			continue
+		}
 		msg.SenderId = c.Id
 		msg.ChatroomId = c.roomId
+		msg.Content = cleanContent
 		c.h.MessageChannel <- msg
 	}
 }
