@@ -3,7 +3,7 @@ import	express, { Request }				from 'express';
 import	passport					from 'passport';
 import	dotenv						from 'dotenv'
 import	FortyTwoStrategy				from 'passport-42';
-import  {User, FortyTwoProfile, DonePassport}		from './types';
+import  {User, FortyTwoProfile, DonePassport}		from '../types';
 
 const   Port:           number  = Number(process.env.PORT ?? "8080"); // repeated work!
 const   AppId:          string  = process.env.FORTYTWO_APP_ID ?? "ID"; // repeated work!
