@@ -9,15 +9,15 @@ import (
 	// "github.com/gorilla/websocket"
 )
 
-type UserRespose struct {
-	Id			int			`json:"id"`
+type UserResponse struct {
+	Id			string			`json:"id"`
 	Name		string		`json:"name"`
 	Role		string 		`json:"role"`
 	LastSeen 	time.Time	`json:"last_seen"`
 }
 
 type onlineUsersResponse struct {
-	Users	[]UserRespose 	`json:"users"`
+	Users	[]UserResponse 	`json:"users"`
 	Count	int				`json:"count"`
 }
 
@@ -32,12 +32,12 @@ func (h *Hub) serveGetUsers(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (h *Hub) HandleOnlineUsers() []UserRespose {
+func (h *Hub) HandleOnlineUsers() []UserResponse {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
-	var onlineUsers  []UserRespose 
+	var onlineUsers  []UserResponse 
 	for user := range h.clients {
-		onlineUsers = append(onlineUsers, UserRespose{
+		onlineUsers = append(onlineUsers, UserResponse{
 			Id: user.Id,
 			Name: user.Name,
 			Role: user.Role,

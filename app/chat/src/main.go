@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -18,14 +19,17 @@ func main() {
 	if err := sqlDB.Ping(); err != nil {
 		log.Fatalf("Database is not reachable: %s", err)
 	}
-	fmt.Println("Successfully connected to postgres!")
+	fmt.Println("Successfully connected to PostgreSQL!")
+
 	hubChannel := NewHub(db)
-	go hubChannel.Run()
+	go hubChannel.TrackChannels()
+
 	http.HandleFunc("/api/chat", hubChannel.serveChat)
 	http.HandleFunc("/api/users", hubChannel.serveGetUsers)
 	http.HandleFunc("/api/chat/messages", hubChannel.serveChatHistory)
-	fmt.Println("server starting at port 9091")
-	err := http.ListenAndServe(":9091", nil)
+	log.Println("Server starting at port 3003 !")
+	
+	err := http.ListenAndServe(":3003", nil)
 	if err != nil {
 		panic("error starting the server")
 	}

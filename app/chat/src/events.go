@@ -9,7 +9,7 @@ import (
 
 type Message struct {
 	Id			uint		`json:"id" gorm:"primaryKey;column:id"`
-	SenderId	int			`json:"sender_id,omitempty" gorm:"column:writer_id"`
+	SenderId	string		`json:"sender_id,omitempty" gorm:"column:writer_id"`
 	ChatroomId	int			`json:"chatroom_id" gorm:"column:chatroom_id"`
 	SentTime 	time.Time	`json:"sent_time" gorm:"column:sent_at"`
 	Content 	string		`json:"content" gorm:"column:contents"`
@@ -20,7 +20,7 @@ type Message struct {
 	DeletedAt 	*time.Time	`json:"deleted_at,omitempty" gorm:"index"`
 }
 
-func broadcast(h *Hub, message *Message, clientIdIgnore int) {
+func broadcast(h *Hub, message *Message, clientIdIgnore string) {
 	for client := range h.clients {
 		if client.roomId == message.ChatroomId && client.Id != clientIdIgnore {
 			select {
@@ -42,7 +42,7 @@ func handleMessageEvent(h *Hub, EventMessage *Message) {
 		log.Printf("DB Error: %v", result.Error)
 		return
 	}
-	broadcast(h, EventMessage, -1)
+	broadcast(h, EventMessage, "")
 }
 
 func handleEditEvent(h *Hub, EventMessage *Message) {
@@ -56,7 +56,7 @@ func handleEditEvent(h *Hub, EventMessage *Message) {
 	if result.Error == nil && result.RowsAffected > 0 {
 		EventMessage.IsEdited = true
 		EventMessage.EditedAt = &now
-		broadcast(h, EventMessage, -1)
+		broadcast(h, EventMessage, "")
 	} else {
 		log.Print("Edit failed")
 	}
@@ -71,7 +71,7 @@ func handleDeleteEvent(h *Hub, EventMessage *Message) {
 			})
 		if result.Error == nil && result.RowsAffected > 0 {
 		EventMessage.Event = "delete"
-		broadcast(h, EventMessage, -1)
+		broadcast(h, EventMessage, "")
 	} else {
 		log.Print("Delete failed")
 	}
@@ -90,7 +90,7 @@ func handleJoinEvent(h *Hub, client *Client) {
 		Content: fmt.Sprintf("%s has joined the chat", client.Name),
 		SentTime: time.Now(),
 	}
-	broadcast(h, &joinMssg, -1)
+	broadcast(h, &joinMssg, "")
 }
 
 func handleLeaveEvent(h *Hub, client *Client) {
@@ -102,5 +102,5 @@ func handleLeaveEvent(h *Hub, client *Client) {
 	Content: fmt.Sprintf("%s has left the chat", client.Name),
 	SentTime: time.Now(),
 	}
-	broadcast(h, &leaveMssg, -1)
+	broadcast(h, &leaveMssg, "")
 }

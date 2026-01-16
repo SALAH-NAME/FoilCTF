@@ -16,7 +16,7 @@ func (h *Hub) serveChatHistory(w http.ResponseWriter, r *http.Request) {
 	roomIdStr := r.URL.Query().Get("room")
 	roomId, err := strconv.Atoi(roomIdStr)
 	if err != nil {
-		http.Error(w, "valid roomID is required",  http.StatusBadRequest)
+		http.Error(w, "Valid roomID required",  http.StatusBadRequest)
 		return
 	}
 	var response []Message

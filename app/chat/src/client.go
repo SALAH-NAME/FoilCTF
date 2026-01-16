@@ -11,7 +11,7 @@ import (
 )
 
 type Client struct {
-	Id				int
+	Id				string
 	Name			string
 	roomId			int
 	Role			string
@@ -22,7 +22,7 @@ type Client struct {
 	lastSeen		time.Time
 }
 
-func newClient(conn *websocket.Conn, hub *Hub, userId int, userRole string, userName string, idRoom int) *Client{
+func newClient(conn *websocket.Conn, hub *Hub, userId string, userRole string, userName string, idRoom int) *Client{
 	return &Client {
 		Id: userId,
 		Name: userName,
