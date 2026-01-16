@@ -2,7 +2,6 @@ import	express, { Request, Response, NextFunction}	from 'express';
 import	session						from 'express-session';
 import	passport					from 'passport';
 import	dotenv						from 'dotenv';
-//import	{ FortyTwoStrategy, FortyTwoProfile}		from 'passport-42';
 import	FortyTwoStrategy				from 'passport-42';
 import	path						from 'path';
 
@@ -46,14 +45,14 @@ interface FortyTwoProfile {
 	};
 }
 
-type	VerifyCallback = (err: Error | null, user?: User | false) => void;
+type	DonePassport = (err: Error | null, user?: User | false) => void;
 
 const	verifyUser = async (
 	req:		Request,
 	accessToken:	string,
 	refreshToken:	string,
 	profile:	FortyTwoProfile,
-	done:		VerifyCallback
+	done:		DonePassport
 ) => {
 	try {
 		if (!profile || profile._json.kind !== 'student')
@@ -80,12 +79,12 @@ passport.use(new FortyTwoStrategy({
 		'id':		'id',
 		'username':	'username',
 		'kind':		'kind',
-		'displayname':	'displayName'
+		'displayname':	'displayname' // Name or name??
 		}
 	}, verifyUser));
 
 passport.serializeUser((user: User, done): void => {
-	done(null, user.id);
+	done(null, user);
 });
 
 // DATA BASE!
@@ -98,20 +97,46 @@ passport.deserializeUser((user: User, done): void => {
 	done(null, user);
 });
 
-const	app			= express();
+function	isLoggedIn(req: Request, res: Response, next: NextFunction): void {
+	req.user ? next() : res.sendStatus(401);
+}
+
+const	app = express();
+app.use(session({	secret:			sessionSecret,
+			resave:			false,
+			saveUninitialized:	false,
+			cookie:			{secure: false}
+		})
+       );
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.get('/', (req: Request, res: Response): void => {
-	res.sendFile(path.join(__dirname, 'public/index.html'));
+	res.sendFile(path.join(__dirname, '../public/index.html'));
 })
 
 app.get('/auth/42',
 	passport.authenticate('42')
 );
 
-app.get('/protected', (req: Request, res: Response): void => {
-	res.send(`Hello ${req.user ? req.user.displayname : "MATHA FACKA"}`);
+app.get('/auth/42/callback',
+	passport.authenticate('42', {
+		successRedirect: '/protected',
+		failureRedirect: '/auth/failure',
+	})
+);
+
+app.get('/auth/failure', (req: Request, res: Response): void => {
+	res.send('Something went wrong..');
 })
 
+app.get('/protected', isLoggedIn, (req: Request, res: Response): void => {
+	console.log(req.user);
+	res.send(`Hello ${req.user ? req.user.displayname : "MATHA FUCKA"}`);
+})
+
+// app.get('/logout')
+
 app.listen(port, (): void => {
-	console.log(`Example app listening on port ${port}`);
+	console.log(`app listening on port ${port}`);
 })
