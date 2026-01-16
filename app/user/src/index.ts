@@ -29,14 +29,17 @@ function	isLoggedIn(req: Request, res: Response, next: NextFunction): void {
 }
 
 const	app = express();
-app.use(session({	secret:			SessionSecret,
-			resave:			false,
-			saveUninitialized:	false,
-			cookie:			{secure: false} // HTTP
-		})
-       );
-app.use(passport.initialize());
-app.use(passport.session());
+function	init() {
+	app.use(session({	secret:			SessionSecret,
+				resave:			false,
+				saveUninitialized:	false,
+				cookie:			{secure: false} // HTTP
+			})
+	       );
+	app.use(passport.initialize());
+	app.use(passport.session());
+}
+init();
 
 app.get('/', (req: Request, res: Response): void => {
 	res.sendFile(path.join(__dirname, '../public/home.html'));
@@ -48,7 +51,7 @@ app.get('/auth/42',
 
 app.get('/auth/42/callback',
 	passport.authenticate('42', {
-		successRedirect: '/protected',
+		successRedirect: '/private',
 		failureRedirect: '/auth/failure',
 	})
 );
@@ -57,9 +60,10 @@ app.get('/auth/failure', (req: Request, res: Response): void => {
 	res.send('Something went wrong..');
 });
 
-app.get('/protected', isLoggedIn, (req: Request, res: Response): void => {
+app.get('/private', isLoggedIn, (req: Request, res: Response): void => {
 	res.send(`Hello ${req.user?.displayname ?? "GUEST"}
-		 <br><a href="/logout">logout?</a>`);
+		 <br><a href="/logout">logout?</a>`); // button maybe?
+		 				      // to exec logout func
 });
 
 app.get('/logout', (req: Request, res: Response) => {

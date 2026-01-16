@@ -5,10 +5,10 @@ import	dotenv						from 'dotenv'
 import	FortyTwoStrategy				from 'passport-42';
 import  {User, FortyTwoProfile, DonePassport}		from './types';
 
-const   Port:           number  = Number(process.env.PORT ?? "8080");
-const   AppId:          string  = process.env.FORTYTWO_APP_ID ?? "ID";
-const   AppSecret:      string  = process.env.FORTYTWO_APP_SECRET ?? "42Secret";
-const   SessionSecret:  string  = process.env.SESSION_SECRET ?? "SSecret";
+const   Port:           number  = Number(process.env.PORT ?? "8080"); // repeated work!
+const   AppId:          string  = process.env.FORTYTWO_APP_ID ?? "ID"; // repeated work!
+const   AppSecret:      string  = process.env.FORTYTWO_APP_SECRET ?? "42Secret"; // repeated work!
+const   SessionSecret:  string  = process.env.SESSION_SECRET ?? "SSecret"; // repeated work!
 
 async function  verifyUser(
         req:            Request,
