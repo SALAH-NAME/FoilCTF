@@ -4,116 +4,43 @@ import	passport					from 'passport';
 import	dotenv						from 'dotenv';
 import	FortyTwoStrategy				from 'passport-42';
 import	path						from 'path';
-
-declare	global {
-	namespace	Express {
-		interface	User {
-			id:		string;
-			username:	string;
-			kind:		string;
-			displayname:	string;
-		}
-	}
-}
+import	{User, FortyTwoProfile, DonePassport}		from './types';
 
 dotenv.config();
 
-const	port:		number	= Number(process.env.PORT); // ?? "8080");
-const	appId:		string	= String(process.env.FORTYTWO_APP_ID);
-const	appSecret:	string	= String(process.env.FORTYTWO_APP_SECRET);
-const	sessionSecret:	string	= String(process.env.SESSION_SECRET);
+const	Port:		number	= Number(process.env.PORT ?? "8080");
+const	AppId:		string	= process.env.FORTYTWO_APP_ID ?? "ID";
+const	AppSecret:	string	= process.env.FORTYTWO_APP_SECRET ?? "42Secret";
+const	SessionSecret:	string	= process.env.SESSION_SECRET ?? "SSecret";
 
-//console.log(port);
-//console.log(appId);
-//console.log(appSecret);
-//console.log(sessionSecret);
+import	'./auth';
 
-interface	User {
-	id:		string;
-	username:	string;
-	kind:		string;
-	displayname:	string;
-}
+//console.log(Port);
+//console.log(AppId);
+//console.log(AppSecret);
+//console.log(SessionSecret);
 
-interface FortyTwoProfile {
-	id:		string;
-	username:	string;
-	displayName:	string;
-	_json: {
-	    kind: string;
-	    [key: string]: any; 
-	};
-}
-
-type	DonePassport = (err: Error | null, user?: User | false) => void;
-
-const	verifyUser = async (
-	req:		Request,
-	accessToken:	string,
-	refreshToken:	string,
-	profile:	FortyTwoProfile,
-	done:		DonePassport
-) => {
-	try {
-		if (!profile || profile._json.kind !== 'student')
-			return done(null, false);
-		const	user = {
-			id:		profile.id,
-			username:	profile.username,
-			kind:		profile._json.kind,
-			displayname:	profile.displayName
-		};
-
-		return done(null, user);
-	} catch (error) {
-		return done(error instanceof Error ? error : new Error("Auth Failed"));
-	}
-}
-
-passport.use(new FortyTwoStrategy({
-	clientID:		appId,
-	clientSecret:		appSecret,
-	callbackURL:		`http://localhost:${port}/auth/42/callback`,
-	passReqToCallback:	true,
-	profileFields: {
-		'id':		'id',
-		'username':	'username',
-		'kind':		'kind',
-		'displayname':	'displayname' // Name or name??
-		}
-	}, verifyUser));
-
-passport.serializeUser((user: User, done): void => {
-	done(null, user);
-});
-
-// DATA BASE!
-//passport.deserializeUser(async (id: string, done): void => {
-//	const	user = db.findUserById(id);
-//	done(null, user);
-//})
-
-passport.deserializeUser((user: User, done): void => {
-	done(null, user);
-});
+//function	consoleUserInfos(user?: User | undefined): void { // DEBUG
+//	console.table([user], ["id", "username", "kind", "displayname"]);
+//}
 
 function	isLoggedIn(req: Request, res: Response, next: NextFunction): void {
 	req.user ? next() : res.sendStatus(401);
 }
 
 const	app = express();
-app.use(session({	secret:			sessionSecret,
+app.use(session({	secret:			SessionSecret,
 			resave:			false,
 			saveUninitialized:	false,
-			cookie:			{secure: false}
+			cookie:			{secure: false} // HTTP
 		})
        );
 app.use(passport.initialize());
 app.use(passport.session());
 
 app.get('/', (req: Request, res: Response): void => {
-	res.sendFile(path.join(__dirname, '../public/index.html'));
-})
+	res.sendFile(path.join(__dirname, '../public/home.html'));
+});
 
 app.get('/auth/42',
 	passport.authenticate('42')
@@ -128,15 +55,31 @@ app.get('/auth/42/callback',
 
 app.get('/auth/failure', (req: Request, res: Response): void => {
 	res.send('Something went wrong..');
-})
+});
 
 app.get('/protected', isLoggedIn, (req: Request, res: Response): void => {
-	console.log(req.user);
-	res.send(`Hello ${req.user ? req.user.displayname : "MATHA FUCKA"}`);
-})
+	res.send(`Hello ${req.user?.displayname ?? "GUEST"}
+		 <br><a href="/logout">logout?</a>`);
+});
 
-// app.get('/logout')
+app.get('/logout', (req: Request, res: Response) => {
+	req.logout((err): void => {
+		if (err) {
+			res.status(500).send('Error loggin out');
+			return ;
+		}
+		req.session.destroy((err) => {
+			if (err) {
+				res.status(500).send('Error loggin out');
+				return ;
+			}
+			//res.send('Goodbye!');
+			res.clearCookie('connect.sid', { path: '/'});
+			res.redirect('/');
+		});
+	});
+});
 
-app.listen(port, (): void => {
-	console.log(`app listening on port ${port}`);
-})
+app.listen(Port, (): void => {
+	console.log(`app listening on port ${Port}`);
+});
