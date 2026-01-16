@@ -4,7 +4,9 @@ import (
 	// "fmt"
 	// "log"
 	"encoding/json"
+	"log"
 	"net/http"
+	"strconv"
 	// "github.com/gorilla/websocket"
 )
 
@@ -14,10 +16,18 @@ type historyResponse struct {
 }
 
 func (h *Hub) serveChatHistory(w http.ResponseWriter, r *http.Request) {
-	
+	roomIdStr := r.URL.Query().Get("room")
+	roomId, err := strconv.Atoi(roomIdStr)
+	if err != nil {
+		http.Error(w, "valid roomID is required",  http.StatusBadRequest)
+		return
+	}
 	var response []Message
-	for _, message := range h.historyTracker {
-		response = append(response, message)
+	result := h.db.Model(&Message{}).Where("chatroom_id", roomId).Order("sent_at Desc").Limit(50).Find(&response)
+	if result.Error != nil {
+		log.Printf("Database error while fetching histroy: %v", result.Error)
+		http.Error(w, "Internal Server Error",  http.StatusInternalServerError)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(historyResponse{

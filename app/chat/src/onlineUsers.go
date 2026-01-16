@@ -9,7 +9,7 @@ import (
 )
 
 type UserRespose struct {
-	Id		string `json:"id"`
+	Id		int `json:"id"`
 	Name	string `json:"name"`
 	Role	string `json:"role"`
 }

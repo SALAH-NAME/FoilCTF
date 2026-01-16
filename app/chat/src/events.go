@@ -1,67 +1,79 @@
 package main
 
 import (
-	"time"
 	"fmt"
-	"github.com/google/uuid"
+	"log"
+	"time"
+
 )
 
 type Message struct {
-	Id			string		`json:"id"`
-	SenderId	string		`json:"sender_id,omitempty"`
-	Event 		string		`json:"event"`
-	Name 		string		`json:"name"`
-	Content 	string		`json:"content"`
-	SentTime 	time.Time	`json:"sent_time"`
-	IsEdited 	bool		`json:"is_edited"`
-	EditedAt 	*time.Time	`json:"edited_at,omitempty"`
-	DeletedAt 	*time.Time	`json:"deleted_at,omitempty"`
+	Id			uint		`json:"id" gorm:"primaryKey;column:id"`
+	SenderId	int			`json:"sender_id,omitempty" gorm:"column:writer_id"`
+	ChatroomId	int			`json:"chatroom_id" gorm:"column:chatroom_id"`
+	SentTime 	time.Time	`json:"sent_time" gorm:"column:sent_at"`
+	Content 	string		`json:"content" gorm:"column:contents"`
+	Event 		string		`json:"event" gorm:"-"`
+	Name 		string		`json:"name" gorm:"-"`
+	IsEdited 	bool		`json:"is_edited" gorm:"-"`
+	EditedAt 	*time.Time	`json:"edited_at,omitempty" gorm:"-"`
+	DeletedAt 	*time.Time	`json:"deleted_at,omitempty" gorm:"index"`
 }
 
-func broadcast(h *Hub, message *Message, clientIdIgnore string) {
+func broadcast(h *Hub, message *Message, clientIdIgnore int) {
 	for client := range h.clients {
-		if client.Id == clientIdIgnore {
-			continue
-		}
-		select {
-			case client.send <- *message:
-			
-			default:
-			{
-				close(client.send)
-				delete(h.clients, client)
+		if client.roomId == message.ChatroomId && client.Id != clientIdIgnore {
+			select {
+				case client.send <- *message:
+				
+				default:
+				{
+					close(client.send)
+					delete(h.clients, client)
+				}
 			}
 		}
 	}
 }
 
 func handleMessageEvent(h *Hub, EventMessage *Message) {
-	EventMessage.Id = uuid.New().String()
 	EventMessage.SentTime = time.Now()
-	h.historyTracker[EventMessage.Id] = *EventMessage
-	broadcast(h, EventMessage, "")
+	if result := h.db.Create(EventMessage) ; result.Error != nil {
+		log.Printf("DB Error: %v", result.Error)
+		return
+	}
+	broadcast(h, EventMessage, -1)
 }
 
 func handleEditEvent(h *Hub, EventMessage *Message) {
-	oldMessage, exists := h.historyTracker[EventMessage.Id]
-	if exists && (oldMessage.DeletedAt == nil){
-		if(oldMessage.SenderId == EventMessage.SenderId && time.Since(oldMessage.SentTime).Minutes() < 1) {
-			now:= time.Now()
-			oldMessage.EditedAt = &now
-			oldMessage.Content = EventMessage.Content
-			oldMessage.IsEdited = true
-			broadcast(h, &oldMessage, "")
-		}
+	now:= time.Now()
+	result := h.db.Model(&Message{}).Where("id = ? AND writer_id = ? AND sent_at > ?",
+			EventMessage.Id, EventMessage.SenderId,  now.Add(-1 * time.Minute)).
+			Updates(map[string]any{
+				"contents": EventMessage.Content,
+				"edited_at": &now,
+			})
+	if result.Error == nil && result.RowsAffected > 0 {
+		EventMessage.IsEdited = true
+		EventMessage.EditedAt = &now
+		broadcast(h, EventMessage, -1)
+	} else {
+		log.Print("Edit failed")
 	}
 }
 
 func handleDeleteEvent(h *Hub, EventMessage *Message) {
-	oldMessage, exists := h.historyTracker[EventMessage.Id]
-	if exists && (oldMessage.DeletedAt == nil) && oldMessage.SenderId == EventMessage.SenderId{
-		now:= time.Now()
-		oldMessage.DeletedAt = &now
-		h.historyTracker[oldMessage.Id] = oldMessage
-		broadcast(h, &oldMessage, "")
+	now:= time.Now()
+	result := h.db.Model(&Message{}).Where("id = ? AND writer_id = ?",
+			EventMessage.Id, EventMessage.SenderId).
+			Updates(map[string]any{
+				"deleted_at": &now,
+			})
+		if result.Error == nil && result.RowsAffected > 0 {
+		EventMessage.Event = "delete"
+		broadcast(h, EventMessage, -1)
+	} else {
+		log.Print("Delete failed")
 	}
 }
 
@@ -78,7 +90,7 @@ func handleJoinEvent(h *Hub, client *Client) {
 		Content: fmt.Sprintf("%s has joined the chat", client.Name),
 		SentTime: time.Now(),
 	}
-	broadcast(h, &joinMssg, "")
+	broadcast(h, &joinMssg, -1)
 }
 
 func handleLeaveEvent(h *Hub, client *Client) {
@@ -90,5 +102,5 @@ func handleLeaveEvent(h *Hub, client *Client) {
 	Content: fmt.Sprintf("%s has left the chat", client.Name),
 	SentTime: time.Now(),
 	}
-	broadcast(h, &leaveMssg, "")
+	broadcast(h, &leaveMssg, -1)
 }

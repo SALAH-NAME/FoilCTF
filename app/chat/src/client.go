@@ -3,13 +3,13 @@ package main
 import (
 	"log"
 	"golang.org/x/time/rate"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
 type Client struct {
-	Id			string
+	Id			int
 	Name		string
+	roomId		int
 	Role		string
 	h			*Hub
 	connection 	*websocket.Conn
@@ -17,11 +17,13 @@ type Client struct {
 	rateLimiter *rate.Limiter
 }
 
-func newClient(conn *websocket.Conn, hub *Hub) *Client{
+func newClient(conn *websocket.Conn, hub *Hub, userId int, userRole string, userName string, idRoom int) *Client{
 	return &Client {
-		Id: uuid.New().String(),
+		Id: userId,
+		Name: userName,
+		roomId: idRoom,
+		Role: userRole,
 		h: hub,
-		Role: "", //temporary
 		connection: conn,
 		send: make(chan Message),
 		rateLimiter: rate.NewLimiter(3, 6),
@@ -52,9 +54,10 @@ func (c *Client) readFromConnectionTunnel() {
 		}
 		if !c.rateLimiter.Allow() {
 			log.Printf("user %s is spamming!", c.Name)
-			continue // ignore spamming users or should i send them to unregister channel? emm
+			continue
 		}
 		msg.SenderId = c.Id
+		msg.ChatroomId = c.roomId
 		c.h.MessageChannel <- msg
 	}
 }

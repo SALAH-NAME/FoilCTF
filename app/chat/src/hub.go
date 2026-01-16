@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"sync"
 	"github.com/gorilla/websocket"
+	"gorm.io/gorm"
+	"strconv"
 )
 
 type Hub struct {
-	historyTracker		map[string]Message //temporary, should switch to db 
+	db					*gorm.DB
 	MessageChannel		chan Message
 	register chan		*Client
 	unregister			chan *Client
@@ -18,13 +20,13 @@ type Hub struct {
 	mutex				sync.Mutex
 }
 
-func NewHub() Hub {
-	return Hub {
-		historyTracker: make(map[string]Message),
-		MessageChannel: make(chan Message),
-		register: make(chan *Client, 10),
-		unregister: make(chan *Client, 10),
-		clients: make(map[*Client]bool),
+func NewHub(database *gorm.DB) *Hub {
+	return &Hub {
+		db:					database,
+		MessageChannel: 	make(chan Message),
+		register: 			make(chan *Client, 10),
+		unregister: 		make(chan *Client, 10),
+		clients: 			make(map[*Client]bool),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool { //temporary
 			return true
@@ -34,17 +36,30 @@ func NewHub() Hub {
 }
 
 func (h* Hub) serveChat(w http.ResponseWriter, r *http.Request) {
+
+	userIDstr := r.Header.Get("X-User-Id")
+	userRole := r.Header.Get("X-User-Role")
+	userName := r.Header.Get("X-User-Name")
+
+	userID, err := strconv.Atoi(userIDstr)
+	if err != nil {
+		http.Error(w, "Unauthorized: Missing user ID",  http.StatusUnauthorized)
+		return
+	}
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if(err != nil) {
 		log.Println("error while upgrading http connection")
 		return
 	}
-	name := r.URL.Query().Get("name")
-	if name == "" {
-		name = "Anonymous"
+
+	roomIdStr := r.URL.Query().Get("room")
+	roomId, err := strconv.Atoi(roomIdStr)
+	if err != nil {
+		http.Error(w, "valid roomID is required",  http.StatusBadRequest)
+		return
 	}
-	joinedClient := newClient(conn, h)
-	joinedClient.Name = name
+	
+	joinedClient := newClient(conn, h, userID, userRole, userName, roomId)
 	h.register <- joinedClient
 	go joinedClient.writeToConnectionTunnel()
 	go joinedClient.readFromConnectionTunnel()
