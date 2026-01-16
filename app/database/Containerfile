@@ -1,7 +1,7 @@
 FROM docker.io/library/postgres:18
 
-COPY --chmod=755 entrypoint.sh /usr/local/bin/container-entrypoint
-COPY --chmod=755 migrations.sh /usr/local/bin/container-migrations-manage
+RUN mkdir -p /docker-entrypoint-initdb.d && chown -R postgres:postgres /docker-entrypoint-initdb.d
+COPY --chmod=755 migrations-init.sh /docker-entrypoint-initdb.d/000_migrations_apply.sh
+COPY --chmod=755 migrations-manage.sh /usr/local/bin/container-migrations-manage
 
 USER postgres
-ENTRYPOINT [ "container-entrypoint" ]
