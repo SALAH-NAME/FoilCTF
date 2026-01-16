@@ -26,11 +26,14 @@ type Hub struct {
         -```edit``` I check if the request falls within one-minute period and the requester is the original author, then update the database record and broadcast it.  
         -```delete``` Insteed of removing the row, i perform a soft delete by updating the deleted_at timestamp ensuring te content is hidden from users but preserved for organizers.
 
+
+
 **endpoints**
 * **Websocket upgrading:**   the primary ```/api/chat``` acts as a gateway it uses ```Gorilla Websocket Upgrader``` to trasform HTTP requests into a long-lived bidirectional connections, before upgrading "Role-Based Access Control" is checked. the endpoint is managed by ```serveChat()``` method.  
-* **Chat History:**   the ```/api/chat/messages``` endpoint is managed as a standard GET request. it queries PostgresSQL via GORM to fetch 50 most recent records ```serveChatHistory()``` method..  
+* **Chat History:**   the ```/api/chat/messages``` endpoint is managed as a standard GET request. it queries PostgresSQL via ```GORM``` to fetch 50 most recent records ```serveChatHistory()``` method..  
 * **User Monitoring:**  the ```/api/users```  allows server to safely export the "online" state as a JSON response without interfering with the active broadcast loops, it uses a Mutex-protected read operation on the Hub's internal client map, it is manages by ```serveGetUsers()``` method.  
-**Usedlibraries**
+
+
 
 **resources**
 - https://go.dev/tour/welcome/1

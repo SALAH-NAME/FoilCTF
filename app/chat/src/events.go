@@ -25,11 +25,10 @@ func broadcast(h *Hub, message *Message, clientIdIgnore string) {
 		if client.roomId == message.ChatroomId && client.Id != clientIdIgnore {
 			select {
 				case client.send <- *message:
-				
-				default:
+				default: //give up on slow connections and move on, to prevent head-of-line blocking
 				{
 					close(client.send)
-					delete(h.clients, client)
+					h.unregister <- client
 				}
 			}
 		}
@@ -82,7 +81,9 @@ func handleTypingEvent(h *Hub, EventMessage *Message) {
 }
 
 func handleJoinEvent(h *Hub, client *Client) {
+	h.mutex.Lock()
 	h.clients[client] = true
+	h.mutex.Unlock()
 	fmt.Println("hello ", client)
 	joinMssg := Message {
 		Event: "join",
@@ -94,7 +95,9 @@ func handleJoinEvent(h *Hub, client *Client) {
 }
 
 func handleLeaveEvent(h *Hub, client *Client) {
+	h.mutex.Lock()
 	delete(h.clients, client)
+	h.mutex.Unlock()
 	fmt.Println("goodbye", client)
 	leaveMssg := Message {
 	Event: "leave",
