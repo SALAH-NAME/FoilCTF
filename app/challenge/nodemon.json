@@ -1,0 +1,7 @@
+{
+	"restartable": "rs",
+	"watch": [
+		"src/**/*"
+	],
+	"ext": "js,ts"
+}

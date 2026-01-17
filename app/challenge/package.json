@@ -7,13 +7,18 @@
 		"check": "tsc --noEmit",
 		"build": "tsc",
 		"start": "node dist/index.js",
-		"dev": "tsc watch src/index.ts",
+		"dev": "nodemon",
 		"clean": "rm -rf dist"
 	},
 	"devDependencies": {
+		"@types/express": "^5.0.6",
+		"@types/node": "^24.10.8",
+		"dotenv": "^17.2.3",
+		"ts-node": "^10.9.2",
 		"typescript": "5.9.3"
 	},
 	"dependencies": {
-		"@foil/libs": "workspace:*"
+		"@foilctf/libs": "workspace:*",
+		"express": "^5.2.1"
 	}
 }
