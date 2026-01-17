@@ -144,6 +144,9 @@ CREATE TABLE IF NOT EXISTS messages (
 
   contents     TEXT NOT NULL,
   sent_at      TIMESTAMP DEFAULT now() NOT NULL,
+  edited_at    TIMESTAMP DEFAULT NULL,
+  deleted_at   TIMESTAMP DEFAULT NULL,
+
   writer_id    VARCHAR(64), -- NOTE: NULL means System message
 
   CONSTRAINT constraint_writer FOREIGN KEY (writer_id) REFERENCES users,

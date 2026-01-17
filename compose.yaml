@@ -168,12 +168,12 @@ services:
       # Connection
       POSTGRES_DB: ${DATABASE_NAME:-foilctf}
       POSTGRES_USER: ${DATABASE_ADMIN_USER:-postgres}
-      POSTGRES_PASSWORD: ${DATABASE_ADMIN_PASS:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_ADMIN_PASS:?DATABASE_ADMIN_PASS must be set}
       # Scripts
       DATABASE_MIGRATIONS_MOUNT: ${DATABASE_VOLUME_MIGRATIONS_MOUNT:-/migrations}
       # Users
-      DATABASE_DEVELOPER_USER: ${DATABASE_DEVELOPER_USER?}
-      DATABASE_DEVELOPER_PASS: ${DATABASE_DEVELOPER_PASS?}
+      DATABASE_DEVELOPER_USER: ${DATABASE_DEVELOPER_USER:?DATABASE_DEVELOPER_USER must be set}
+      DATABASE_DEVELOPER_PASS: ${DATABASE_DEVELOPER_PASS:?DATABASE_DEVELOPER_PASS must be set}
     volumes:
       - postgres:${DATABASE_VOLUME_DATA_MOUNT}
       - type: volume
@@ -185,10 +185,11 @@ services:
     ports:
       - "5432:5432"  # For development access
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d $$POSTGRES_DB -U $$POSTGRES_USER"]
+      test: ["CMD-SHELL", 'pg_isready -d "$POSTGRES_DB" -U "$POSTGRES_USER" && psql -d "$POSTGRES_DB" -U "$POSTGRES_USER" -tAc "SELECT 1 FROM users LIMIT 1" > /dev/null 2>&1']
       interval: "10s"
       timeout: "5s"
       retries: 5
+      start_period: 30s
     restart: unless-stopped
 
   # Prometheus (Metrics Collection)
@@ -231,10 +232,10 @@ networks:
 
 volumes:
   postgres:
-    driver_opts:
-      o: "bind"
-      type: "none"
-      device: "${DATABASE_VOLUME_DATA_DIR?}"
+    # driver_opts:
+    #   o: "bind"
+    #   type: "none"
+    #   device: "${DATABASE_VOLUME_DATA_DIR?}"
   migrations: # TODO: read only
     driver_opts:
       o: "bind"

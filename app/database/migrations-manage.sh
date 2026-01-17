@@ -16,10 +16,13 @@ function command_internal_apply {
 		ID=$(echo "$SLUG" | cut -c '-3')
 		TITLE=$(echo "$SLUG" | cut -c '5-')
 		if [[ "$ID" -gt "$ID_LAST" ]]; then
-			psql --dbname="$POSTGRES_DB" --username="$POSTGRES_USER" --file="$FILE" 1>/dev/null
+			psql --dbname="$POSTGRES_DB" --username="$POSTGRES_USER" --file="$FILE" # 1>/dev/null # to see migration logs
 			if [[ $? -eq 0 ]]; then
 				echo "Migration" "'$TITLE'" "has been applied successfully"
 				echo "$ID" > "$DATABASE_MIGRATIONS_FILE"
+			else
+				echo "Migration '$TITLE' FAILED!" >&2
+				exit 1
 			fi
 		fi
 	done
