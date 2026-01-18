@@ -8,17 +8,31 @@
 		"build": "tsc",
 		"start": "node dist/index.js",
 		"dev": "nodemon",
-		"clean": "rm -rf dist"
+		"clean": "rm -rf dist",
+		"format": "prettier --write src/"
 	},
 	"devDependencies": {
 		"@types/express": "^5.0.6",
 		"@types/node": "^24.10.8",
 		"dotenv": "^17.2.3",
+		"prettier": "3.8.0",
+		"sequelize-auto": "^0.8.8",
 		"ts-node": "^10.9.2",
 		"typescript": "5.9.3"
 	},
 	"dependencies": {
 		"@foilctf/libs": "workspace:*",
-		"express": "^5.2.1"
+		"express": "^5.2.1",
+		"pg": "^8.17.1",
+		"pg-hstore": "^2.3.4",
+		"sequelize": "^6.37.7"
+	},
+	"prettier": {
+		"semi": true,
+		"useTabs": true,
+		"quoteProps": "consistent",
+		"singleQuote": true,
+		"trailingComma": "es5",
+		"bracketSpacing": true
 	}
 }
