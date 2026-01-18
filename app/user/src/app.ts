@@ -1,6 +1,4 @@
-import	express, {Request, Response, NextFunction}	from 'express';
-import	{User, FortyTwoProfile, DonePassport}		from './types';
-import	{Port, AppId, AppSecret, SessionSecret}		from './types/env';
+import	{Port}		from './types/env';
 import	{Strategy}					from './auth/passport';
 import	{Server}					from './auth/server';
 

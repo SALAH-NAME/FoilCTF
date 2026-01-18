@@ -3,9 +3,7 @@ import  express, {Request, Response, NextFunction}      from 'express';
 import  session                                         from 'express-session';
 import  passport                                        from 'passport';
 import  path                                            from 'path';
-import  {User, FortyTwoProfile, DonePassport}           from '../types';
-import  {Port, AppId, AppSecret, SessionSecret}         from '../types/env';
-import  {Strategy}                                      from '../auth/passport';
+import  {SessionSecret}         from '../types/env';
 
 function      isLoggedIn(req: Request, res: Response, next: NextFunction): void {
       req.user ? next() : res.sendStatus(401);
