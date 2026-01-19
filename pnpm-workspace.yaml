@@ -1,9 +1,3 @@
 packages:
-  - 'app/packages'
-  - 'app/user'
-  - 'app/gateway'
-  - 'app/challenge'
-  - 'app/chat'
-  - 'app/notification'
-  - 'app/scoreboard'
-  - 'app/front'
+  - "app/web"
+  - "app/libs"

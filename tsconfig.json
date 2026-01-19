@@ -14,10 +14,9 @@
     "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "baseUrl": ".",
     "paths": {
-      "@foil/shared": ["./app/packages/src/index.ts"],
-      "@foil/shared/*": ["./app/packages/src/*"]
+      "@foil/libs": ["./app/libs/src/index.ts"],
+      "@foil/libs/*": ["./app/libs/src/*"]
     }
   },
   "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
