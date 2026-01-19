@@ -1,12 +1,10 @@
 package main
 
 import (
-	// "fmt"
-	// "log"
 	"encoding/json"
 	"net/http"
 	"time"
-	// "github.com/gorilla/websocket"
+	"log"
 )
 
 type UserResponse struct {
@@ -22,6 +20,12 @@ type onlineUsersResponse struct {
 }
 
 func (h *Hub) serveGetUsers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		log.Printf("HTTP ERROR: Method not allowed")
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
 	users := h.HandleOnlineUsers()
 	response := onlineUsersResponse {
 		Users : users,
@@ -38,10 +42,10 @@ func (h *Hub) HandleOnlineUsers() []UserResponse {
 	var onlineUsers  []UserResponse 
 	for user := range h.clients {
 		onlineUsers = append(onlineUsers, UserResponse{
-			Id: user.Id,
-			Name: user.Name,
-			Role: user.Role,
-			LastSeen: user.lastSeen,
+			Id: 		user.Id,
+			Name: 		user.Name,
+			Role: 		user.Role,
+			LastSeen: 	user.lastSeen,
 		})
 	}
 	return onlineUsers

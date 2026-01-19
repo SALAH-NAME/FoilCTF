@@ -12,6 +12,7 @@ import (
 
 type Hub struct {
 	db             *gorm.DB
+	conf			*config
 	MessageChannel chan Message
 	register       chan *Client
 	unregister     chan *Client
@@ -20,12 +21,13 @@ type Hub struct {
 	mutex          sync.Mutex
 }
 
-func NewHub(database *gorm.DB) *Hub {
+func NewHub(database *gorm.DB, conf	*config) *Hub {
 	return &Hub{
 		db:             database,
-		MessageChannel: make(chan Message),
-		register:       make(chan *Client, 10),
-		unregister:     make(chan *Client, 10),
+		conf: 			conf,
+		MessageChannel: make(chan Message, conf.GlobalBuffer),
+		register:       make(chan *Client, conf.RegisterBuffer),
+		unregister:     make(chan *Client, conf.RegisterBuffer),
 		clients:        make(map[*Client]bool),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool { //temporary
@@ -36,24 +38,26 @@ func NewHub(database *gorm.DB) *Hub {
 }
 
 func (h *Hub) serveChat(w http.ResponseWriter, r *http.Request) {
-
+	if r.Method != http.MethodGet {
+		log.Printf("HTTP ERROR: Method not allowed")
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	userID   := r.Header.Get("X-User-Id")
 	userRole := r.Header.Get("X-User-Role")
 	userName := r.Header.Get("X-User-Name")
-
-	if userRole != "organizer" && userRole != "participant" {
-		http.Error(w, "Forbidden", http.StatusForbidden)
-		return
-	}
+	
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("error while upgrading http connection")
+		log.Printf("ERROR: Upgrading http connection failed : %v", err)
+		http.Error(w, "Could not open websocket connection", http.StatusBadRequest)
 		return
 	}
 	roomIdStr := r.URL.Query().Get("room")
 	roomId, err := strconv.Atoi(roomIdStr)
 	if err != nil {
-		http.Error(w, "valid roomID is required", http.StatusBadRequest)
+		log.Printf("ERROR: Valid roomID is required")
+		http.Error(w, "Valid roomID is required", http.StatusBadRequest)
 		return
 	}
 
@@ -69,7 +73,7 @@ func (h *Hub) TrackChannels() {
 		select {
 		case EventMessage, ok := <-h.MessageChannel: {
 				if !ok {
-					log.Print("Message channel closed")
+					log.Print("Global Message channel closed")
 					return
 				}
 				switch EventMessage.Event {
@@ -82,7 +86,7 @@ func (h *Hub) TrackChannels() {
 					case "delete":
 						handleDeleteEvent(h, &EventMessage)
 					default :
-						log.Printf("Unknown event type received %s", EventMessage.Event)
+						log.Printf("ERROR: Unknown event type received %s", EventMessage.Event)
 				}
 		}
 		case client := <-h.register:
