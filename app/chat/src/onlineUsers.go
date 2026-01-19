@@ -5,10 +5,11 @@ import (
 	"net/http"
 	"time"
 	"log"
+	"strconv"
 )
 
 type UserResponse struct {
-	Id			string			`json:"id"`
+	Id			string		`json:"id"`
 	Name		string		`json:"name"`
 	Role		string 		`json:"role"`
 	LastSeen 	time.Time	`json:"last_seen"`
@@ -25,7 +26,14 @@ func (h *Hub) serveGetUsers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	users := h.HandleOnlineUsers()
+	roomIdStr := r.URL.Query().Get("room")
+	roomID, err := strconv.Atoi(roomIdStr)
+	if err != nil {
+		log.Printf("ERROR: Failed to parse roomID for online users request :%v", err)
+		http.Error(w, "Valid roomID required",  http.StatusBadRequest)
+		return
+	}
+	users := h.HandleOnlineUsers(roomID)
 	response := onlineUsersResponse {
 		Users : users,
 		Count : len(users),
@@ -34,17 +42,19 @@ func (h *Hub) serveGetUsers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func (h *Hub) HandleOnlineUsers() []UserResponse {
+func (h *Hub) HandleOnlineUsers(roomID int) []UserResponse {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
-	var onlineUsers  []UserResponse 
+	onlineUsers := []UserResponse{}
 	for user := range h.clients {
-		onlineUsers = append(onlineUsers, UserResponse{
-			Id: 		user.Id,
-			Name: 		user.Name,
-			Role: 		user.Role,
-			LastSeen: 	user.lastSeen,
-		})
+		if user.roomId == roomID {
+			onlineUsers = append(onlineUsers, UserResponse{
+				Id: 		user.Id,
+				Name: 		user.Name,
+				Role: 		user.Role,
+				LastSeen: 	user.lastSeen,
+			})
+		}
 	}
 	return onlineUsers
 }

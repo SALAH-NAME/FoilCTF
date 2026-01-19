@@ -16,11 +16,11 @@ func (h *Hub) serveChatHistory(w http.ResponseWriter, r *http.Request) {
 	roomIdStr := r.URL.Query().Get("room")
 	roomId, err := strconv.Atoi(roomIdStr)
 	if err != nil {
-		log.Printf("ERROR: Valid roomID required")
+		log.Printf("ERROR: Failed to parse roomID for chat history request :%v", err)
 		http.Error(w, "Valid roomID required",  http.StatusBadRequest)
 		return
 	}
-	var response []Message
+	response := []Message{}
 	result := h.db.Model(&Message{}).Where("chatroom_id", roomId).Order("sent_at Desc").Limit(50).Find(&response)
 	if result.Error != nil {
 		log.Printf("DATABASE ERROR: Failed to fetch message history: %v", result.Error)
