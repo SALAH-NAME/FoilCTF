@@ -2,57 +2,57 @@ package main
 
 import (
 	"encoding/json"
-	"net/http"
-	"time"
 	"log"
+	"net/http"
 	"strconv"
+	"time"
 )
 
 type UserResponse struct {
-	Id			string		`json:"id"`
-	Name		string		`json:"name"`
-	Role		string 		`json:"role"`
-	LastSeen 	time.Time	`json:"last_seen"`
+	Id       string    `json:"id"`
+	Name     string    `json:"name"`
+	Role     string    `json:"role"`
+	LastSeen time.Time `json:"last_seen"`
 }
 
-type onlineUsersResponse struct {
-	Users	[]UserResponse 	`json:"users"`
-	Count	int				`json:"count"`
+type OnlineUsersResponse struct {
+	Users []UserResponse `json:"users"`
+	Count int            `json:"count"`
 }
 
-func (h *Hub) serveGetUsers(w http.ResponseWriter, r *http.Request) {
+func (h *Hub) ServeGetUsers(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		log.Printf("HTTP ERROR: Method not allowed")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	roomIdStr := r.URL.Query().Get("room")
-	roomID, err := strconv.Atoi(roomIdStr)
+	RoomIDStr := r.URL.Query().Get("room")
+	RoomID, err := strconv.Atoi(RoomIDStr)
 	if err != nil {
-		log.Printf("ERROR: Failed to parse roomID for online users request :%v", err)
-		http.Error(w, "Valid roomID required",  http.StatusBadRequest)
+		log.Printf("ERROR: Failed to parse RoomID for online users request :%v", err)
+		http.Error(w, "Valid RoomID required", http.StatusBadRequest)
 		return
 	}
-	users := h.HandleOnlineUsers(roomID)
-	response := onlineUsersResponse {
-		Users : users,
-		Count : len(users),
+	users := h.HandleOnlineUsers(RoomID)
+	response := OnlineUsersResponse{
+		Users: users,
+		Count: len(users),
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
 
-func (h *Hub) HandleOnlineUsers(roomID int) []UserResponse {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
+func (h *Hub) HandleOnlineUsers(RoomID int) []UserResponse {
+	h.Mutex.Lock()
+	defer h.Mutex.Unlock()
 	onlineUsers := []UserResponse{}
-	for user := range h.clients {
-		if user.roomId == roomID {
+	for user := range h.Clients {
+		if user.RoomID == RoomID {
 			onlineUsers = append(onlineUsers, UserResponse{
-				Id: 		user.Id,
-				Name: 		user.Name,
-				Role: 		user.Role,
-				LastSeen: 	user.lastSeen,
+				Id:       user.ID,
+				Name:     user.Name,
+				Role:     user.Role,
+				LastSeen: user.LastSeen,
 			})
 		}
 	}

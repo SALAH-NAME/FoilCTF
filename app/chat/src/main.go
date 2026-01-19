@@ -34,9 +34,9 @@ func main() {
 	hubChannel := NewHub(db, &conf)
 	go hubChannel.TrackChannels()
 
-	http.HandleFunc("/api/chat", hubChannel.serveChat)
-	http.HandleFunc("/api/chat/users", hubChannel.serveGetUsers)
-	http.HandleFunc("/api/chat/messages", hubChannel.serveChatHistory)
+	http.HandleFunc("/api/chat", hubChannel.ServeChat)
+	http.HandleFunc("/api/chat/users", hubChannel.ServeGetUsers)
+	http.HandleFunc("/api/chat/messages", hubChannel.ServeChatHistory)
 	log.Printf("Server starting at port %s !", chatPort)
 	
 	if err := http.ListenAndServe(":" + chatPort, nil) ; err != nil {

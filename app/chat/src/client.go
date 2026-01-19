@@ -12,56 +12,56 @@ import (
 )
 
 type Client struct {
-	Id          string
+	ID          string
 	Name        string
-	roomId      int
+	RoomID      int
 	Role        string
-	hub         *Hub
-	connection  *websocket.Conn
-	send        chan Message
-	rateLimiter *rate.Limiter
-	lastSeen    time.Time
+	Hub         *Hub
+	Connection  *websocket.Conn
+	Send        chan Message
+	RateLimiter *rate.Limiter
+	LastSeen    time.Time
 }
 
-func newClient(conn *websocket.Conn, hub *Hub, userId string, userRole string, userName string, idRoom int) *Client {
+func NewClient(conn *websocket.Conn, hub *Hub, userId string, userRole string, userName string, idRoom int) *Client {
 	return &Client{
-		Id:          userId,
+		ID:          userId,
 		Name:        userName,
-		roomId:      idRoom,
+		RoomID:      idRoom,
 		Role:        userRole,
-		hub:         hub,
-		connection:  conn,
-		send:        make(chan Message, hub.conf.ClientBuffer),
-		rateLimiter: rate.NewLimiter(rate.Limit(hub.conf.RateLimitRequest), hub.conf.RateLimitBrust),
+		Hub:         hub,
+		Connection:  conn,
+		Send:        make(chan Message, hub.Conf.ClientBuffer),
+		RateLimiter: rate.NewLimiter(rate.Limit(hub.Conf.RateLimitRequest), hub.Conf.RateLimitBrust),
 	}
 }
 
-func (c *Client) writeToConnectionTunnel() {
+func (c *Client) WriteToConnectionTunnel() {
 	defer func() {
-		c.hub.unregister <- c
+		c.Hub.Unregister <- c
 	}()
-	for message := range c.send {
-		if err := c.connection.WriteJSON(message); err != nil {
-			log.Printf("ERROR: user %s (ID: %s)failed to receive data due to: %v", c.Name, c.Id, err)
+	for message := range c.Send {
+		if err := c.Connection.WriteJSON(message); err != nil {
+			log.Printf("ERROR: user %s (ID: %s)failed to receive data due to: %v", c.Name, c.ID, err)
 			return
 		}
 	}
 }
 
-func (c *Client) readFromConnectionTunnel() {
+func (c *Client) ReadFromConnectionTunnel() {
 	defer func() {
-		c.hub.unregister <- c
+		c.Hub.Unregister <- c
 	}()
 	for {
 		var msg Message
-		if err := c.connection.ReadJSON(&msg); err != nil {
-			log.Printf("ERROR: Unexpected close for user %s (ID: %s): %v", c.Name, c.Id, err)
+		if err := c.Connection.ReadJSON(&msg); err != nil {
+			log.Printf("ERROR: Unexpected close for user %s (ID: %s): %v", c.Name, c.ID, err)
 			break
 		}
-		c.lastSeen = time.Now()
-		if !c.rateLimiter.Allow() {
-			log.Printf("WARNING: Rate limit exceeded for user %s (ID: %s)", c.Name, c.Id)
-			c.send <- Message{
+		c.LastSeen = time.Now()
+		if !c.RateLimiter.Allow() {
+			log.Printf("WARNING: Rate limit exceeded for user %s (ID: %s)", c.Name, c.ID)
+			c.Send <- Message{
 				Event:   "error",
 				Content: "WARNING: you are sending messages too fast. Please slow down.",
 			}
@@ -71,21 +71,21 @@ func (c *Client) readFromConnectionTunnel() {
 		contentRuneCount := utf8.RuneCountInString(cleanContent)
 		if msg.Event == "message" || msg.Event == "edit" {
 			if contentRuneCount == 0 {
-				log.Printf("REJECT : User %s (ID: %s) sent empty message", c.Name, c.Id)
+				log.Printf("REJECT : User %s (ID: %s) sent empty message", c.Name, c.ID)
 				continue
 			}
-			if contentRuneCount > c.hub.conf.MaxContentLimit {
-				log.Printf("REJECT : User %s (ID: %s) messgae too long", c.Name, c.Id)
-				c.send <- Message{
+			if contentRuneCount > c.Hub.Conf.MaxContentLimit {
+				log.Printf("REJECT : User %s (ID: %s) messgae too long", c.Name, c.ID)
+				c.Send <- Message{
 					Event:   "error",
-					Content: fmt.Sprintf("You exceeded the character limit (%d characters max).", c.hub.conf.MaxContentLimit),
+					Content: fmt.Sprintf("You exceeded the character limit (%d characters max).", c.Hub.Conf.MaxContentLimit),
 				}
 				continue
 			}
 		}
-		msg.SenderId = c.Id
-		msg.ChatroomId = c.roomId
+		msg.SenderID = c.ID
+		msg.ChatRoomID = c.RoomID
 		msg.Content = cleanContent
-		c.hub.MessageChannel <- msg
+		c.Hub.MessageChannel <- msg
 	}
 }

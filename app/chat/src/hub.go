@@ -11,25 +11,25 @@ import (
 )
 
 type Hub struct {
-	db             *gorm.DB
-	conf			*config
+	Db             *gorm.DB
+	Conf           *Config
 	MessageChannel chan Message
-	register       chan *Client
-	unregister     chan *Client
-	clients        map[*Client]bool
-	upgrader       websocket.Upgrader
-	mutex          sync.Mutex
+	Register       chan *Client
+	Unregister     chan *Client
+	Clients        map[*Client]bool
+	Upgrader       websocket.Upgrader
+	Mutex          sync.Mutex
 }
 
-func NewHub(database *gorm.DB, conf	*config) *Hub {
+func NewHub(database *gorm.DB, conf *Config) *Hub {
 	return &Hub{
-		db:             database,
-		conf: 			conf,
+		Db:             database,
+		Conf:           conf,
 		MessageChannel: make(chan Message, conf.GlobalBuffer),
-		register:       make(chan *Client, conf.RegisterBuffer),
-		unregister:     make(chan *Client, conf.RegisterBuffer),
-		clients:        make(map[*Client]bool),
-		upgrader: websocket.Upgrader{
+		Register:       make(chan *Client, conf.RegisterBuffer),
+		Unregister:     make(chan *Client, conf.RegisterBuffer),
+		Clients:        make(map[*Client]bool),
+		Upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool { //temporary
 				return true
 			},
@@ -37,65 +37,67 @@ func NewHub(database *gorm.DB, conf	*config) *Hub {
 	}
 }
 
-func (h *Hub) serveChat(w http.ResponseWriter, r *http.Request) {
+func (h *Hub) ServeChat(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		log.Printf("HTTP ERROR: Method not allowed")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	userID   := r.Header.Get("X-User-Id")
+	userID := r.Header.Get("X-User-Id")
 	userRole := r.Header.Get("X-User-Role")
 	userName := r.Header.Get("X-User-Name")
-	
-	conn, err := h.upgrader.Upgrade(w, r, nil)
+
+	conn, err := h.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("ERROR: Upgrading http connection failed : %v", err)
 		http.Error(w, "Could not open websocket connection", http.StatusBadRequest)
 		return
 	}
-	roomIdStr := r.URL.Query().Get("room")
-	roomId, err := strconv.Atoi(roomIdStr)
+	roomIDStr := r.URL.Query().Get("room")
+	roomID, err := strconv.Atoi(roomIDStr)
 	if err != nil {
-		log.Printf("ERROR: Valid roomID is required")
-		http.Error(w, "Valid roomID is required", http.StatusBadRequest)
+		log.Printf("ERROR: Valid RoomID is required")
+		http.Error(w, "Valid RoomID is required", http.StatusBadRequest)
 		return
 	}
 
-	joinedClient := newClient(conn, h, userID, userRole, userName, roomId)
-	h.register <- joinedClient
-	go joinedClient.writeToConnectionTunnel()
-	go joinedClient.readFromConnectionTunnel()
+	joinedClient := NewClient(conn, h, userID, userRole, userName, roomID)
+	h.Register <- joinedClient
+	go joinedClient.WriteToConnectionTunnel()
+	go joinedClient.ReadFromConnectionTunnel()
 }
 
 func (h *Hub) TrackChannels() {
 
 	for {
 		select {
-		case EventMessage, ok := <-h.MessageChannel: {
+		case eventMessage, ok := <-h.MessageChannel:
+			{
 				if !ok {
 					log.Print("Global Message channel closed")
 					return
 				}
-				switch EventMessage.Event {
-					case "message":
-						handleMessageEvent(h, &EventMessage)
-					case "typing":
-						handleTypingEvent(h, &EventMessage)
-					case "edit":
-						handleEditEvent(h, &EventMessage)
-					case "delete":
-						handleDeleteEvent(h, &EventMessage)
-					default :
-						log.Printf("ERROR: Unknown event type received %s", EventMessage.Event)
+				switch eventMessage.Event {
+				case "message":
+					HandleMessageEvent(h, &eventMessage)
+				case "typing":
+					HandleTypingEvent(h, &eventMessage)
+				case "edit":
+					HandleEditEvent(h, &eventMessage)
+				case "delete":
+					HandleDeleteEvent(h, &eventMessage)
+				default:
+					log.Printf("ERROR: Unknown event type received %s", eventMessage.Event)
 				}
-		}
-		case client := <-h.register:
-			handleJoinEvent(h, client)
-		case client := <-h.unregister: {
-			if _, ok := h.clients[client]; ok {
-				handleLeaveEvent(h, client)
 			}
-		}
+		case client := <-h.Register:
+			HandleJoinEvent(h, client)
+		case client := <-h.Unregister:
+			{
+				if _, ok := h.Clients[client]; ok {
+					HandleLeaveEvent(h, client)
+				}
+			}
 		}
 
 	}

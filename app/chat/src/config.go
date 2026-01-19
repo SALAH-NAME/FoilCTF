@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type config struct {
+type Config struct {
 	MaxContentLimit  	int
 	GlobalBuffer     	int
 	ClientBuffer     	int
@@ -16,8 +16,8 @@ type config struct {
 	BroadcastTimeout	time.Duration
 }
 
-func NewDefaultConfig() config {
-	return config{
+func NewDefaultConfig() Config {
+	return Config{
 		MaxContentLimit:  500,
 		GlobalBuffer:     100,
 		ClientBuffer:     200,
