@@ -34,6 +34,41 @@ type Hub struct {
 * **User Monitoring:**  the ```/api/users```  allows server to safely export the "online" state as a JSON response without interfering with the active broadcast loops, it uses a Mutex-protected read operation on the Hub's internal client map, it is manages by ```serveGetUsers()``` method.  
 
 
+**Standalone service usage**  
+The chat service is designed to run as a microservice behind a Gateway. For standalone testing or development, follow these steps.
+
+
+1. Configuration  
+The service expects the following evironment variables to connect to database. for testing purposes we use ```localhost``` as the database host.  
+*  DB_HOST
+*  DB_USER  
+*  DB_PASS  
+*  DB_NAME
+*  DB_PORT
+
+2. Build the chat service  
+```bash
+podman build -t chat-service .
+```
+3. Run the container  
+To allow the container to connect to the database service running on your ```localhost```, use the ```--network=host``` flag.  
+```bash
+podman run -d \
+  --name chat-app \
+  --network=host \
+  -e DB_HOST=localhost \
+  -e DB_USER=postgres \
+  -e DB_PASS=pass12345678 \
+  -e DB_NAME=foil_ctf \
+  -e PORT=3003 \
+  chat-service
+```
+4. Mannual testing (Standalone)  
+- Websocket interface: use Use ```wscat``` to simulate the handshake. Note that you must provide the headers the service expects.
+```bash
+wscat -c "ws://localhost:3003/api/chat?room=1" -H "X-User-Id: 123" -H "X-User-Role: participant" -H "X-User-Name: Player1"
+```
+- **note** : When testing the Chat Service, please ensure the PostgreSQL database is properly seeded to satisfy the Foreign Key (FK) constraints defined in the schema. Because the messages table relies on existing records from other tables, a "blind" test will fail.
 
 **resources**
 - https://go.dev/tour/welcome/1

@@ -25,7 +25,6 @@ func (h *Hub) serveGetUsers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	
 	users := h.HandleOnlineUsers()
 	response := onlineUsersResponse {
 		Users : users,
@@ -33,7 +32,6 @@ func (h *Hub) serveGetUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-
 }
 
 func (h *Hub) HandleOnlineUsers() []UserResponse {
