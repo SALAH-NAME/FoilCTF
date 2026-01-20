@@ -27,5 +27,6 @@ func Db_init() *gorm.DB {
 	if err := sqlDB.Ping(); err != nil {
 		log.Fatalf("DATABASE ERROR: Database is not reachable: %s", err)
 	}
+	log.Println("Successfully connected to PostgreSQL!")
 	return db
 }
