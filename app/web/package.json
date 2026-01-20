@@ -4,29 +4,37 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "vite",
-		"build": "tsc -b && vite build",
-		"lint": "eslint .",
-		"preview": "vite preview"
-	},
-	"devDependencies": {
-		"@eslint/js": "^9.39.1",
-		"@types/node": "^24.10.1",
-		"@types/react": "^19.2.5",
-		"@types/react-dom": "^19.2.3",
-		"@vitejs/plugin-react": "^5.1.1",
-		"babel-plugin-react-compiler": "^1.0.0",
-		"eslint": "^9.39.1",
-		"eslint-plugin-react-hooks": "^7.0.1",
-		"eslint-plugin-react-refresh": "^0.4.24",
-		"globals": "^16.5.0",
-		"typescript": "~5.9.3",
-		"typescript-eslint": "^8.46.4",
-		"vite": "^7.2.4"
+		"build": "react-router build",
+		"dev": "react-router dev",
+		"start": "react-router-serve ./build/server/index.js",
+		"format": "prettier --write app/ react-router.config.ts",
+		"typecheck": "react-router typegen && tsc"
 	},
 	"dependencies": {
-		"@foilctf/libs": "workspace:*",
-		"react": "^19.2.0",
-		"react-dom": "^19.2.0"
+		"@react-router/node": "7.12.0",
+		"@react-router/serve": "7.12.0",
+		"@tanstack/react-query": "^5.90.19",
+		"react": "^19.2.3",
+		"react-dom": "^19.2.3",
+		"react-router": "7.12.0",
+		"isbot": "^5"
+	},
+	"devDependencies": {
+		"@react-router/dev": "7.12.0",
+		"@types/node": "^22",
+		"@types/react": "^19.2.7",
+		"@types/react-dom": "^19.2.3",
+		"prettier": "3.8.0",
+		"typescript": "^5.9.2",
+		"vite": "^7.1.7",
+		"vite-tsconfig-paths": "^5.1.4"
+	},
+	"prettier": {
+		"semi": true,
+		"useTabs": true,
+		"quoteProps": "consistent",
+		"singleQuote": true,
+		"trailingComma": "es5",
+		"bracketSpacing": true
 	}
 }
