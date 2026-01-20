@@ -6,14 +6,15 @@ import { challengesCreationAttributes as ChallengesCreatePayload } from './orm/e
 import express, { json as middleware_json } from 'express';
 import { type Request, type Response, type NextFunction } from 'express';
 
-export function middleware_error_handler(
-	err: any,
+// TODO(xenobas): Authorization middleware
+
+export function middleware_error(
+	err: Error,
 	req: Request,
 	res: Response,
 	next: NextFunction
 ) {
 	console.error(err);
-
 	res.sendStatus(500);
 }
 export async function middleware_id_format(

@@ -5,16 +5,15 @@ import { ENV_API_PORT, ENV_API_HOST } from './env.ts';
 import orm, { ormInitModels, ORM_CONNECTION_STRING } from './orm/index.ts';
 
 import {
-	middleware_error_handler,
+	middleware_error,
+	middleware_json,
 	middleware_id_format,
 	middleware_id_exists,
-	middleware_json,
 } from './middlewares.ts';
 
 import {
 	route_challenges_list,
 	route_challenges_delete,
-
 	route_challenge_create,
 	route_challenge_update,
 	route_challenge_inspect,
@@ -23,10 +22,10 @@ import {
 
 import {
 	route_attachment_create,
+	route_attachments_list,
 } from './routes/attachments.ts';
 
 const web = express();
-web.use(middleware_error_handler);
 
 // SECTION: Bulk actions
 web.get('/api/challenges', route_challenges_list);
@@ -43,6 +42,12 @@ web.get(
 	middleware_id_exists,
 	route_challenge_inspect
 );
+web.get(
+	'/api/challenges/:id/attachments',
+	middleware_id_format,
+	middleware_id_exists,
+	route_attachments_list
+);
 web.post(
 	'/api/challenges',
 	middleware_json({ limit: '8kb' }),
@@ -53,7 +58,8 @@ web.post(
 	middleware_id_format,
 	middleware_id_exists,
 	middleware_json({ limit: '4kb' }),
-	route_attachment_create,
+	middleware_error,
+	route_attachment_create
 );
 web.put(
 	'/api/challenges/:id',
