@@ -31,7 +31,7 @@ export	class Server {
 
         private setupRoutes() {
                 this.app.get('/', (req: Request, res: Response): void => {
-                        res.sendFile(path.join(__dirname, '../public/home.html'));
+                        res.sendFile(path.join(__dirname, '../../public/home.html'));
                 });
 
                 this.app.get('/auth/42',
