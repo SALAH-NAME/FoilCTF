@@ -4,7 +4,6 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon dist/index.js"
-
   },
   "author": "",
   "license": "ISC",
@@ -13,12 +12,14 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "express-session": "^1.18.2",
+    "jsonwebtoken": "^9.0.3",
     "passport": "^0.7.0",
     "passport-42": "^1.2.6"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/express-session": "^1.18.2",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.0.8",
     "@types/passport": "^1.0.17",
     "@types/passport-42": "^1.1.2",

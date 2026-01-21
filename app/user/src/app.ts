@@ -1,4 +1,4 @@
-import	{Port}		from './types/env';
+import	{Port}		from './utils/env';
 import	{Strategy}					from './auth/passport';
 import	{Server}					from './auth/server';
 

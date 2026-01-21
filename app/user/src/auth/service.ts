@@ -1,5 +1,5 @@
 
-import	{ User, FortyTwoProfile}	from '../types';
+import	{ User, FortyTwoProfile}	from '../utils';
 
 export	class AuthService {
 	async	onLogin(user: User) {

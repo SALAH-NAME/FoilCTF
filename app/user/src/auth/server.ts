@@ -3,7 +3,7 @@ import  express, {Request, Response, NextFunction}      from 'express';
 import  session                                         from 'express-session';
 import  passport                                        from 'passport';
 import  path                                            from 'path';
-import  {SessionSecret}         from '../types/env';
+import  {SessionSecret}         from '../utils/env';
 
 function      isLoggedIn(req: Request, res: Response, next: NextFunction): void {
       req.user ? next() : res.sendStatus(401);

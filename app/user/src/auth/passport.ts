@@ -2,8 +2,8 @@
 import	{ Request }				from 'express';
 import	passport					from 'passport';
 import	FortyTwoStrategy				from 'passport-42';
-import  {User, FortyTwoProfile, DonePassport}		from '../types';
-import	{Port, AppId, AppSecret}		from '../types/env';
+import  {User, FortyTwoProfile, DonePassport}		from '../utils';
+import	{Port, AppId, AppSecret}		from '../utils/env';
 
 export	class Strategy {
 	constructor() {
