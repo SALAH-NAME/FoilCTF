@@ -13,6 +13,7 @@ export	class Server {
         public  app = express();
 
         constructor() {
+		this.app.use(express.json());
                 this.setupMiddleWares();
                 this.setupRoutes();
         };
