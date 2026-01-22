@@ -6,39 +6,36 @@ import	{ AccessTokenSecret, RefreshTokenSecret, PORT}	from './utils/env';
 import	{ AccessTokenExpirationTime}			from './utils/env';
 import	{ User, Post, AuthRequest}			from './utils/types';
 import	{ authenticateToken, generateAccessToken}	from './utils/utils';
+import	{ validateUserInput}				from './utils/utils';
+import	{ users, posts}					from './utils/db';
+
+let	refreshTokens: string[] = [];
 
 const	app = express();
 app.use(express.json());
-
-// data base
-const	users:	User[] = [];
-const	posts:	Post[] = [
-	{
-		username: "yasser",
-		title: "post1"
-	},
-	{
-		username: "user2",
-		title: "post2"
-	}
-];
-let	refreshTokens: string[] = [];
-// data base
 
 app.get('/posts', authenticateToken, (req: AuthRequest, res: Response) => {
 	//						-----v--- you gotta do what you gotta do
 	res.json(posts.filter(post => post.username === (req as any).user.username))
 });
 
-app.get('/users', (req: Request, res: Response) => { // TO REMOVE !!
+app.get('/users', (req: AuthRequest, res: Response) => { // TO REMOVE !!
 	res.json(users);
 });
 
-app.post('/users', async (req: Request, res: Response) => {
+app.post('/register', async (req: AuthRequest, res: Response) => {
 	try {
+		const	userInput = validateUserInput(req);
+		if (userInput) {
+			res.sendStatus(userInput);
+			return ;
+		}
 		const	salt		= await bcrypt.genSalt();
 		const	hashedPassword	= await bcrypt.hash(req.body.password, salt);
-		const	user: User	= {username: req.body.username, password: hashedPassword};
+		const	user: User	= {	username: req.body.username,
+						email: req.body.email,
+						password: hashedPassword
+					  };
 		users.push(user);
 		res.sendStatus(201);
 	}
@@ -47,7 +44,7 @@ app.post('/users', async (req: Request, res: Response) => {
 	}
 });
 
-app.post('/users/login', async (req: AuthRequest, res: Response) => {
+app.post('/login', async (req: AuthRequest, res: Response) => {
 	const	user = users.find(user => user.username === req.body.username);
 	if (user == null) {
 		res.status(400).send('Cannot find user');
@@ -97,7 +94,7 @@ app.delete('/logout', (req: AuthRequest, res: Response) => {
 		return;
 	}
 	if (!refreshTokens.includes(req.body.token)) {
-		res.send(`The refreshToken you're trying to delete is does not exist`);
+		res.status(400).send(`The refreshToken you're trying to delete is does not exist`);
 		return ;
 	}
 	refreshTokens = refreshTokens.filter(token => token !== req.body.token);

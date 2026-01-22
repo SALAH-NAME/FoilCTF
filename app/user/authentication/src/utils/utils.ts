@@ -3,6 +3,9 @@ import	jwt, {VerifyErrors, VerifyCallback, JwtPayload}	from 'jsonwebtoken';
 import	express, { Request, Response, NextFunction }	from 'express';
 import	{ User, AuthRequest}				from './types';
 import	{ AccessTokenSecret, AccessTokenExpirationTime}	from './env';
+import	validator					from 'email-validator';
+import	* as zod					from 'zod';
+import	{ users, posts}					from './db';
 
 export	function generateAccessToken(username: string) : string {
 	return jwt.sign({ username: username }, AccessTokenSecret, { expiresIn: AccessTokenExpirationTime as any});
@@ -28,4 +31,32 @@ export	function authenticateToken(req: AuthRequest, res: Response, next: NextFun
 		req.user = payload as User; // LGHALB ALLAH
 		next();
 	}) satisfies VerifyCallback) // to check
+}
+
+export	function	validateUserInput(req: AuthRequest): number {
+	if (req.body === undefined)
+		return (400);
+
+	const	allValid = [req.body.username, req.body.email, req.body.password].every(input => input !== undefined);
+	if (!allValid)
+		return (400);
+
+	const	usernameSchema = zod.string().min(4).max(15).regex(/^[a-zA-Z0-9_]/);
+	try {
+		usernameSchema.parse(req.body.username); // validate username
+	} catch {
+		return (400);
+	}
+
+	if (!validator.validate(req.body.email)) { // validate email
+		return 400;
+	}
+
+	if (req.body.password.length < 12) { // enough??
+		return 400;
+	}
+	if (users.find(user => user.email === req.body.email || user.username === req.body.username)) { // validate unicity
+		return 409;
+	}
+	return (0);
 }
