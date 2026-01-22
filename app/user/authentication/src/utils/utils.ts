@@ -1,14 +1,14 @@
 
 import	jwt, {VerifyErrors, VerifyCallback, JwtPayload}	from 'jsonwebtoken';
-import	{ Request, Response, NextFunction }			from 'express';
-import	{ User }						from '../utils';
-import	{ AccessTokenSecret }					from './env';
+import	express, { Request, Response, NextFunction }	from 'express';
+import	{ User, AuthRequest}				from './types';
+import	{ AccessTokenSecret, AccessTokenExpirationTime}	from './env';
 
-export	function generateAccessToken(name: string) : string {
-	return jwt.sign({ name: name }, AccessTokenSecret, { expiresIn: '15min' });
+export	function generateAccessToken(username: string) : string {
+	return jwt.sign({ username: username }, AccessTokenSecret, { expiresIn: AccessTokenExpirationTime as any});
 }
 
-export	function authenticateToken(req: Request, res: Response, next: NextFunction) : void {
+export	function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) : void {
 	const	authHeader = req.get('authorization');
 	if (authHeader === undefined) {
 		res.sendStatus(400); // bad request
