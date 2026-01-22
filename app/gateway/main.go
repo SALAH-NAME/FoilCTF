@@ -26,7 +26,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	config := LoadConfig()
 	log.Printf("[%s] Starting API Gateway", config.ServiceName)
-	log.Printf("[%s] Listening on port %s", config.Port)
+	log.Printf("[%s] Listening on port %s", config.ServiceName, config.Port)
 
 	r := chi.NewRouter()
 
