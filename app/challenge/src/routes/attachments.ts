@@ -88,7 +88,7 @@ export async function route_attachments_list(
 
 	const attachments = await ChallengesAttachments.findAll({
 		where: { challenge_id: challenge.id },
-		include: [ Attachments ],
+		include: [Attachments],
 	});
 
 	res.status(200);

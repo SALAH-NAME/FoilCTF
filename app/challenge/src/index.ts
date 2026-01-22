@@ -5,8 +5,9 @@ import { ENV_API_PORT, ENV_API_HOST } from './env.ts';
 import orm, { ormInitModels, ORM_CONNECTION_STRING } from './orm/index.ts';
 
 import {
-	middleware_error,
+	middleware_cors,
 	middleware_json,
+	middleware_error,
 	middleware_id_format,
 	middleware_id_exists,
 } from './middlewares.ts';
@@ -26,6 +27,7 @@ import {
 } from './routes/attachments.ts';
 
 const web = express();
+web.use(middleware_cors());
 
 // SECTION: Bulk actions
 web.get('/api/challenges', route_challenges_list);
