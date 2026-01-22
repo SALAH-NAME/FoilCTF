@@ -40,13 +40,12 @@ func main() {
 		log.Fatalf("[%s] Failed to register services: %v", config.ServiceName, err)
 	}
 
-
 	srv := &http.Server{
-		Addr: ":" + config.Port,
-		Handler: r,
-		ReadTimeout: 15 * time.Second,
+		Addr:         ":" + config.Port,
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
-		IdleTimeout: 60 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
 	go func() {
@@ -69,7 +68,7 @@ func main() {
 
 	log.Printf("[%s] Shutdown signal received, closing connections...", config.ServiceName)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {

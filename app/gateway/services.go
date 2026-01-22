@@ -25,7 +25,7 @@ func getEnv(key, fallback string) string {
 var ServiceRegistry = []ServiceConfig{
 	{
 		Name:    "user",
-		BaseURL: getEnv("SERVICE_USER_URL", "http://user:3001"),
+		BaseURL: getEnv("GATEWAY_USER_URL", "http://user:3001"),
 		Routes: []RouteConfig{
 			{
 				Prefix:      "/api/auth",
@@ -62,7 +62,7 @@ var ServiceRegistry = []ServiceConfig{
 
 	{
 		Name:    "challenge",
-		BaseURL: getEnv("SERVICE_CHALLENGE_URL", "http://challenge:3002"),
+		BaseURL: getEnv("GATEWAY_CHALLENGE_URL", "http://challenge:3002"),
 		Routes: []RouteConfig{
 			{
 				Prefix:      "/api/challenges",
@@ -87,7 +87,7 @@ var ServiceRegistry = []ServiceConfig{
 
 	{
 		Name:    "chat",
-		BaseURL: getEnv("SERVICE_CHAT_URL", "http://chat:3003"),
+		BaseURL: getEnv("GATEWAY_CHAT_URL", "http://chat:3003"),
 		Routes: []RouteConfig{
 			{
 				Prefix:      "/api/chat",
@@ -100,7 +100,7 @@ var ServiceRegistry = []ServiceConfig{
 
 	{
 		Name:    "notification",
-		BaseURL: getEnv("SERVICE_NOTIFICATION_URL", "http://notification:3004"),
+		BaseURL: getEnv("GATEWAY_NOTIFICATION_URL", "http://notification:3004"),
 		Routes: []RouteConfig{
 			{
 				Prefix:      "/api/notifications",
@@ -113,7 +113,7 @@ var ServiceRegistry = []ServiceConfig{
 
 	{
 		Name:    "scoreboard",
-		BaseURL: getEnv("SERVICE_SCOREBOARD_URL", "http://scoreboard:3005"),
+		BaseURL: getEnv("GATEWAY_SCOREBOARD_URL", "http://scoreboard:3005"),
 		Routes: []RouteConfig{
 			{
 				Prefix:      "/api/scoreboard",
@@ -126,7 +126,7 @@ var ServiceRegistry = []ServiceConfig{
 
 	{
 		Name:    "sandbox",
-		BaseURL: getEnv("SERVICE_SANDBOX_URL", "http://sandbox:8080"),
+		BaseURL: getEnv("GATEWAY_SANDBOX_URL", "http://sandbox:8080"),
 		Routes: []RouteConfig{
 			{
 				Prefix:      "/api/sandbox",

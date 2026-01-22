@@ -30,7 +30,7 @@ func createReverseProxy(targetURL, serviceName string) (*httputil.ReverseProxy, 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadGateway)
 		response := map[string]string{
-			"error": "service_unavailable",
+			"error":   "service_unavailable",
 			"message": "The requested service is currently unavailable",
 			"service": serviceName,
 		}
