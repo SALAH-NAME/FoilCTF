@@ -1,18 +1,23 @@
 package service
 
 import (
-	"net/http"
+	"fmt"
 	"log"
+	"net/http"
 )
+func getUserInfo(r *http.Request) (string, string) {
+	userID := r.Header.Get("X-User-Id")
+	userRole := r.Header.Get("X-User-Role")
+	return userID, userRole
+}
+
 func (hub *Hub)ServWs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		log.Print("HTTP ERROR: Method not allowed")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	userID := r.Header.Get("X-User-Id")
-	userRole := r.Header.Get("X-User-Role")
-
+	userID, userRole := getUserInfo(r)
 	connection, err := hub.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("ERROR: Upgrading http connection failed : %v", err)
@@ -24,3 +29,18 @@ func (hub *Hub)ServWs(w http.ResponseWriter, r *http.Request) {
 	go joinedClient.ReadFromConnectionTunnel()
 	go joinedClient.WriteToConnectionTunnel()
 }
+
+func (hub *Hub)ServeList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		log.Print("HTTP ERROR: Method not allowed")
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	userID, _ := getUserInfo(r)
+	limit := 10 
+	if l := r.URL.Query().Get("limit"); l != "" {
+		fmt.Sscanf(l, "%d", &limit)
+	}
+	ListNotifications(userID, limit, hub, w)
+}
+
