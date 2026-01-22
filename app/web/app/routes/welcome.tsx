@@ -6,5 +6,5 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Page() {
-	return (<Link to="/">Go back to index page</Link>);
+	return <Link to="/">Go back to index page</Link>;
 }
