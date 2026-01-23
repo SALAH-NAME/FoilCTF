@@ -16,17 +16,20 @@ type App struct {
 	server     *fiber.App
 	serverAddr string
 
-	podman   context.Context
-	database *sql.DB
-
+	podman    context.Context
 	dirImages string
 	dirHealth string
+
+	database *sql.DB
 }
 
 func (app *App) Init() error {
-	err := env.Load()
-	if err != nil {
-		return err
+	var err error
+
+	if _, err := os.Stat(".env"); err == nil {
+		if err := env.Load(".env"); err != nil {
+			return err
+		}
 	}
 
 	app.serverAddr = os.Getenv("SERVER_ADDR")
@@ -55,9 +58,11 @@ func (app *App) Init() error {
 		return errors.New("Could not get absolute path from \"PODMAN_DIR_IMAGES\" environment variable")
 	}
 
+	log.Printf("\"ENV\" :: SERVER_ADDR: %q\n", app.serverAddr)
+	log.Printf("\"ENV\" :: DATABASE_URI :: %q", dbUri)
+	log.Printf("\"ENV\" :: PODMAN_URI :: %q", podmanUri)
 	log.Printf("\"ENV\" :: PODMAN_DIR_IMAGES :: %q", app.dirImages)
 	log.Printf("\"ENV\" :: PODMAN_DIR_HEALTH :: %q", app.dirHealth)
-	log.Printf("\"ENV\" :: SERVER_ADDR: %q\n", app.serverAddr)
 
 	if err := os.MkdirAll(app.dirHealth, 0750); err != nil {
 		return err
@@ -121,6 +126,7 @@ func (app *App) RegisterRoutes(routes, containers, images []Route) {
 }
 
 func (app *App) Listen() error {
+	log.Printf("REST API listening on port %s", app.serverAddr)
 	return app.server.Listen(app.serverAddr, fiber.ListenConfig{
 		DisableStartupMessage: true,
 	})
