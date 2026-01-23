@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 )
 func getUserInfo(r *http.Request) (string, string) {
 	userID := r.Header.Get("X-User-Id")
@@ -44,3 +46,24 @@ func (hub *Hub)ServeList(w http.ResponseWriter, r *http.Request) {
 	ListNotifications(userID, limit, hub, w)
 }
 
+func (hub *Hub)ServeMarkAsRead(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch {
+		log.Print("HTTP ERROR: Method not allowed")
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	userID, _ := getUserInfo(r)
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(parts) == 3 {
+		notificationIDStr := parts[2]
+		notificationID, err := strconv.Atoi(notificationIDStr)
+		if err != nil {
+			log.Printf("ERROR: Failed to parse notificationID :%v", err)
+			http.Error(w, "Valid notificationID required", http.StatusBadRequest)
+			return
+		}
+		MarkSingleNotification(userID, notificationID, hub, w)
+	} else {
+		MarkAllNotification(userID, hub, w)
+	}
+}

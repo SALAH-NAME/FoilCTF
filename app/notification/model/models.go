@@ -21,7 +21,7 @@ type NotificationResponse struct {
 // }
 
 type UserNotification struct {
-	NotificationID	uint 	`gorm:"primaryKey"`
+	NotificationID	int 	`gorm:"primaryKey"`
 	NotifiedID		string	`gorm:"primaryKey"`
 
 }
