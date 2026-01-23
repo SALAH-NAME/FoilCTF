@@ -60,8 +60,9 @@ func Route_Container_Start(app *App) Route {
 }
 
 type Query_Container_Stop struct {
-	Timeout	uint `query:"timeout,default:10"`
+	Timeout uint `query:"timeout,default:10"`
 }
+
 func Route_Container_Stop(app *App) Route {
 	pattern := "/:Name<identifier>/stop"
 	methods := []string{fiber.MethodGet}
