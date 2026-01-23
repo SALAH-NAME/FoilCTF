@@ -1,8 +1,10 @@
-import { type RouteConfig, index, route } from '@react-router/dev/routes';
+import { type RouteConfig, index, layout, route } from '@react-router/dev/routes';
 
 const routes = [
-	index('routes/home.tsx'),
-	route('welcome', 'routes/welcome.tsx'),
+	layout('./layouts/dashboard.tsx', [
+		index('routes/index.tsx'),
+		route('challenges/:challId', 'routes/challenge_edit.tsx'),
+	]),
 	route('*', 'routes/not_found.tsx'),
 ] satisfies RouteConfig;
 
