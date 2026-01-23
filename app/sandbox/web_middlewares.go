@@ -2,31 +2,26 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	fiber "github.com/gofiber/fiber/v3"
-	cors "github.com/gofiber/fiber/v3/middleware/cors"
+	middleware_cors "github.com/gofiber/fiber/v3/middleware/cors"
+	middleware_logger "github.com/gofiber/fiber/v3/middleware/logger"
 	// "github.com/gofiber/fiber/v3/client"
 )
 
-func Middleware_Logger(app *App) func(c fiber.Ctx) error {
+func Middleware_Logger(app *App) fiber.Handler {
 	_ = app
-	return func(c fiber.Ctx) error {
-		req := c.Req()
-		log.Printf("%q :: %s", req.Method(), req.OriginalURL())
-
-		return c.Next()
-	}
+	return middleware_logger.New()
 }
 
-func Middleware_Authorization(app *App) func(c fiber.Ctx) error { // TODO(xenobas): Implement
+func Middleware_Authorization(app *App) fiber.Handler { // TODO(xenobas): Implement
 	_ = app
 	return func(c fiber.Ctx) error {
 		return c.Next()
 	}
 }
 
-func Middleware_Container_Exists(app *App) func(c fiber.Ctx) error {
+func Middleware_Container_Exists(app *App) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		containerName := c.Params("Name")
 		containerExists, err := Podman_Container_Exists(app.podman, containerName)
@@ -40,7 +35,7 @@ func Middleware_Container_Exists(app *App) func(c fiber.Ctx) error {
 	}
 }
 
-func Middleware_Image_Exists(app *App) func(c fiber.Ctx) error {
+func Middleware_Image_Exists(app *App) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		imageName := c.Params("Name")
 		imageExists, err := Podman_Image_Exists(app.podman, imageName)
@@ -54,9 +49,9 @@ func Middleware_Image_Exists(app *App) func(c fiber.Ctx) error {
 	}
 }
 
-func Middleware_CORS(app *App) func(c fiber.Ctx) error { // TODO(xenobas): Make this query the list of origins from the database
+func Middleware_CORS(app *App) fiber.Handler { // TODO(xenobas): Make this query the list of origins from the database
 	_ = app
-	return cors.New(cors.Config{
+	return middleware_cors.New(middleware_cors.Config{
 		AllowOrigins: []string{"http://localhost:5173"},
 	})
 }
