@@ -3,12 +3,9 @@ import	jwt, {VerifyErrors, VerifyCallback, JwtPayload}	from 'jsonwebtoken';
 import	express, { Request, Response, NextFunction }	from 'express';
 import	{ User, AuthRequest}				from './types';
 import	{ AccessTokenSecret, AccessTokenExpirationTime}	from './env';
-<<<<<<< HEAD
 import	validator					from 'email-validator';
 import	* as zod					from 'zod';
 import	{ users, posts}					from './db';
-=======
->>>>>>> b810b2e9401a409782c9b37ff8e12aedd4a38dcd
 
 export	function generateAccessToken(username: string) : string {
 	return jwt.sign({ username: username }, AccessTokenSecret, { expiresIn: AccessTokenExpirationTime as any});
@@ -35,7 +32,6 @@ export	function authenticateToken(req: AuthRequest, res: Response, next: NextFun
 		next();
 	}) satisfies VerifyCallback) // to check
 }
-<<<<<<< HEAD
 
 export	function	validateUserInput(req: AuthRequest): number {
 	if (req.body === undefined)
@@ -64,5 +60,3 @@ export	function	validateUserInput(req: AuthRequest): number {
 	}
 	return (0);
 }
-=======
->>>>>>> b810b2e9401a409782c9b37ff8e12aedd4a38dcd
