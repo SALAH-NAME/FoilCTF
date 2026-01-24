@@ -39,31 +39,48 @@ func (hub *Hub)ServeList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userID, _ := getUserInfo(r)
-	limit := 10 
+	limit := 20 
 	if l := r.URL.Query().Get("limit"); l != "" {
 		fmt.Sscanf(l, "%d", &limit)
+	}
+	if limit < 0 {
+		limit = 20
 	}
 	ListNotifications(userID, limit, hub, w)
 }
 
-func (hub *Hub)ServeMarkAsRead(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPatch {
-		log.Print("HTTP ERROR: Method not allowed")
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+func (hub *Hub)NotificationHandler(w http.ResponseWriter, r *http.Request) {
 	userID, _ := getUserInfo(r)
+	hasID := false
+	var notificationID int
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) == 3 {
 		notificationIDStr := parts[2]
-		notificationID, err := strconv.Atoi(notificationIDStr)
+		id, err := strconv.Atoi(notificationIDStr)
 		if err != nil {
 			log.Printf("ERROR: Failed to parse notificationID :%v", err)
 			http.Error(w, "Valid notificationID required", http.StatusBadRequest)
 			return
 		}
-		MarkSingleNotification(userID, notificationID, hub, w)
-	} else {
-		MarkAllNotification(userID, hub, w)
+		notificationID = id
+		hasID = true
+	}
+
+	switch r.Method {
+		case http.MethodPatch :
+			if hasID == true {
+				MarkSingleNotification(userID, notificationID, hub, w)
+			} else {
+				MarkAllNotification(userID, hub, w)
+			}
+		case http.MethodDelete: 
+			if hasID == true {
+				DismissSingleNotification(userID, notificationID, hub, w)
+			} else {
+				DismissAllNotifications(userID, hub, w)
+			}
+		default:
+			log.Print("HTTP ERROR: Method not allowed")
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }

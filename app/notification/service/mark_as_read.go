@@ -18,6 +18,11 @@ func MarkSingleNotification(userID string , notifID int, hub *Hub, w http.Respon
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	hub.GlobalChan <- model.WsEvent{
+		Event: "read",
+		TargetID: userID,
+		Payload: map[string]int{"notification_id": notifID},
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -30,6 +35,11 @@ func MarkAllNotification(userID string ,hub *Hub, w http.ResponseWriter) {
 		log.Printf("Error while marking all notificationsas read for userId %s: %v", userID, err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
+	}
+	hub.GlobalChan <- model.WsEvent{
+		Event: "count",
+		TargetID: userID,
+		Payload: map[string]int{"unread_count": 0},
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

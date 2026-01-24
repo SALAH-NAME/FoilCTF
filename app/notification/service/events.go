@@ -26,7 +26,7 @@ func HandleWsEvent(hub *Hub, eventws *model.WsEvent) {
 	switch eventws.Event{
 		case "new":
 			BroadcastNotification(hub, eventws)
-		case "read", "count", "delete":
+		case "read", "count", "delete", "delete_all":
 			SendToUser(hub, eventws)
 	}
 }
