@@ -5,7 +5,7 @@ import	{ DATABSE_URL }		from './src/utils/env';
 export	default defineConfig({
 	out:		"./src/drizzle/migrations",
 	schema: 	"./src/drizzle/schema.ts",
-	driver:		"pg",
+	dialect:	"postgresql",
 	dbCredentials: {
 		url:	DATABSE_URL!,
 	},
