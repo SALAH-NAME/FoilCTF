@@ -13,6 +13,17 @@ func getUserInfo(r *http.Request) (string, string) {
 	return userID, userRole
 }
 
+func getLimit(r *http.Request) int {
+	limit := 20 
+	if l := r.URL.Query().Get("limit"); l != "" {
+		fmt.Sscanf(l, "%d", &limit)
+	}
+	if limit < 0 {
+		limit = 20
+	}
+	return limit
+}
+
 func (hub *Hub)ServWs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		log.Print("HTTP ERROR: Method not allowed")
@@ -32,22 +43,6 @@ func (hub *Hub)ServWs(w http.ResponseWriter, r *http.Request) {
 	go joinedClient.WriteToConnectionTunnel()
 }
 
-func (hub *Hub)ServeList(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		log.Print("HTTP ERROR: Method not allowed")
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	userID, _ := getUserInfo(r)
-	limit := 20 
-	if l := r.URL.Query().Get("limit"); l != "" {
-		fmt.Sscanf(l, "%d", &limit)
-	}
-	if limit < 0 {
-		limit = 20
-	}
-	ListNotifications(userID, limit, hub, w)
-}
 
 func (hub *Hub)NotificationHandler(w http.ResponseWriter, r *http.Request) {
 	userID, _ := getUserInfo(r)
@@ -67,6 +62,9 @@ func (hub *Hub)NotificationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch r.Method {
+		case http.MethodGet :
+			limit := getLimit(r)
+			ListNotifications(userID, limit, hub, w)
 		case http.MethodPatch :
 			if hasID == true {
 				MarkSingleNotification(userID, notificationID, hub, w)

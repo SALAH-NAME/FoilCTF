@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+
 type NotificationResponse struct {
 	ID			uint 			`json:"notification_id" gorm:"primaryKey"`
 	IsRead		bool			`json:"is_read"`
@@ -12,11 +13,6 @@ type NotificationResponse struct {
 	Content		json.RawMessage	`json:"content" gorm:"type:json"`
 }
 
-type Notification struct {
-	ID			uint 			`json:"notification_id" gorm:"primaryKey"`
-	CreatedAt	time.Time		`json:"created_at" gorm:"default:now()"`
-	Content		json.RawMessage	`json:"content" gorm:"type:json"`
-}
 
 type UserNotification struct {
 	NotificationID	int 	`gorm:"primaryKey"`
@@ -27,4 +23,10 @@ type WsEvent struct {
 	Event 		string 			`json:"event"`
 	TargetID		string			`json:"target_id"`
 	Payload		interface{}			`json:"metadata"`
+}
+
+type Notification struct {
+	ID			uint 			`json:"notification_id" gorm:"primaryKey"`
+	CreatedAt	time.Time		`json:"created_at" gorm:"default:now()"`
+	Content		json.RawMessage	`json:"content" gorm:"type:json"`
 }
