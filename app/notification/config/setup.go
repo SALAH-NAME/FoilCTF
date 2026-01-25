@@ -1,6 +1,7 @@
 package config
 
 import (
+	"net/http"
 	"os"
 	"time"
 )
@@ -27,4 +28,13 @@ func GetEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func NewServer(router http.Handler) (*http.Server, string) {
+	port := GetEnv("PORT", "3004")
+
+	return &http.Server{
+		Addr: ":" + port,
+		Handler: router,
+	}, port
 }

@@ -37,9 +37,8 @@ func MarkAllNotification(userID string ,hub *Hub, w http.ResponseWriter) {
 		return
 	}
 	hub.GlobalChan <- model.WsEvent{
-		Event: "count",
+		Event: "read_all",
 		TargetID: userID,
-		Payload: map[string]int{"unread_count": 0},
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

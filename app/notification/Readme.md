@@ -57,7 +57,7 @@ This service provides a realtime notification system for FoilCTF platform, it ma
 | :---   |  :---    | :---   | :---
 | **new**| server->client | Broadcasts newly created notification object.|Adds a new item to the list
 | **read**| server->client| confirmes a record was added to ```notification users```.| Turns off the "unread" style 
-| **count**| server->client| sends the current number of unread items.| Updates the badge on the bell icon.
+| **read_all**| server->client| confirmes all record were added to ```notification users```.| Updates the badge on the bell icon.
 | **delete**| server->client| removes the **user-notification** link form DB.| removes the item from the UI list
 | **delete_all**| server->client| removes all links for that user form DB.| clears the entire notification list
 
