@@ -1,6 +1,6 @@
-FROM docker.io/library/golang:1.25
+FROM docker.io/library/golang:1.25.5-alpine3.23 AS builder
 
-WORKDIR /usr/src/myapp
+WORKDIR /usr/src/app
 
 COPY go.mod go.sum ./
 
@@ -9,6 +9,12 @@ RUN go mod download
 COPY . .
 
 RUN go build -o /usr/local/bin/notification .
+
+FROM alpine:3.23
+
+WORKDIR /usr/src/app
+
+COPY --from=builder /usr/local/bin/notification /usr/local/bin/notification
 
 EXPOSE 3004
 
