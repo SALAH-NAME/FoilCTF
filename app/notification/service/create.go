@@ -21,7 +21,7 @@ func (hub *Hub) CreateNotification(ntype, title, message, link string) error{
 	}
 	notification := model.Notification{
 		CreatedAt: time.Now(),
-		Content: contentJSON,
+		Contents: contentJSON,
 	}
 	if err := hub.Db.Table("notifications").Create(&notification).Error ; err != nil {
 		log.Printf("Error saving notification into database %v", err)

@@ -48,6 +48,7 @@ func (hub *Hub)NotificationHandler(w http.ResponseWriter, r *http.Request) {
 	userID, _ := getUserInfo(r)
 	hasID := false
 	var notificationID int
+	
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) == 3 {
 		notificationIDStr := parts[2]

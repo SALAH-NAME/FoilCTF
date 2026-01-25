@@ -10,7 +10,7 @@ type NotificationResponse struct {
 	ID			uint 			`json:"notification_id" gorm:"primaryKey"`
 	IsRead		bool			`json:"is_read"`
 	CreatedAt	time.Time		`json:"created_at" gorm:"default:now()"`
-	Content		json.RawMessage	`json:"content" gorm:"type:json"`
+	Contents		json.RawMessage	`json:"contents" gorm:"type:json"`
 }
 
 
@@ -26,7 +26,7 @@ type WsEvent struct {
 }
 
 type Notification struct {
-	ID			uint 			`json:"notification_id" gorm:"primaryKey"`
+	ID			uint 			`json:"id" gorm:"primaryKey"`
 	CreatedAt	time.Time		`json:"created_at" gorm:"default:now()"`
-	Content		json.RawMessage	`json:"content" gorm:"type:json"`
+	Contents		json.RawMessage	`json:"contents" gorm:"type:json"`
 }

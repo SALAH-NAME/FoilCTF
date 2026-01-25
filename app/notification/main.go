@@ -12,12 +12,14 @@ func main () {
 	db := config.Db_init()
 	conf := config.NewDefaultConfig()
 	hub := service.NewHub(db, conf)
-
-	http.HandleFunc("api/notifications/ws", hub.ServWs)
-	http.HandleFunc("api/notifications", hub.NotificationHandler)
+	go hub.TrackChannels()
+	http.HandleFunc("/api/notifications/ws", hub.ServWs)
+	http.HandleFunc("/api/notifications/", hub.NotificationHandler)
+	//for testing
+	http.HandleFunc("/api/test/create", hub.Test)
 
 	if err := http.ListenAndServe(":" + NotificationPort, nil); err != nil {
-		log.Fatalf("SERVER ERROR: Failed to start the server: %v" , err)	
+		log.Fatalf("SERVER ERROR: Failed to start the server: %v" , err)
 	}
 
 }
