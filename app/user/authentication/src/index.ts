@@ -7,9 +7,15 @@ import	{ AccessTokenExpirationTime}			from './utils/env';
 import	{ User, Post, AuthRequest}			from './utils/types';
 import	{ authenticateToken, generateAccessToken}	from './utils/utils';
 import	{ validateUserInput}				from './utils/utils';
-import	{ users, posts}					from './utils/db';
+import	{ generateRandom, generateID}			from './utils/utils';
+import	{posts}						from './utils/db';
+import	'dotenv/config';
+import	{ drizzle }					from 'drizzle-orm/node-postgres';
+import	{ users }					from './db/schema';
 
 let	refreshTokens: string[] = [];
+
+const	db = drizzle(process.env.DATABASE_URL!);
 
 const	app = express();
 app.use(express.json());
@@ -32,11 +38,14 @@ app.post('/register', async (req: AuthRequest, res: Response) => {
 		}
 		const	salt		= await bcrypt.genSalt();
 		const	hashedPassword	= await bcrypt.hash(req.body.password, salt);
-		const	user: User	= {	username: req.body.username,
-						email: req.body.email,
-						password: hashedPassword
+		const	user: typeof users.$inferInsert	= {
+						id:		generateID(10),
+						username:	req.body.username,
+						email:		req.body.email,
+						password:	hashedPassword
 					  };
-		users.push(user);
+		await db.insert(users).values(user);
+		console.log('New user created!');
 		res.sendStatus(201);
 	}
 	catch {
@@ -45,14 +54,16 @@ app.post('/register', async (req: AuthRequest, res: Response) => {
 });
 
 app.post('/login', async (req: AuthRequest, res: Response) => {
-	const	user = users.find(user => user.username === req.body.username);
+	const	inserdUsers = await db.select().from(users);
+	console.log('Getting all users from the database: ', inserdUsers);
+	const	user = inserdUsers.find(user => user.username === req.body.username);
 	if (user == null) {
 		res.status(400).send('Cannot find user');
 		return ;
 	}
 	try {
 		if (await bcrypt.compare(req.body.password, user.password)) {
-			const	accessToken	= generateAccessToken(user.username);
+			const	accessToken	= generateAccessToken(user.username as any);
 			const	refreshToken	= jwt.sign(user, RefreshTokenSecret);
 			refreshTokens.push(refreshToken);
 			console.log(`access token will expire in: ${AccessTokenExpirationTime}`);

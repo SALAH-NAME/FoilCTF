@@ -1,0 +1,1079 @@
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "prevId": "",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.profiles": {
+      "name": "profiles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "image": {
+          "name": "image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(64)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "password": {
+          "name": "password",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "banned_until": {
+          "name": "banned_until",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_id": {
+          "name": "profile_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avatar": {
+          "name": "avatar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "profile": {
+          "name": "profile",
+          "tableFrom": "users",
+          "tableTo": "profiles",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "profile_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.sessions": {
+      "name": "sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expiry": {
+          "name": "expiry",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.ctfs": {
+      "name": "ctfs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "team_members_min": {
+          "name": "team_members_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "team_members_max": {
+          "name": "team_members_max",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "constraint_members_min_gt_zero": {
+          "name": "constraint_members_min_gt_zero",
+          "value": "team_members_min > 0"
+        },
+        "constraint_members_min_lteq_max": {
+          "name": "constraint_members_min_lteq_max",
+          "value": "team_members_min <= team_members_max"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.ctf_organizers": {
+      "name": "ctf_organizers",
+      "schema": "",
+      "columns": {
+        "ctf_id": {
+          "name": "ctf_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organizer_id": {
+          "name": "organizer_id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "constraint_ctf": {
+          "name": "constraint_ctf",
+          "tableFrom": "ctf_organizers",
+          "tableTo": "ctfs",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "ctf_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "constraint_organizer": {
+          "name": "constraint_organizer",
+          "tableFrom": "ctf_organizers",
+          "tableTo": "users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "organizer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.teams": {
+      "name": "teams",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "profile_id": {
+          "name": "profile_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "constraint_profile": {
+          "name": "constraint_profile",
+          "tableFrom": "teams",
+          "tableTo": "profiles",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "profile_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.attachments": {
+      "name": "attachments",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "contents": {
+          "name": "contents",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.challenges": {
+      "name": "challenges",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "is_published": {
+          "name": "is_published",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Unnamed challenge'"
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'No description'"
+        },
+        "reward": {
+          "name": "reward",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 500
+        },
+        "reward_min": {
+          "name": "reward_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 350
+        },
+        "reward_first_blood": {
+          "name": "reward_first_blood",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "reward_decrements": {
+          "name": "reward_decrements",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "author_id": {
+          "name": "author_id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "constraint_author": {
+          "name": "constraint_author",
+          "tableFrom": "challenges",
+          "tableTo": "users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "author_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "constraint_reward": {
+          "name": "constraint_reward",
+          "value": "reward >= reward_min"
+        },
+        "constraint_reward_min": {
+          "name": "constraint_reward_min",
+          "value": "reward_min >= 0"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.hints": {
+      "name": "hints",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "challenge_id": {
+          "name": "challenge_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "penalty": {
+          "name": "penalty",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "contents": {
+          "name": "contents",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Empty hint'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "constraint_challenge": {
+          "name": "constraint_challenge",
+          "tableFrom": "hints",
+          "tableTo": "challenges",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "challenge_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.participations": {
+      "name": "participations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "score": {
+          "name": "score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "team_id": {
+          "name": "team_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "challenge_id": {
+          "name": "challenge_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_attempt_at": {
+          "name": "last_attempt_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "constraint_team": {
+          "name": "constraint_team",
+          "tableFrom": "participations",
+          "tableTo": "teams",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "team_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "constraint_challenge": {
+          "name": "constraint_challenge",
+          "tableFrom": "participations",
+          "tableTo": "challenges",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "challenge_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.notifications": {
+      "name": "notifications",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "contents": {
+          "name": "contents",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.reports": {
+      "name": "reports",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "done": {
+          "name": "done",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "contents": {
+          "name": "contents",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issued_at": {
+          "name": "issued_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "issuer_id": {
+          "name": "issuer_id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "NULL"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "constraint_issuer": {
+          "name": "constraint_issuer",
+          "tableFrom": "reports",
+          "tableTo": "users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "issuer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.team_members": {
+      "name": "team_members",
+      "schema": "",
+      "columns": {
+        "team_id": {
+          "name": "team_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "member_id": {
+          "name": "member_id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "constraint_team": {
+          "name": "constraint_team",
+          "tableFrom": "team_members",
+          "tableTo": "teams",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "team_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "constraint_member": {
+          "name": "constraint_member",
+          "tableFrom": "team_members",
+          "tableTo": "users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "member_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "team_members_pkey": {
+          "name": "team_members_pkey",
+          "columns": [
+            "team_id",
+            "member_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.challenges_attachments": {
+      "name": "challenges_attachments",
+      "schema": "",
+      "columns": {
+        "challenge_id": {
+          "name": "challenge_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attachment_id": {
+          "name": "attachment_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "constraint_challenge": {
+          "name": "constraint_challenge",
+          "tableFrom": "challenges_attachments",
+          "tableTo": "challenges",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "challenge_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "constraint_attachment": {
+          "name": "constraint_attachment",
+          "tableFrom": "challenges_attachments",
+          "tableTo": "attachments",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "attachment_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "challenges_attachments_pkey": {
+          "name": "challenges_attachments_pkey",
+          "columns": [
+            "challenge_id",
+            "attachment_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.notification_users": {
+      "name": "notification_users",
+      "schema": "",
+      "columns": {
+        "notification_id": {
+          "name": "notification_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "read_at": {
+          "name": "read_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "constraint_user": {
+          "name": "constraint_user",
+          "tableFrom": "notification_users",
+          "tableTo": "users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "constraint_notification": {
+          "name": "constraint_notification",
+          "tableFrom": "notification_users",
+          "tableTo": "notifications",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "notification_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "notification_users_pkey": {
+          "name": "notification_users_pkey",
+          "columns": [
+            "user_id",
+            "notification_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.messages": {
+      "name": "messages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chatroom_id": {
+          "name": "chatroom_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contents": {
+          "name": "contents",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "edited_at": {
+          "name": "edited_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "writer_id": {
+          "name": "writer_id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "constraint_writer": {
+          "name": "constraint_writer",
+          "tableFrom": "messages",
+          "tableTo": "users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "writer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "constraint_chatroom": {
+          "name": "constraint_chatroom",
+          "tableFrom": "messages",
+          "tableTo": "ctfs",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "chatroom_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "messages_pkey": {
+          "name": "messages_pkey",
+          "columns": [
+            "id",
+            "chatroom_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.ctfs_challenges": {
+      "name": "ctfs_challenges",
+      "schema": "",
+      "columns": {
+        "ctf_id": {
+          "name": "ctf_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "challenge_id": {
+          "name": "challenge_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reward": {
+          "name": "reward",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 500
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "solves": {
+          "name": "solves",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "first_blood_at": {
+          "name": "first_blood_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_blood_id": {
+          "name": "first_blood_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "container_limits": {
+          "name": "container_limits",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "flag": {
+          "name": "flag",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "constraint_ctf": {
+          "name": "constraint_ctf",
+          "tableFrom": "ctfs_challenges",
+          "tableTo": "ctfs",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "ctf_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "constraint_challenge": {
+          "name": "constraint_challenge",
+          "tableFrom": "ctfs_challenges",
+          "tableTo": "challenges",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "challenge_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "constraint_first_blood": {
+          "name": "constraint_first_blood",
+          "tableFrom": "ctfs_challenges",
+          "tableTo": "participations",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "first_blood_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "ctfs_challenges_pkey": {
+          "name": "ctfs_challenges_pkey",
+          "columns": [
+            "ctf_id",
+            "challenge_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "tables": {
+      "reports": {
+        "columns": {
+          "issuer_id": {
+            "isDefaultAnExpression": true
+          }
+        }
+      }
+    }
+  }
+}

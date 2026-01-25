@@ -17,14 +17,15 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/pg": "^8.16.0",
-    "drizzle-kit": "^0.30.4",
+    "drizzle-kit": "^0.31.8",
     "nodemon": "^3.1.11",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "dotenv": "^17.2.3",
-    "drizzle-orm": "^0.38.3",
+    "drizzle-orm": "^0.45.1",
     "email-validator": "^2.0.4",
     "express": "^5.2.1",
     "install": "^0.13.0",
