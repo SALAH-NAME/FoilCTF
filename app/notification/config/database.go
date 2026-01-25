@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func Db_init() *gorm.DB {
+func DbInit() *gorm.DB {
 	dbHost 	 := GetEnv("DB_HOST", "localhost")
 	dbUser 	 := GetEnv("DB_USER", "postgres")
 	dbPass 	 := GetEnv("DB_PASS", "pass12345678")

@@ -7,22 +7,6 @@ import (
 	"strconv"
 	"strings"
 )
-func getUserInfo(r *http.Request) (string, string) {
-	userID := r.Header.Get("X-User-Id")
-	userRole := r.Header.Get("X-User-Role")
-	return userID, userRole
-}
-
-func getLimit(r *http.Request) int {
-	limit := 20 
-	if l := r.URL.Query().Get("limit"); l != "" {
-		fmt.Sscanf(l, "%d", &limit)
-	}
-	if limit < 0 {
-		limit = 20
-	}
-	return limit
-}
 
 func (hub *Hub)ServWs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -82,4 +66,22 @@ func (hub *Hub)NotificationHandler(w http.ResponseWriter, r *http.Request) {
 			log.Print("HTTP ERROR: Method not allowed")
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// helpers
+func getUserInfo(r *http.Request) (string, string) {
+	userID := r.Header.Get("X-User-Id")
+	userRole := r.Header.Get("X-User-Role")
+	return userID, userRole
+}
+
+func getLimit(r *http.Request) int {
+	limit := 20 
+	if l := r.URL.Query().Get("limit"); l != "" {
+		fmt.Sscanf(l, "%d", &limit)
+	}
+	if limit < 0 {
+		limit = 20
+	}
+	return limit
 }

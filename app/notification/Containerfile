@@ -2,6 +2,14 @@ FROM docker.io/library/golang:1.25
 
 WORKDIR /usr/src/myapp
 
-COPY src/go.mod src/go.sum ./
+COPY go.mod go.sum ./
 
 RUN go mod download
+
+COPY . .
+
+RUN go build -o /usr/local/bin/notification .
+
+EXPOSE 3004
+
+ENTRYPOINT ["notification"]

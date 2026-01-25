@@ -25,9 +25,11 @@ This service provides a realtime notification system for FoilCTF platform, it ma
     ├── events.go
     ├── hub.go
     ├── list_notifications.go
-    └── mark_as_read.go
+    ├── mark_as_read.go
+    ├── routes.go
+    └── test.go
 
-4 directories, 16 files
+4 directories, 18 files
 ```
 - Models  
     - ```Notification```(Global Store): Represents the physical announcement stored in ```notifications``` table using ```json.RawMessage``` for dynamic content.

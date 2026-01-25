@@ -9,7 +9,7 @@ func main () {
 
 	db_conf := config.NewDefaultConfig()
 
-	db := config.Db_init()
+	db := config.DbInit()
 	hub := service.NewHub(db, db_conf)
 	go hub.TrackChannels()
 
