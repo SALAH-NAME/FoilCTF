@@ -53,7 +53,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 	);
 }
 
-export function Layout() {
+export function Layout({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="en">
 			<head>
@@ -63,7 +63,7 @@ export function Layout() {
 				<Links />
 			</head>
 			<body>
-				<Outlet />
+				{children}
 				<ScrollRestoration />
 				<Scripts />
 			</body>
@@ -71,7 +71,13 @@ export function Layout() {
 	);
 }
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+	defaultOptions: {
+		queries: {
+			retry: false,
+		},
+	},
+});
 export default function App() {
 	return (
 		<QueryClientProvider client={queryClient}>

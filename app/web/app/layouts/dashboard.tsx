@@ -1,14 +1,16 @@
+import Footer from '../components/Footer';
+import Sidebar from '../components/Sidebar';
+
 import { Outlet } from 'react-router';
-import Sidebar from '../components/Sidebar.tsx';
 
 export default function Layout() {
 	return (
-		<div>
+		<div className="grid grid-cols-[auto_1fr] grid-rows-[1fr_auto] min-h-screen">
 			<Sidebar />
-			<main>
+			<main className="h-full">
 				<Outlet />
 			</main>
-			<footer></footer>
+			<Footer />
 		</div>
-   );
+	);
 }
