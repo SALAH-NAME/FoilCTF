@@ -5,7 +5,8 @@ import	{ User, AuthRequest}				from './types';
 import	{ AccessTokenSecret, AccessTokenExpirationTime}	from './env';
 import	validator					from 'email-validator';
 import	* as zod					from 'zod';
-import	{ users, posts}					from './db';
+import	{ db}						from './db';
+import	{ users}					from '../db/schema';
 
 export	function generateAccessToken(username: string) : string {
 	return jwt.sign({ username: username }, AccessTokenSecret, { expiresIn: AccessTokenExpirationTime as any});
@@ -30,10 +31,10 @@ export	function authenticateToken(req: AuthRequest, res: Response, next: NextFun
 		}
 		req.user = payload as User; // LGHALB ALLAH
 		next();
-	}) satisfies VerifyCallback) // to check
+	}) satisfies VerifyCallback)
 }
 
-export	function	validateUserInput(req: AuthRequest): number {
+export	async function	validateUserInput(req: AuthRequest): Promise<number> {
 	if (req.body === undefined)
 		return (400);
 
@@ -55,7 +56,8 @@ export	function	validateUserInput(req: AuthRequest): number {
 	if (req.body.password.length < 12) { // enough??
 		return 400;
 	}
-	if (users.find(user => user.email === req.body.email || user.username === req.body.username)) { // validate unicity
+	const	insertedUsers = await db.select().from(users);
+	if (insertedUsers.find(user => user.email === req.body.email || user.username === req.body.username)) { // validate unicity
 		return 409;
 	}
 	return (0);

@@ -1,11 +1,8 @@
 
 import	express, {Request}	from 'express';
+import	{ users}		from '../db/schema';
 
-export	interface User {
-	username:	string,
-	email:		string,
-	password:	string
-}
+export	type User = typeof users.$inferInsert;
 
 export	interface Post {
 	username:	string,
