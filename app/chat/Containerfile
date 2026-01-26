@@ -1,13 +1,19 @@
-FROM docker.io/library/golang:1.25
+FROM golang:1.25.6-alpine3.23 AS builder
 
-WORKDIR /usr/src/myapp
+WORKDIR /chat
 
-COPY src/go.mod src/go.sum ./
+COPY ./go.mod ./go.sum ./
 
 RUN go mod download
 
-COPY src/ .
+COPY ./src/ ./src/
 
-RUN go build -o /usr/local/bin/chat .
+RUN go build -o /usr/local/bin/chat ./src/
 
-ENTRYPOINT ["chat"]
+FROM alpine:3.23
+
+COPY --from=builder /usr/local/bin/chat /usr/local/bin/chat
+
+EXPOSE 3003
+
+ENTRYPOINT [ "chat" ]
