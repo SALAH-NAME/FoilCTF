@@ -1,4 +1,4 @@
-import { pgTable, serial, text, foreignKey, varchar, timestamp, integer, check, json, boolean, primaryKey } from "drizzle-orm/pg-core"
+import { pgTable, serial, text, check, integer, json, foreignKey, varchar, timestamp, boolean, primaryKey } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
@@ -7,29 +7,6 @@ export const profiles = pgTable("profiles", {
 	id: serial().primaryKey().notNull(),
 	name: text().notNull(),
 	image: text(),
-});
-
-export const users = pgTable("users", {
-	id: varchar({ length: 64 }).primaryKey().notNull(),
-	password: varchar({ length: 64 }).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-	bannedUntil: timestamp("banned_until", { mode: 'string' }),
-	profileId: integer("profile_id"),
-	email: text(),
-	username: text(),
-	avatar: text(),
-}, (table) => [
-	foreignKey({
-			columns: [table.profileId],
-			foreignColumns: [profiles.id],
-			name: "profile"
-		}),
-]);
-
-export const sessions = pgTable("sessions", {
-	id: serial().primaryKey().notNull(),
-	token: text().notNull(),
-	expiry: timestamp({ mode: 'string' }).notNull(),
 });
 
 export const ctfs = pgTable("ctfs", {
@@ -73,6 +50,20 @@ export const attachments = pgTable("attachments", {
 	id: serial().primaryKey().notNull(),
 	contents: json().notNull(),
 });
+
+export const sessions = pgTable("sessions", {
+	id: serial().primaryKey().notNull(),
+	refreshtoken: text().notNull(),
+	expiry: timestamp({ mode: 'string' }).notNull(),
+	userId: varchar("user_id", { length: 64 }).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "fk_id"
+		}).onDelete("cascade"),
+]);
 
 export const challenges = pgTable("challenges", {
 	id: serial().primaryKey().notNull(),
@@ -145,6 +136,23 @@ export const reports = pgTable("reports", {
 			columns: [table.issuerId],
 			foreignColumns: [users.id],
 			name: "constraint_issuer"
+		}),
+]);
+
+export const users = pgTable("users", {
+	id: varchar({ length: 64 }).primaryKey().notNull(),
+	password: varchar({ length: 64 }).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	bannedUntil: timestamp("banned_until", { mode: 'string' }),
+	profileId: integer("profile_id"),
+	email: text(),
+	username: text(),
+	avatar: text(),
+}, (table) => [
+	foreignKey({
+			columns: [table.profileId],
+			foreignColumns: [profiles.id],
+			name: "profile"
 		}),
 ]);
 

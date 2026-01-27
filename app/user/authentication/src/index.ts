@@ -6,19 +6,13 @@ import	'dotenv/config';
 import	{ drizzle }					from 'drizzle-orm/node-postgres';
 import	{ serial }					from 'drizzle-orm/pg-core';
 import	{ eq }						from 'drizzle-orm';
-import	{ users }					from './db/schema';
+import	{ users, sessions }				from './db/schema';
 import	{ db}						from './utils/db';
-import	{ User, Post, AuthRequest}			from './utils/types';
-
-import	{	AccessTokenSecret,
-		RefreshTokenSecret,
-		PORT,
-		AccessTokenExpirationTime}		from './utils/env';
-
+import	{ User, AuthRequest, Session }			from './utils/types';
+import	{ RefreshTokenSecret, PORT}			from './utils/env';
 import	{	authenticateToken,
 		generateAccessToken,
 		validateUserInput,
-		generateRandom,
 		generateID}				from './utils/utils';
 
 let	refreshTokens: string[] = [];
@@ -67,8 +61,14 @@ app.post('/api/auth/login', async (req: AuthRequest, res: Response) => {
 	try {
 		const	passwordIsValid = await bcrypt.compare(password, user.password);
 		if (passwordIsValid) {
-			const	accessToken	= generateAccessToken(user.username as any);
-			const	refreshToken	= jwt.sign(user, RefreshTokenSecret);
+			const	accessToken		= generateAccessToken(user.username as any);
+			const	refreshToken		= jwt.sign(user, RefreshTokenSecret);
+			const	session: Session	= {
+					refreshtoken:	refreshToken,
+					expiry:		"2026-12-31",
+					userId:		user.id,
+					}
+			await db.insert(sessions).values(session);
 			res.json({ accessToken: accessToken, refreshToken: refreshToken});
 		}
 		else {
@@ -82,13 +82,15 @@ app.post('/api/auth/login', async (req: AuthRequest, res: Response) => {
 	}
 })
 
-app.post('/api/auth/refresh', (req: AuthRequest, res: Response) => {
+app.post('/api/auth/refresh', async (req: AuthRequest, res: Response) => {
 	const	refreshToken = req.body.token;
 	if (refreshToken === undefined) {
 		res.sendStatus(401);
 	}
-	if (!refreshTokens.includes(refreshToken)) {
+	const	[obj] = await db.select().from(sessions).where(eq(sessions.refreshtoken, refreshToken));
+	if (obj === undefined) { // gotta check why it does not enter this if !!!
 		res.sendStatus(403);
+		return ;
 	}
 	jwt.verify(refreshToken, RefreshTokenSecret,
 		((err: VerifyErrors | null, payload?: JwtPayload | string | undefined) => {
@@ -102,16 +104,18 @@ app.post('/api/auth/refresh', (req: AuthRequest, res: Response) => {
 	}) satisfies VerifyCallback)
 })
 
-app.delete('/api/auth/logout', (req: AuthRequest, res: Response) => {
-	if (req.body.token === undefined) {
+app.delete('/api/auth/logout', async (req: AuthRequest, res: Response) => {
+	const	refreshToken = req.body.token;
+	if (refreshToken === undefined) {
 		res.status(400).send();
 		return;
 	}
-	if (!refreshTokens.includes(req.body.token)) {
+	const	[obj] = await db.select().from(sessions).where(eq(sessions.refreshtoken, refreshToken));
+	if (obj === undefined) {
 		res.status(400).send();
 		return ;
 	}
-	refreshTokens = refreshTokens.filter(token => token !== req.body.token);
+	await db.delete(sessions).where(eq(sessions.refreshtoken, refreshToken));
 	res.sendStatus(204);
 	return ;
 })

@@ -1,6 +1,6 @@
 
 import	jwt, {VerifyErrors, VerifyCallback, JwtPayload}	from 'jsonwebtoken';
-import	express, { Request, Response, NextFunction }	from 'express';
+import	express, { Response, NextFunction }		from 'express';
 import	{ User, AuthRequest}				from './types';
 import	{ AccessTokenSecret, AccessTokenExpirationTime}	from './env';
 import	* as zod					from 'zod';
@@ -15,7 +15,7 @@ export	function generateAccessToken(username: string) : string {
 export	function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) : void {
 	const	authHeader = req.get('authorization');
 	if (authHeader === undefined) {
-		res.sendStatus(400); // bad request
+		res.sendStatus(400);
 		return ;
 	}
 	const	[bearer, token]	= authHeader.split(' ');
@@ -67,9 +67,9 @@ export	function	generateRandom(min: number, max: number) {
 }
 
 export	function	generateID(length: number) {
-	let result           = '';
-	let characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-	let charactersLength = characters.length;
+	let	result           = '';
+	let	characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+	let	charactersLength = characters.length;
 	for (let i = 0; i < length; i++ ) {
 		result += characters.charAt(Math.floor(Math.random() * charactersLength));
 	}
