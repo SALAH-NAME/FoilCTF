@@ -7,6 +7,7 @@ import	validator					from 'email-validator';
 import	* as zod					from 'zod';
 import	{ db}						from './db';
 import	{ users}					from '../db/schema';
+import	{ eq }						from 'drizzle-orm';
 
 export	function generateAccessToken(username: string) : string {
 	return jwt.sign({ username: username }, AccessTokenSecret, { expiresIn: AccessTokenExpirationTime as any});
@@ -38,28 +39,31 @@ export	async function	validateUserInput(req: AuthRequest): Promise<number> {
 	if (req.body === undefined)
 		return (400);
 
-	const	allValid = [req.body.username, req.body.email, req.body.password].every(input => input !== undefined);
-	if (!allValid)
+	const	username	= req.body.username;
+	const	email		= req.body.email;
+	const	password	= req.body.password;
+	const	userInfos = [username, email, password];
+	if (!userInfos.every(info => info !== undefined))
 		return (400);
 
 	const	usernameSchema = zod.string().min(4).max(15).regex(/^[a-zA-Z0-9_]/);
 	try {
-		usernameSchema.parse(req.body.username); // validate username
+		usernameSchema.parse(username); // validate username
 	} catch {
 		return (400);
 	}
 
-	if (!validator.validate(req.body.email)) { // validate email
+	if (!validator.validate(email)) { // validate email
 		return 400;
 	}
 
-	if (req.body.password.length < 12) { // enough??
+	if (password.length < 12) { // enough??
 		return 400;
 	}
-	const	insertedUsers = await db.select().from(users);
-	if (insertedUsers.find(user => user.email === req.body.email || user.username === req.body.username)) { // validate unicity
-		return 409;
-	}
+	const   [user] = await db.select().from(users).where(eq(users.username, username)); // validate unicity
+        if (user !== undefined) {
+                return (409);
+        }
 	return (0);
 }
 

@@ -2,18 +2,24 @@
 import	express, {Request, Response, NextFunction}	from 'express';
 import	bcrypt						from 'bcrypt';
 import	jwt, {VerifyErrors, VerifyCallback, JwtPayload}	from 'jsonwebtoken';
-import	{ AccessTokenSecret, RefreshTokenSecret, PORT}	from './utils/env';
-import	{ AccessTokenExpirationTime}			from './utils/env';
-import	{ User, Post, AuthRequest}			from './utils/types';
-import	{ authenticateToken, generateAccessToken}	from './utils/utils';
-import	{ validateUserInput}				from './utils/utils';
-import	{ generateRandom, generateID}			from './utils/utils';
 import	'dotenv/config';
 import	{ drizzle }					from 'drizzle-orm/node-postgres';
 import	{ serial }					from 'drizzle-orm/pg-core';
 import	{ eq }						from 'drizzle-orm';
 import	{ users }					from './db/schema';
 import	{ db}						from './utils/db';
+import	{ User, Post, AuthRequest}			from './utils/types';
+
+import	{	AccessTokenSecret,
+		RefreshTokenSecret,
+		PORT,
+		AccessTokenExpirationTime}		from './utils/env';
+
+import	{	authenticateToken,
+		generateAccessToken,
+		validateUserInput,
+		generateRandom,
+		generateID}				from './utils/utils';
 
 let	refreshTokens: string[] = [];
 
@@ -23,9 +29,9 @@ app.use(express.json());
 
 app.post('/api/auth/register', async (req: AuthRequest, res: Response) => {
 	try {
-		const	userInput = await validateUserInput(req);
-		if (userInput) {
-			res.sendStatus(userInput);
+		const	userInputStatus = await validateUserInput(req);
+		if (userInputStatus) {
+			res.sendStatus(userInputStatus);
 			return ;
 		}
 		const	salt		= await bcrypt.genSalt();
@@ -48,10 +54,11 @@ app.post('/api/auth/register', async (req: AuthRequest, res: Response) => {
 app.post('/api/auth/login', async (req: AuthRequest, res: Response) => {
 	if (req.body === undefined)
 		res.sendStatus(400);
-	const	reqUsername = req.body.username;
-	if (reqUsername === undefined)
+	const	username = req.body.username;
+	const	password = req.body.password;
+	if (username === undefined || password === undefined)
 		res.sendStatus(400);
-	const	result = await db.select().from(users).where(eq(users.username, reqUsername));
+	const	result = await db.select().from(users).where(eq(users.username, username));
 	console.log('Getting user from the database: ', result);
 	const	user = result[0]; // unicity!! is it enough to only check in registration??
 	if (user == null) {
@@ -59,7 +66,7 @@ app.post('/api/auth/login', async (req: AuthRequest, res: Response) => {
 		return ;
 	}
 	try {
-		if (await bcrypt.compare(req.body.password, user.password)) {
+		if (await bcrypt.compare(password, user.password)) {
 			const	accessToken	= generateAccessToken(user.username as any);
 			const	refreshToken	= jwt.sign(user, RefreshTokenSecret);
 			res.json({ accessToken: accessToken, refreshToken: refreshToken});
