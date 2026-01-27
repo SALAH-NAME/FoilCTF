@@ -11,7 +11,7 @@ func DbInit() *gorm.DB {
 	dbHost 	 := GetEnv("DB_HOST", "localhost")
 	dbUser 	 := GetEnv("DB_USER", "postgres")
 	dbPass 	 := GetEnv("DB_PASS", "pass12345678")
-	dbName 	 := GetEnv("DB_NAME", "foil_ctf")
+	dbName 	 := GetEnv("DB_NAME", "foilctf")
 	dbPort	 := GetEnv("DB_PORT", "5432")
 
 	dns := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", dbHost, dbUser, dbPass, dbName, dbPort)

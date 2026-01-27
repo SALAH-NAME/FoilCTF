@@ -17,6 +17,7 @@ type NotificationResponse struct {
 type UserNotification struct {
 	NotificationID	int 	`gorm:"primaryKey"`
 	NotifiedID		string	`gorm:"primaryKey"`
+	IsDismissed		bool	`gorm:"column:is_dismissed"`
 }
 
 type WsEvent struct {
