@@ -1,0 +1,3 @@
+ALTER TABLE notification_users
+ADD COLUMN is_dismissed BOOLEAN DEFAULT FALSE NOT NULL
+
