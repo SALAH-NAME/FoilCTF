@@ -46,7 +46,8 @@ app.post('/api/auth/register', async (req: AuthRequest, res: Response) => {
 		console.log('New user created!');
 		res.sendStatus(201);
 	}
-	catch {
+	catch (err) {
+		console.error(err);
 		res.sendStatus(500);
 	}
 });
@@ -58,15 +59,14 @@ app.post('/api/auth/login', async (req: AuthRequest, res: Response) => {
 	const	password = req.body.password;
 	if (username === undefined || password === undefined)
 		res.sendStatus(400);
-	const	result = await db.select().from(users).where(eq(users.username, username));
-	console.log('Getting user from the database: ', result);
-	const	user = result[0]; // unicity!! is it enough to only check in registration??
-	if (user == null) {
+	const	[user] = await db.select().from(users).where(eq(users.username, username));
+	if (user === undefined) {
 		res.sendStatus(400);
 		return ;
 	}
 	try {
-		if (await bcrypt.compare(password, user.password)) {
+		const	passwordIsValid = await bcrypt.compare(password, user.password);
+		if (passwordIsValid) {
 			const	accessToken	= generateAccessToken(user.username as any);
 			const	refreshToken	= jwt.sign(user, RefreshTokenSecret);
 			res.json({ accessToken: accessToken, refreshToken: refreshToken});
@@ -76,15 +76,15 @@ app.post('/api/auth/login', async (req: AuthRequest, res: Response) => {
 			return ;
 		}
 	}
-	catch {
+	catch (err) {
+		console.error(err);
 		res.sendStatus(500);
-		return ;
 	}
 })
 
 app.post('/api/auth/refresh', (req: AuthRequest, res: Response) => {
 	const	refreshToken = req.body.token;
-	if (refreshToken == null) {
+	if (refreshToken === undefined) {
 		res.sendStatus(401);
 	}
 	if (!refreshTokens.includes(refreshToken)) {

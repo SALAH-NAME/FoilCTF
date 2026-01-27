@@ -3,7 +3,6 @@ import	jwt, {VerifyErrors, VerifyCallback, JwtPayload}	from 'jsonwebtoken';
 import	express, { Request, Response, NextFunction }	from 'express';
 import	{ User, AuthRequest}				from './types';
 import	{ AccessTokenSecret, AccessTokenExpirationTime}	from './env';
-import	validator					from 'email-validator';
 import	* as zod					from 'zod';
 import	{ db}						from './db';
 import	{ users}					from '../db/schema';
@@ -42,23 +41,18 @@ export	async function	validateUserInput(req: AuthRequest): Promise<number> {
 	const	username	= req.body.username;
 	const	email		= req.body.email;
 	const	password	= req.body.password;
-	const	userInfos = [username, email, password];
-	if (!userInfos.every(info => info !== undefined))
+	if (![username, email, password].every(info => info !== undefined))
 		return (400);
 
-	const	usernameSchema = zod.string().min(4).max(15).regex(/^[a-zA-Z0-9_]/);
+	const	usernameSchema	= zod.string().min(4).max(15).regex(/^[a-zA-Z0-9_]+$/);
+	const	emailSchema	= zod.email();
+	const	passwordSchema	= zod.string().min(12);
 	try {
-		usernameSchema.parse(username); // validate username
+		usernameSchema.parse(username);	// validate username
+		emailSchema.parse(email);	// validate email
+		passwordSchema.parse(password);	// validate password
 	} catch {
 		return (400);
-	}
-
-	if (!validator.validate(email)) { // validate email
-		return 400;
-	}
-
-	if (password.length < 12) { // enough??
-		return 400;
 	}
 	const   [user] = await db.select().from(users).where(eq(users.username, username)); // validate unicity
         if (user !== undefined) {
