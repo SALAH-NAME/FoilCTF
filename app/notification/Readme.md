@@ -73,7 +73,7 @@ wscat -c ws://localhost:3004/api/notifications/ws -H "X-User-Id: 123"
 - Triggering a global notification:  
 Use this testing endpoint to simulate a new event, this will save the notification to PostgrSQL and broadcast it to all connected websocket clients.
 ```bash
-curl -X POST http://localhost:3004/api/test/create \
+curl -X POST -H "X-User-Id: admin_123" http://localhost:3004/api/test/create \
      -H "Content-Type: application/json" \
      -d '{
            "type": "announcement",
@@ -81,7 +81,6 @@ curl -X POST http://localhost:3004/api/test/create \
            "message": "Web security level 1 is now open!",
            "link": "/challenges/web-1"
          }'
-Notification created and broadcasted !
 ```
 - Managing personal notifications:  
 These endpoints require an ```X-User-Id``` header to identify which user is performing the action.  
