@@ -21,7 +21,7 @@ let	refreshTokens: string[] = [];
 const	app = express();
 app.use(express.json());
 
-app.post('/register', async (req: AuthRequest, res: Response) => {
+app.post('/api/auth/register', async (req: AuthRequest, res: Response) => {
 	try {
 		const	userInput = await validateUserInput(req);
 		if (userInput) {
@@ -45,7 +45,7 @@ app.post('/register', async (req: AuthRequest, res: Response) => {
 	}
 });
 
-app.post('/login', async (req: AuthRequest, res: Response) => {
+app.post('/api/auth/login', async (req: AuthRequest, res: Response) => {
 	if (req.body === undefined)
 		res.sendStatus(400);
 	const	reqUsername = req.body.username;
@@ -75,7 +75,7 @@ app.post('/login', async (req: AuthRequest, res: Response) => {
 	}
 })
 
-app.post('/token', (req: AuthRequest, res: Response) => {
+app.post('/api/auth/refresh', (req: AuthRequest, res: Response) => {
 	const	refreshToken = req.body.token;
 	if (refreshToken == null) {
 		res.sendStatus(401);
@@ -95,7 +95,7 @@ app.post('/token', (req: AuthRequest, res: Response) => {
 	}) satisfies VerifyCallback)
 })
 
-app.delete('/logout', (req: AuthRequest, res: Response) => {
+app.delete('/api/auth/logout', (req: AuthRequest, res: Response) => {
 	if (req.body.token === undefined) {
 		res.status(400).send();
 		return;

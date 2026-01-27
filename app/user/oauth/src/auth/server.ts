@@ -30,32 +30,32 @@ export	class Server {
         };
 
         private setupRoutes() {
-                this.app.get('/', (req: Request, res: Response): void => {
+                this.app.get('/api/auth', (req: Request, res: Response): void => { // home page demo
                         res.sendFile(path.join(__dirname, '../../public/home.html'));
                 });
 
-                this.app.get('/auth/42',
+                this.app.get('/api/auth/oauth/42',
                         passport.authenticate('42')
                 );
 
-                this.app.get('/auth/42/callback',
+                this.app.get('/api/auth/oauth/42/portal',
                         passport.authenticate('42', {
                                 successRedirect: '/private',
                                 failureRedirect: '/auth/failure',
                         })
                 );
 
-                this.app.get('/auth/failure', (req: Request, res: Response): void => {
+                this.app.get('/api/auth/oauth/failure', (req: Request, res: Response): void => {
                         res.send('Something went wrong..');
                 });
 
-                this.app.get('/private', isLoggedIn, (req: Request, res: Response): void => {
+                this.app.get('/api/auth/oauth/private', isLoggedIn, (req: Request, res: Response): void => {
                         res.send(`Hello ${req.user?.displayname ?? "GUEST"}
                                  <br><a href="/logout">logout?</a>`); // button maybe?
                                                                       // to exec logout func
                 });
 
-                this.app.get('/logout', (req: Request, res: Response) => {
+                this.app.get('/api/auth/oauth/logout', (req: Request, res: Response) => {
                         req.logout((err): void => {
                                 if (err) {
                                         res.status(500).send('Error loggin out');
