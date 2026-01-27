@@ -1,4 +1,4 @@
-#User Authentication
+# User Authentication
 
 An authentication service built with TypeScript, Express, and JWT.
 Provides secure user registration, login, token refreshing and logout.
@@ -28,10 +28,10 @@ export interface User {
 
 ## API EndPoints
 
-- POST /register
-- POST /login
-- POST /token
-- DELETE /logout
+- POST /api/auth/register
+- POST /api/auth/login
+- POST /api/auth/refresh
+- DELETE /api/auth/logout
 
 ## Authentication Flow
 
@@ -41,5 +41,4 @@ export interface User {
 4. Client stores token
 5. Token is sent in Authorization header
 6. Protected routes validate token via middleware
-
 
