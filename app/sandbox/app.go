@@ -13,8 +13,8 @@ import (
 )
 
 type App struct {
-	server			*fiber.App
-	serverAddr	string
+	server     *fiber.App
+	serverAddr string
 
 	podman   context.Context
 	database *sql.DB
@@ -78,9 +78,9 @@ func (app *App) Init() error {
 
 	app.server = fiber.New(fiber.Config{
 		CaseSensitive: true,
-		BodyLimit: 4 * 1024 * 1024,
+		BodyLimit:     4 * 1024 * 1024,
 
-		ReadBufferSize: 16 * 1024,
+		ReadBufferSize:  16 * 1024,
 		WriteBufferSize: 4 * 1024,
 	})
 	app.server.RegisterCustomConstraint(&Constraint_Identifier{})

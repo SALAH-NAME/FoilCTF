@@ -59,22 +59,8 @@ func Route_Image_Create(app *App) Route {
 	return Route{pattern, methods, handler}
 }
 
-func Route_Image_List(app *App) Route {
-	pattern := "/"
-	methods := []string{fiber.MethodGet}
-	handler := func(c fiber.Ctx) error {
-		images, err := Podman_Image_List(app.podman)
-		if err != nil {
-			log.Printf("images listing failed due to %v", err)
-			return c.SendStatus(fiber.StatusInternalServerError)
-		}
-		return c.Status(fiber.StatusOK).JSON(fiber.Map{"images": images})
-	}
-	return Route{pattern, methods, handler}
-}
-
 func Route_Image_Build(app *App) Route {
-	pattern := "/:Name<identifier>/build"
+	pattern := "/images/:Name<identifier>/build"
 	methods := []string{fiber.MethodPost}
 	handler := func(c fiber.Ctx) error {
 		imageName := c.Params("Name")
@@ -90,8 +76,8 @@ func Route_Image_Build(app *App) Route {
 		}
 
 		var buildOptions BuildOptions
-		buildOptions.ContainerFiles = []string{filepath.Join(imagePath, "Containerfile")}
 		buildOptions.ContextDirectory = imagePath
+		buildOptions.ContainerFiles = []string{filepath.Join(imagePath, "Containerfile")}
 		buildOptions.Name = imageName
 
 		image, err := Podman_Image_Build(app.podman, buildOptions)
@@ -101,6 +87,20 @@ func Route_Image_Build(app *App) Route {
 		}
 
 		return c.Status(fiber.StatusCreated).JSON(*image)
+	}
+	return Route{pattern, methods, handler}
+}
+
+func Route_Image_List(app *App) Route {
+	pattern := "/"
+	methods := []string{fiber.MethodGet}
+	handler := func(c fiber.Ctx) error {
+		images, err := Podman_Image_List(app.podman)
+		if err != nil {
+			log.Printf("images listing failed due to %v", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{"images": images})
 	}
 	return Route{pattern, methods, handler}
 }
