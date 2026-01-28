@@ -2,8 +2,9 @@ package service
 
 import (
 	"log"
-	"notification-service/model"
 	"time"
+
+	"kodaic.ma/notification/model"
 )
 
 func HandleJoin(hub *Hub, client *Client) {
@@ -15,7 +16,6 @@ func HandleJoin(hub *Hub, client *Client) {
 
 func HandleUnjoin(hub *Hub, client *Client) {
 	client.Connection.Close()
-	close(client.Send)
 	hub.Mutex.Lock()
 	delete(hub.Clients, client)
 	hub.Mutex.Unlock()
@@ -23,44 +23,39 @@ func HandleUnjoin(hub *Hub, client *Client) {
 }
 
 func HandleWsEvent(hub *Hub, eventws *model.WsEvent) {
-	switch eventws.Event{
-		case "new":
-			BroadcastNotification(hub, eventws)
-		case "read", "read_all", "delete", "delete_all":
-			SendToUser(hub, eventws)
+	switch eventws.Event {
+	case "new":
+		BroadcastNotification(hub, eventws)
+	case "read", "read_all", "delete", "delete_all":
+		SendToUser(hub, eventws)
 	}
 }
 
-
 func BroadcastNotification(hub *Hub, eventws *model.WsEvent) {
 	hub.Mutex.Lock()
-	defer func() {
-		hub.Mutex.Unlock()
-	}()
+	defer hub.Mutex.Unlock()
 	for client := range hub.Clients {
 		go SendToClient(hub, client, *eventws)
 	}
 }
 
-func SendToClient(hub *Hub, client *Client , ev model.WsEvent) {
+func SendToClient(hub *Hub, client *Client, ev model.WsEvent) {
 	select {
-	case client.Send <- ev:			 
+	case client.Send <- ev:
 	case <-time.After(hub.Conf.BroadcastTimeout):
-	{
-		log.Printf("userid %s timed out, disconnecting", client.ID)
-		hub.UnregisterChan <- client
-	}
+		{
+			log.Printf("userid %s timed out, disconnecting", client.ID)
+			hub.UnregisterChan <- client
+		}
 	}
 }
 
 func SendToUser(hub *Hub, eventws *model.WsEvent) {
 	hub.Mutex.Lock()
-	defer func() {
-		hub.Mutex.Unlock()
-	}()
+	defer hub.Mutex.Unlock()
 	for client := range hub.Clients {
-		if(client.ID == eventws.TargetID) {
-			go SendToClient(hub,client, *eventws )
+		if client.ID == eventws.TargetID {
+			go SendToClient(hub, client, *eventws)
 		}
 	}
 }

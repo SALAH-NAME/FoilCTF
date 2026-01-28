@@ -3,16 +3,17 @@ package service
 import (
 	"encoding/json"
 	"log"
-	"notification-service/model"
 	"time"
+
+	"kodaic.ma/notification/model"
 )
 
-func (hub *Hub) CreateNotification(ntype, title, message, link string) error{
+func (hub *Hub) CreateNotification(ntype, title, message, link string) error {
 	content := map[string]string{
-		"type": ntype,
-		"title": title,
-		"message":message,
-		"link":link,
+		"type":    ntype,
+		"title":   title,
+		"message": message,
+		"link":    link,
 	}
 	contentJSON, err := json.Marshal(content)
 	if err != nil {
@@ -21,23 +22,25 @@ func (hub *Hub) CreateNotification(ntype, title, message, link string) error{
 	}
 	notification := model.Notification{
 		CreatedAt: time.Now(),
-		Contents: contentJSON,
+		Contents:  contentJSON,
 	}
-	if err := hub.Db.Table("notifications").Create(&notification).Error ; err != nil {
-		log.Printf("Error saving notification into database %v", err)
-		return err
+	result := hub.Db.Table("notifications").Create(&notification)
+
+	if result.Error != nil {
+		log.Printf("Error saving notification into database %v", result.Error)
+		return result.Error
 	}
 
-	hub.GlobalChan <-model.WsEvent{
+	hub.GlobalChan <- model.WsEvent{
 		Event: "new",
 		Payload: map[string]any{
-			"id" : notification.ID,
-			"type" : ntype,
-			"title": title,
-			"message": message,
-			"link":link,
-			"is_read":false,
-			"created_at":notification.CreatedAt,
+			"id":         notification.ID,
+			"type":       ntype,
+			"title":      title,
+			"message":    message,
+			"link":       link,
+			"is_read":    false,
+			"created_at": notification.CreatedAt,
 		},
 	}
 	log.Printf("Successfully created notification with ID: %d", notification.ID)

@@ -1,15 +1,20 @@
 package main
 
 import (
-	"notification-service/config"
-	"notification-service/service"
 	"log"
+
+	"kodaic.ma/notification/config"
+	"kodaic.ma/notification/service"
 )
-func main () {
+
+func main() {
 
 	db_conf := config.NewDefaultConfig()
 
-	db := config.DbInit()
+	db, err := config.DbInit()
+	if err != nil {
+		log.Fatalf("DATABASE ERROR: %v", err)
+	}
 	hub := service.NewHub(db, db_conf)
 	go hub.TrackChannels()
 
@@ -19,6 +24,6 @@ func main () {
 	log.Printf("Notification Service Started On Port: %s !", port)
 
 	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("SERVER ERROR: Failed to start the server: %v" , err)
+		log.Fatalf("SERVER ERROR: Failed to start the server: %v", err)
 	}
 }

@@ -1,13 +1,13 @@
 package service
 
 import (
-	"net/http"
-	"github.com/gorilla/mux"
 	"context"
+	"github.com/gorilla/mux"
 	"log"
+	"net/http"
 )
 
-func (hub *Hub)RegisterRoutes() http.Handler {
+func (hub *Hub) RegisterRoutes() http.Handler {
 	r := mux.NewRouter()
 	r.Use(AuthMiddleware)
 
@@ -18,7 +18,6 @@ func (hub *Hub)RegisterRoutes() http.Handler {
 
 	r.HandleFunc("/api/notifications/{id:[0-9]+}", hub.HandleReadSingle).Methods("PATCH")
 	r.HandleFunc("/api/notifications/{id:[0-9]+}", hub.HandleDeleteSingle).Methods("DELETE")
-
 
 	// for testing
 	r.HandleFunc("/api/test/create", hub.Test).Methods("POST")
@@ -31,10 +30,10 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID := r.Header.Get("X-User-Id")
 		userRole := r.Header.Get("X-User-Role")
-		
+
 		if userID == "" {
 			log.Printf("Unauthorazed :X-User-Id required")
-			JSONError(w, "Unauthorazed :X-User-Id required" , http.StatusUnauthorized)
+			JSONError(w, "Unauthorazed :X-User-Id required", http.StatusUnauthorized)
 			return
 		}
 		ctx := context.WithValue(r.Context(), "userID", userID)

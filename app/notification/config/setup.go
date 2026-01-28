@@ -6,12 +6,11 @@ import (
 	"time"
 )
 
-
 type Config struct {
-	GlobalBuffer     	int
-	ClientBuffer     	int
-	RegisterBuffer   	int
-	BroadcastTimeout	time.Duration
+	GlobalBuffer     int
+	ClientBuffer     int
+	RegisterBuffer   int
+	BroadcastTimeout time.Duration
 }
 
 func NewDefaultConfig() *Config {
@@ -34,7 +33,7 @@ func NewServer(router http.Handler) (*http.Server, string) {
 	port := GetEnv("PORT", "3004")
 
 	return &http.Server{
-		Addr: ":" + port,
+		Addr:    ":" + port,
 		Handler: router,
 	}, port
 }

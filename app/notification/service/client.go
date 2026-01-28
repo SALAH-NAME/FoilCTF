@@ -1,26 +1,27 @@
 package service
 
 import (
-	"github.com/gorilla/websocket"
-	"notification-service/model"
 	"log"
+
+	"github.com/gorilla/websocket"
+	"kodaic.ma/notification/model"
 )
+
 type Client struct {
-	ID			string
-	Role        string
-	Connection	*websocket.Conn
-	Send		chan model.WsEvent
-	Hub			*Hub
-	
+	ID         string
+	Role       string
+	Connection *websocket.Conn
+	Send       chan model.WsEvent
+	Hub        *Hub
 }
 
-func NewClient(id string, role string, conn *websocket.Conn, hub *Hub) *Client{
+func NewClient(id string, role string, conn *websocket.Conn, hub *Hub) *Client {
 	return &Client{
-		ID: id,
-		Role: role,
+		ID:         id,
+		Role:       role,
 		Connection: conn,
-		Send: make(chan model.WsEvent, hub.Conf.ClientBuffer),
-		Hub: hub,
+		Send:       make(chan model.WsEvent, hub.Conf.ClientBuffer),
+		Hub:        hub,
 	}
 }
 
@@ -29,9 +30,9 @@ func (client *Client) WriteToConnectionTunnel() {
 		client.Hub.UnregisterChan <- client
 	}()
 	for event := range client.Send {
-		if err := client.Connection.WriteJSON(event) ; err != nil {
+		if err := client.Connection.WriteJSON(event); err != nil {
 			log.Printf("ERROR: userID: %s failed to receive data due to: %v", client.ID, err)
-			return	
+			return
 		}
 	}
 }

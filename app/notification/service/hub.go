@@ -1,35 +1,36 @@
 package service
 
 import (
-	"notification-service/model"
-	"notification-service/config"
-	"sync"
-	"gorm.io/gorm"
-	"github.com/gorilla/websocket"
-	"net/http"
 	"log"
+	"net/http"
+	"sync"
+
+	"github.com/gorilla/websocket"
+	"gorm.io/gorm"
+	"kodaic.ma/notification/config"
+	"kodaic.ma/notification/model"
 )
 
 type Hub struct {
-	Db					*gorm.DB
-	Clients				map[*Client]bool
-	GlobalChan		chan model.WsEvent
-	Conf				*config.Config
-	RegisterChan		chan *Client
-	UnregisterChan		chan *Client
-	Mutex          		sync.Mutex
-	Upgrader       		websocket.Upgrader
+	Db             *gorm.DB
+	Clients        map[*Client]bool
+	GlobalChan     chan model.WsEvent
+	Conf           *config.Config
+	RegisterChan   chan *Client
+	UnregisterChan chan *Client
+	Mutex          sync.Mutex
+	Upgrader       websocket.Upgrader
 }
 
 func NewHub(db *gorm.DB, conf *config.Config) *Hub {
 	return &Hub{
-		Db: 			db,
-		Clients: 		make(map[*Client]bool),
-		Conf: 			conf,
-		GlobalChan: 	make(chan model.WsEvent, conf.GlobalBuffer),
-		RegisterChan: 	make(chan *Client, conf.RegisterBuffer),
+		Db:             db,
+		Clients:        make(map[*Client]bool),
+		Conf:           conf,
+		GlobalChan:     make(chan model.WsEvent, conf.GlobalBuffer),
+		RegisterChan:   make(chan *Client, conf.RegisterBuffer),
 		UnregisterChan: make(chan *Client, conf.RegisterBuffer),
-		Upgrader: 		websocket.Upgrader{
+		Upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true
 			},
@@ -37,24 +38,27 @@ func NewHub(db *gorm.DB, conf *config.Config) *Hub {
 	}
 }
 
-func (hub *Hub)TrackChannels() {
+func (hub *Hub) TrackChannels() {
 	for {
 		select {
-			case eventws, ok := <- hub.GlobalChan: {
+		case eventws, ok := <-hub.GlobalChan:
+			{
 				if !ok {
 					log.Print("Global event channel closed")
 					return
 				}
 				HandleWsEvent(hub, &eventws)
 			}
-			case client, ok := <- hub.RegisterChan: {
+		case client, ok := <-hub.RegisterChan:
+			{
 				if !ok {
 					log.Print("Register channel closed")
 					return
 				}
 				HandleJoin(hub, client)
 			}
-			case client, ok:= <- hub.UnregisterChan: {
+		case client, ok := <-hub.UnregisterChan:
+			{
 				if !ok {
 					log.Print("Unegister channel closed")
 					return
