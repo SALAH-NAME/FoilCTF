@@ -14,7 +14,7 @@ type Route struct {
 
 func MakeRoutes(app *App) (routes, containers, images []Route) {
 	routes = append(routes, Route_Image_Create(app))
-	routes = append(images, Route_Image_Build(app))
+	routes = append(routes, Route_Image_Build(app))
 	routes = append(routes, Route_Container_Create(app))
 
 	images = append(images, Route_Image_List(app))
