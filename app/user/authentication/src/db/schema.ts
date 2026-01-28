@@ -1,4 +1,4 @@
-import { pgTable, serial, text, check, integer, json, foreignKey, varchar, timestamp, boolean, primaryKey } from "drizzle-orm/pg-core"
+import { pgTable, serial, text, foreignKey, timestamp, varchar, check, integer, json, boolean, primaryKey } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
@@ -8,6 +8,21 @@ export const profiles = pgTable("profiles", {
 	name: text().notNull(),
 	image: text(),
 });
+
+export const sessions = pgTable("sessions", {
+	id: serial().primaryKey().notNull(),
+	refreshtoken: text().notNull(),
+	expiry: timestamp({ mode: 'string' }).notNull(),
+	accesstoken: text().notNull(),
+	userId: varchar("user_id", { length: 64 }).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "fk_id"
+		}).onDelete("cascade"),
+]);
 
 export const ctfs = pgTable("ctfs", {
 	id: serial().primaryKey().notNull(),
@@ -50,20 +65,6 @@ export const attachments = pgTable("attachments", {
 	id: serial().primaryKey().notNull(),
 	contents: json().notNull(),
 });
-
-export const sessions = pgTable("sessions", {
-	id: serial().primaryKey().notNull(),
-	refreshtoken: text().notNull(),
-	expiry: timestamp({ mode: 'string' }).notNull(),
-	userId: varchar("user_id", { length: 64 }).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
-}, (table) => [
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "fk_id"
-		}).onDelete("cascade"),
-]);
 
 export const challenges = pgTable("challenges", {
 	id: serial().primaryKey().notNull(),

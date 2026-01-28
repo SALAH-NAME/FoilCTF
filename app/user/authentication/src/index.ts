@@ -15,8 +15,6 @@ import	{	authenticateToken,
 		validateUserInput,
 		generateID}				from './utils/utils';
 
-let	refreshTokens: string[] = [];
-
 
 const	app = express();
 app.use(express.json());
@@ -64,8 +62,9 @@ app.post('/api/auth/login', async (req: AuthRequest, res: Response) => {
 			const	accessToken		= generateAccessToken(user.username as any);
 			const	refreshToken		= jwt.sign(user, RefreshTokenSecret);
 			const	session: Session	= {
-					refreshtoken:	refreshToken,
-					expiry:		"2026-12-31",
+					accesstoken:	accessToken, // no encryption !!
+					refreshtoken:	refreshToken, // no encryption !!
+					expiry:		"2026-12-31", // demo !!
 					userId:		user.id,
 					}
 			await db.insert(sessions).values(session);
@@ -88,10 +87,16 @@ app.post('/api/auth/refresh', async (req: AuthRequest, res: Response) => {
 		res.sendStatus(401);
 	}
 	const	[obj] = await db.select().from(sessions).where(eq(sessions.refreshtoken, refreshToken));
-	if (obj === undefined) { // gotta check why it does not enter this if !!!
+	if (obj === undefined) {
 		res.sendStatus(403);
 		return ;
 	}
+	const	[user] = await db.select().from(users).where(eq(users.id, obj.userId));
+	if (user === undefined) {
+		res.status(400).send('You\'re trynna do something fancy');
+		return ;
+	}
+	const	newAccessToken = generateAccessToken(user.username as string);
 	jwt.verify(refreshToken, RefreshTokenSecret,
 		((err: VerifyErrors | null, payload?: JwtPayload | string | undefined) => {
 		if (err) {
@@ -99,12 +104,16 @@ app.post('/api/auth/refresh', async (req: AuthRequest, res: Response) => {
 			return ;
 		}
 		req.user = payload as User;
-		const	newAccessToken = generateAccessToken(req.user.username as any);
 		res.json({ accessToken: newAccessToken });
-	}) satisfies VerifyCallback)
+	}) satisfies VerifyCallback);
+	await db.update(sessions).set({ accesstoken: newAccessToken }).where(eq(sessions.refreshtoken, refreshToken));
 })
 
 app.delete('/api/auth/logout', async (req: AuthRequest, res: Response) => {
+	if (req.body === undefined) {
+		res.status(400).send();
+		return;
+	}
 	const	refreshToken = req.body.token;
 	if (refreshToken === undefined) {
 		res.status(400).send();
@@ -116,6 +125,7 @@ app.delete('/api/auth/logout', async (req: AuthRequest, res: Response) => {
 		return ;
 	}
 	await db.delete(sessions).where(eq(sessions.refreshtoken, refreshToken));
+	console.log('user session got deleted');
 	res.sendStatus(204);
 	return ;
 })

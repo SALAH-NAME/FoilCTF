@@ -1,5 +1,26 @@
 import { relations } from "drizzle-orm/relations";
-import { ctfs, ctfOrganizers, users, profiles, teams, sessions, challenges, hints, participations, reports, teamMembers, challengesAttachments, attachments, notificationUsers, notifications, messages, ctfsChallenges } from "./schema";
+import { users, sessions, ctfs, ctfOrganizers, profiles, teams, challenges, hints, participations, reports, teamMembers, challengesAttachments, attachments, notificationUsers, notifications, messages, ctfsChallenges } from "./schema";
+
+export const sessionsRelations = relations(sessions, ({one}) => ({
+	user: one(users, {
+		fields: [sessions.userId],
+		references: [users.id]
+	}),
+}));
+
+export const usersRelations = relations(users, ({one, many}) => ({
+	sessions: many(sessions),
+	ctfOrganizers: many(ctfOrganizers),
+	challenges: many(challenges),
+	reports: many(reports),
+	profile: one(profiles, {
+		fields: [users.profileId],
+		references: [profiles.id]
+	}),
+	teamMembers: many(teamMembers),
+	notificationUsers: many(notificationUsers),
+	messages: many(messages),
+}));
 
 export const ctfOrganizersRelations = relations(ctfOrganizers, ({one}) => ({
 	ctf: one(ctfs, {
@@ -18,20 +39,6 @@ export const ctfsRelations = relations(ctfs, ({many}) => ({
 	ctfsChallenges: many(ctfsChallenges),
 }));
 
-export const usersRelations = relations(users, ({one, many}) => ({
-	ctfOrganizers: many(ctfOrganizers),
-	sessions: many(sessions),
-	challenges: many(challenges),
-	reports: many(reports),
-	profile: one(profiles, {
-		fields: [users.profileId],
-		references: [profiles.id]
-	}),
-	teamMembers: many(teamMembers),
-	notificationUsers: many(notificationUsers),
-	messages: many(messages),
-}));
-
 export const teamsRelations = relations(teams, ({one, many}) => ({
 	profile: one(profiles, {
 		fields: [teams.profileId],
@@ -44,13 +51,6 @@ export const teamsRelations = relations(teams, ({one, many}) => ({
 export const profilesRelations = relations(profiles, ({many}) => ({
 	teams: many(teams),
 	users: many(users),
-}));
-
-export const sessionsRelations = relations(sessions, ({one}) => ({
-	user: one(users, {
-		fields: [sessions.userId],
-		references: [users.id]
-	}),
 }));
 
 export const challengesRelations = relations(challenges, ({one, many}) => ({
