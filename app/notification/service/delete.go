@@ -8,10 +8,9 @@ import (
 	"github.com/gorilla/mux"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"kodaic.ma/notification/model"
 )
 
-func GetNonDeletedRecords(tx *gorm.DB, userID string) ([]model.UserNotification, error) {
+func GetNonDeletedRecords(tx *gorm.DB, userID string) ([]UserNotification, error) {
 	var ids []int
 
 	err := tx.Table("notifications").
@@ -25,9 +24,9 @@ func GetNonDeletedRecords(tx *gorm.DB, userID string) ([]model.UserNotification,
 		return nil, err
 	}
 
-	records := make([]model.UserNotification, lenIDs)
+	records := make([]UserNotification, lenIDs)
 	for i, id := range ids {
-		records[i] = model.UserNotification{
+		records[i] = UserNotification{
 			NotificationID: id,
 			NotifiedID:     userID,
 			IsDismissed:    true,
@@ -69,7 +68,7 @@ func (hub *Hub) HandleDeleteAll(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	hub.GlobalChan <- model.WsEvent{
+	hub.GlobalChan <- WsEvent{
 		Event:    "delete_all",
 		TargetID: userID,
 	}
@@ -79,9 +78,7 @@ func (hub *Hub) HandleDeleteAll(w http.ResponseWriter, r *http.Request) {
 func (hub *Hub) HandleDeleteSingle(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value("userID").(string)
 
-	vars := mux.Vars(r)
-	idStr := vars["id"]
-	notifID, err := strconv.Atoi(idStr)
+	notifID, err := GetID(w, r)
 	if err != nil {
 		log.Printf("A valid notificationID required: %v", err)
 		JSONError(w, "A valid notificationID required", http.StatusBadRequest)
@@ -95,7 +92,7 @@ func (hub *Hub) HandleDeleteSingle(w http.ResponseWriter, r *http.Request) {
 				"is_read":      true,
 			}),
 		}).
-		Create(&model.UserNotification{
+		Create(&UserNotification{
 			NotificationID: notifID,
 			NotifiedID:     userID,
 			IsRead:         true,
@@ -107,10 +104,20 @@ func (hub *Hub) HandleDeleteSingle(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, "internal Server Error", 500)
 		return
 	}
-	hub.GlobalChan <- model.WsEvent{
+	hub.GlobalChan <- WsEvent{
 		Event:    "delete",
 		TargetID: userID,
 		Payload:  map[string]int{"notification_id": notifID},
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func GetID(w http.ResponseWriter, r *http.Request) (int, error) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	notifID, err := strconv.Atoi(idStr)
+	if err != nil {
+		return notifID, err
+	}
+	return notifID, nil
 }

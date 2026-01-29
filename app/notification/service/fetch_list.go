@@ -5,8 +5,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-
-	"kodaic.ma/notification/model"
 )
 
 func (hub *Hub) HandleListNotifications(w http.ResponseWriter, r *http.Request) {
@@ -17,7 +15,7 @@ func (hub *Hub) HandleListNotifications(w http.ResponseWriter, r *http.Request) 
 
 func ListNotifications(userID string, limit int, hub *Hub, w http.ResponseWriter) {
 	var totalCount, unreadCount int64
-	notifications := []model.NotificationResponse{}
+	notifications := []NotificationResponse{}
 
 	if err := GetTotalCount(&totalCount, hub, w, userID); err != nil {
 		return
@@ -28,12 +26,13 @@ func ListNotifications(userID string, limit int, hub *Hub, w http.ResponseWriter
 	if err := GetNotifications(hub, w, userID, &notifications, limit); err != nil {
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]any{
+	resp := map[string]any{
 		"notifications": notifications,
 		"total_count":   totalCount,
 		"unread_count":  unreadCount,
-	}); err != nil {
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		log.Printf("Error encoding json data: %v", err)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 	}
@@ -70,7 +69,7 @@ func GetUnreadCount(unreadCount *int64, hub *Hub, w http.ResponseWriter, userID 
 	return nil
 }
 
-func GetNotifications(hub *Hub, w http.ResponseWriter, userID string, notifications *[]model.NotificationResponse, limit int) error {
+func GetNotifications(hub *Hub, w http.ResponseWriter, userID string, notifications *[]NotificationResponse, limit int) error {
 	err := hub.Db.Table("notifications").
 		Joins("LEFT JOIN notification_users ON notification_users.notification_id = notifications.id AND notification_users.notified_id = ?", userID).
 		Where("notification_users.is_dismissed IS NULL OR notification_users.is_dismissed = ?", false).
@@ -87,7 +86,6 @@ func GetNotifications(hub *Hub, w http.ResponseWriter, userID string, notificati
 }
 
 // helper
-
 func getLimit(r *http.Request) int {
 	limilStr := r.URL.Query().Get("limit")
 	if limilStr == "" {

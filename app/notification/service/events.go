@@ -3,8 +3,6 @@ package service
 import (
 	"log"
 	"time"
-
-	"kodaic.ma/notification/model"
 )
 
 func HandleJoin(hub *Hub, client *Client) {
@@ -30,7 +28,7 @@ func HandleUnjoin(hub *Hub, client *Client) {
 	log.Printf("INFO: userID: %s has left the server", client.ID)
 }
 
-func HandleWsEvent(hub *Hub, eventws *model.WsEvent) {
+func HandleWsEvent(hub *Hub, eventws *WsEvent) {
 	switch eventws.Event {
 	case "new":
 		BroadcastNotification(hub, eventws)
@@ -41,7 +39,7 @@ func HandleWsEvent(hub *Hub, eventws *model.WsEvent) {
 	}
 }
 
-func BroadcastNotification(hub *Hub, eventws *model.WsEvent) {
+func BroadcastNotification(hub *Hub, eventws *WsEvent) {
 	hub.Mutex.Lock()
 	defer hub.Mutex.Unlock()
 	for _, connections := range hub.Clients {
@@ -51,7 +49,7 @@ func BroadcastNotification(hub *Hub, eventws *model.WsEvent) {
 	}
 }
 
-func SendToClient(hub *Hub, client *Client, ev model.WsEvent) {
+func SendToClient(hub *Hub, client *Client, ev WsEvent) {
 	select {
 	case client.Send <- ev:
 	case <-time.After(hub.Conf.BroadcastTimeout):
@@ -62,7 +60,7 @@ func SendToClient(hub *Hub, client *Client, ev model.WsEvent) {
 	}
 }
 
-func SendToUser(hub *Hub, eventws *model.WsEvent) {
+func SendToUser(hub *Hub, eventws *WsEvent) {
 	hub.Mutex.Lock()
 	defer hub.Mutex.Unlock()
 	if connections, ok := hub.Clients[eventws.TargetID]; ok {

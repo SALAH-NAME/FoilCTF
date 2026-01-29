@@ -8,9 +8,10 @@ import (
 func JSONError(w http.ResponseWriter, message string, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	resp := map[string]any{
 		"status":  "error",
 		"code":    code,
 		"message": message,
-	})
+	}
+	json.NewEncoder(w).Encode(resp)
 }

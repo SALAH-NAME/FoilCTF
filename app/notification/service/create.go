@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"time"
-
-	"kodaic.ma/notification/model"
 )
 
 func (hub *Hub) CreateNotification(ntype, title, message, link string) error {
@@ -20,7 +18,7 @@ func (hub *Hub) CreateNotification(ntype, title, message, link string) error {
 		log.Printf("Error marshaling data %v", err)
 		return err
 	}
-	notification := model.Notification{
+	notification := Notification{
 		CreatedAt: time.Now(),
 		Contents:  contentJSON,
 	}
@@ -31,7 +29,7 @@ func (hub *Hub) CreateNotification(ntype, title, message, link string) error {
 		return err
 	}
 
-	hub.GlobalChan <- model.WsEvent{
+	hub.GlobalChan <- WsEvent{
 		Event: "new",
 		Payload: map[string]any{
 			"id":         notification.ID,

@@ -4,14 +4,13 @@ import (
 	"log"
 
 	"github.com/gorilla/websocket"
-	"kodaic.ma/notification/model"
 )
 
 type Client struct {
 	ID         string
 	Role       string
 	Connection *websocket.Conn
-	Send       chan model.WsEvent
+	Send       chan WsEvent
 	Hub        *Hub
 }
 
@@ -20,7 +19,7 @@ func NewClient(id string, role string, conn *websocket.Conn, hub *Hub) *Client {
 		ID:         id,
 		Role:       role,
 		Connection: conn,
-		Send:       make(chan model.WsEvent, hub.Conf.ClientBuffer),
+		Send:       make(chan WsEvent, hub.Conf.ClientBuffer),
 		Hub:        hub,
 	}
 }
@@ -42,7 +41,7 @@ func (client *Client) ReadFromConnectionTunnel() {
 		client.Hub.UnregisterChan <- client
 	}()
 	for {
-		var event model.WsEvent
+		var event WsEvent
 		if err := client.Connection.ReadJSON(&event); err != nil {
 			log.Printf("ERROR: Unexpected close for userID: %s: %v", client.ID, err)
 			break

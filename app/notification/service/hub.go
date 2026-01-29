@@ -8,13 +8,12 @@ import (
 	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
 	"kodaic.ma/notification/config"
-	"kodaic.ma/notification/model"
 )
 
 type Hub struct {
 	Db             *gorm.DB
 	Clients        map[string]map[*Client]bool
-	GlobalChan     chan model.WsEvent
+	GlobalChan     chan WsEvent
 	Conf           *config.Config
 	RegisterChan   chan *Client
 	UnregisterChan chan *Client
@@ -27,7 +26,7 @@ func NewHub(db *gorm.DB, conf *config.Config) *Hub {
 		Db:             db,
 		Clients:        make(map[string]map[*Client]bool),
 		Conf:           conf,
-		GlobalChan:     make(chan model.WsEvent, conf.GlobalBuffer),
+		GlobalChan:     make(chan WsEvent, conf.GlobalBuffer),
 		RegisterChan:   make(chan *Client, conf.RegisterBuffer),
 		UnregisterChan: make(chan *Client, conf.RegisterBuffer),
 		Upgrader: websocket.Upgrader{

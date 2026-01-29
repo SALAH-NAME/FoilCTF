@@ -4,37 +4,10 @@ This service provides a realtime notification system for FoilCTF platform, it ma
 
 **Architecture Overview**
 
-- Directory architechture:  
-
-```bash
-├── config
-│   ├── database.go
-│   └── setup.go
-├── Containerfile
-├── go.mod
-├── go.sum
-├── main.go
-├── model
-│   └── models.go
-├── Readme.md
-└── service
-    ├── client.go
-    ├── controllers.go
-    ├── create.go
-    ├── dismiss.go
-    ├── events.go
-    ├── hub.go
-    ├── list_notifications.go
-    ├── mark_as_read.go
-    ├── routes.go
-    └── test.go
-
-4 directories, 18 files
-```
 - Models  
     - ```Notification```(Global Store): Represents the physical announcement stored in ```notifications``` table using ```json.RawMessage``` for dynamic content.
-    - ```NotificationResponse```(the API DTO): A non persistent data transfer object that merges global notification data with a calculated ```is_read``` boolean dirived from an ```EXISTS``` subquery.
-    - ```UserNotification```(State Tracker):A many-to-many junction table to track "read" status per user.
+    - ```NotificationResponse```(the API DTO): A non persistent data transfer object that merges global notification data.
+    - ```UserNotification```(State Tracker):A many-to-many junction table to track "read" and "deleted" status per user.
     - ```WsEvent```(Message Envelope): the standard json envelope for WevSocket communication, containing the action ```event``` the ```target_id for routing and a generic metadata interface for payloads.
 - The communication Hub:
     The Hub is the brain of the service. it manages:
