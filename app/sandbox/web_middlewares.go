@@ -9,12 +9,17 @@ import (
 	// "github.com/gofiber/fiber/v3/client"
 )
 
-func Middleware_Logger(app *App) fiber.Handler {
+func Middleware_Logger(app *App) func(c fiber.Ctx) error {
 	_ = app
-	return middleware_logger.New()
+	return func(c fiber.Ctx) error {
+		req := c.Req()
+		log.Printf("%q :: %s", req.Method(), req.OriginalURL())
+
+		return c.Next()
+	}
 }
 
-func Middleware_Authorization(app *App) fiber.Handler { // TODO(xenobas): Implement
+func Middleware_Authorization(app *App) func(c fiber.Ctx) error { // TODO(xenobas): Implement
 	_ = app
 	return func(c fiber.Ctx) error {
 		return c.Next()
