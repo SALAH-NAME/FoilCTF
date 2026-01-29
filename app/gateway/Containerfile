@@ -1,0 +1,19 @@
+FROM golang:1.25.6-alpine3.23 AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum main.go config.go proxy.go services.go ./
+
+RUN go mod download
+
+RUN go build -o gateway .
+
+FROM alpine:3.23
+
+WORKDIR /app
+
+COPY --from=builder /app/gateway .
+
+EXPOSE 3000
+
+ENTRYPOINT [ "./gateway" ]
