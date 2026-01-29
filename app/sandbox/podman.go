@@ -455,7 +455,7 @@ type InspectedImage struct {
 	VirtualSize int64 `json:"size_virtual,omitempty"`
 
 	Version string `json:"version,omitempty"`
-	Author  string `json:"version,omitempty"`
+	Author  string `json:"author,omitempty"`
 }
 type InspectedImageConfig struct {
 	User   string   `json:"user,omitempty"`
