@@ -24,11 +24,11 @@ func (hub *Hub) CreateNotification(ntype, title, message, link string) error {
 		CreatedAt: time.Now(),
 		Contents:  contentJSON,
 	}
-	result := hub.Db.Table("notifications").Create(&notification)
+	err = hub.Db.Table("notifications").Create(&notification).Error
 
-	if result.Error != nil {
-		log.Printf("Error saving notification into database %v", result.Error)
-		return result.Error
+	if err != nil {
+		log.Printf("Error saving notification into database %v", err)
+		return err
 	}
 
 	hub.GlobalChan <- model.WsEvent{
