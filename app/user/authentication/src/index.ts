@@ -9,7 +9,8 @@ import	{ eq }						from 'drizzle-orm';
 import	{ users, sessions }				from './db/schema';
 import	{ db}						from './utils/db';
 import	{ RefreshTokenSecret, PORT}			from './utils/env';
-import	{ZodError}					from 'zod';
+import	{ ZodError}					from 'zod';
+import	cookieParser					from 'cookie-parser';
 import	{ User,
 	AuthRequest,
 	Session,
@@ -25,13 +26,14 @@ import	{	authenticateToken,
 
 const	app = express();
 app.use(express.json());
+app.use(cookieParser());
 
 app.post('/api/auth/register',
 	validate(registerSchema),
 	async (req: AuthRequest, res: Response) => {
 	try {
 		const	{username, email, password} = req.body;
-		const   [unique] = await db.select().from(users).where(eq(users.username, username)); // validate unicity
+		const   [unique] = await db.select().from(users).where(eq(users.username, username));
 		if (unique) {
 			res.sendStatus(409);
 		}
@@ -65,11 +67,10 @@ app.post('/api/auth/login',
 		try {
 			const	passwordIsValid = await bcrypt.compare(password, user.password);
 			if (passwordIsValid) {
-				const	accessToken		= generateAccessToken(user.username as any);
-				const	refreshToken		= jwt.sign(user, RefreshTokenSecret);
+				const	accessToken		= generateAccessToken(user.username as any, "user");
+				const	refreshToken		= jwt.sign({username: user.username}, RefreshTokenSecret, { expiresIn: '7d' });
 				const	session: Session	= {
-						accesstoken:	accessToken, // no encryption !!
-						refreshtoken:	refreshToken, // no encryption !!
+						refreshtoken:	refreshToken,
 						expiry:		"2026-12-31", // demo !!
 						userId:		user.id,
 						}
@@ -87,10 +88,10 @@ app.post('/api/auth/login',
 		}
 })
 
-app.post('/api/auth/refresh',
+app.post('/api/auth/refresh', // update this function
 	validate(logout_refresh_Schema),
 	async (req: AuthRequest, res: Response) => {
-	const	{ token } = req.body;
+	const	{ token } = req.cookies.jwt;
 
 	const	[session] = await db.select().from(sessions).where(eq(sessions.refreshtoken, token));
 	if (session === undefined) {
@@ -102,7 +103,7 @@ app.post('/api/auth/refresh',
 		res.status(400).send('You\'re trynna do something fancy');
 		return ;
 	}
-	const	newAccessToken = generateAccessToken(user.username as string);
+	const	newAccessToken = generateAccessToken(user.username as string, "user");
 	jwt.verify(token, RefreshTokenSecret,
 		((err: VerifyErrors | null, payload?: JwtPayload | string | undefined) => {
 		if (err) {
@@ -112,13 +113,12 @@ app.post('/api/auth/refresh',
 		req.user = payload as User;
 		res.json({ accessToken: newAccessToken });
 	}) satisfies VerifyCallback);
-	await db.update(sessions).set({ accesstoken: newAccessToken }).where(eq(sessions.refreshtoken, token));
 })
 
 app.delete('/api/auth/logout',
 	validate(logout_refresh_Schema),
 	async (req: AuthRequest, res: Response) => {
-	const	{ token } = req.body;
+	const	{ token } = req.cookies.jwt;
 
 	const	[session] = await db.select().from(sessions).where(eq(sessions.refreshtoken, token));
 	if (session === undefined) {
@@ -127,6 +127,7 @@ app.delete('/api/auth/logout',
 	}
 	await db.delete(sessions).where(eq(sessions.refreshtoken, token));
 	console.log('user session got deleted');
+	res.clearCookie('jwt');
 	res.sendStatus(204);
 	return ;
 })

@@ -3,13 +3,16 @@ import	jwt, {VerifyErrors, VerifyCallback, JwtPayload}	from 'jsonwebtoken';
 import	express, { Response, NextFunction }		from 'express';
 import	{ User, AuthRequest}				from './types';
 import	{ AccessTokenSecret, AccessTokenExpirationTime}	from './env';
-import	{ z, ZodObject}					from 'zod';
+import	{ z, Schema}					from 'zod';
 import	{ db}						from './db';
 import	{ users}					from '../db/schema';
 import	{ eq }						from 'drizzle-orm';
 
-export	function generateAccessToken(username: string) : string {
-	return jwt.sign({ username: username }, AccessTokenSecret, { expiresIn: AccessTokenExpirationTime as any});
+export	function generateAccessToken(username: string, role: string) : string {
+	return jwt.sign(	{ username: username, role: role },
+				AccessTokenSecret,
+				{ expiresIn: AccessTokenExpirationTime as any}
+			);
 }
 
 export	function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) : void {
@@ -49,14 +52,15 @@ export	function	generateID(length: number) {
 	return result;
 }
 
-export	const	validate = (schema: ZodObject) =>
+export	const	validate = (schema: Schema) =>
 	async (req: AuthRequest, res: Response, next: NextFunction) =>
 	{
 		try {
 			await schema.parseAsync({
-				body:	req.body,
-				query:	req.query,
-				params:	req.params,
+				body:		req.body,
+				query:		req.query,
+				params:		req.params,
+				cookies:	req.cookies
 				});
 			return next();
 		}

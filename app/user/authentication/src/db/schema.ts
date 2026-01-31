@@ -13,7 +13,6 @@ export const sessions = pgTable("sessions", {
 	id: serial().primaryKey().notNull(),
 	refreshtoken: text().notNull(),
 	expiry: timestamp({ mode: 'string' }).notNull(),
-	accesstoken: text().notNull(),
 	userId: varchar("user_id", { length: 64 }).notNull(),
 	createdAt: timestamp("created_at", { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
@@ -149,6 +148,7 @@ export const users = pgTable("users", {
 	email: text(),
 	username: text(),
 	avatar: text(),
+	role: text(),
 }, (table) => [
 	foreignKey({
 			columns: [table.profileId],

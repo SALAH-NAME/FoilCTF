@@ -21,7 +21,9 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@types/cookie-parser": "^1.4.10",
     "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "express": "^5.2.1",

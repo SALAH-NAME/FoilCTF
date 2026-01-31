@@ -1,7 +1,7 @@
 
 import	express, {Request}	from 'express';
 import	{ users, sessions}	from '../db/schema';
-import	{z, ZodObject }		from 'zod';
+import	{z, Schema}		from 'zod';
 
 export	type User	= typeof users.$inferInsert;
 export	type Session	= typeof sessions.$inferInsert;
@@ -16,8 +16,10 @@ export	interface AuthRequest extends Request {
 }
 
 export	const logout_refresh_Schema = z.object({
-	body: z.object({
-		token: z.string({ error: "Token is required"}),
+	cookies: z.object({
+		jwt: z.object({
+			token: z.string({ error: "Token is required"}),
+		})
 	}),
 });
 
