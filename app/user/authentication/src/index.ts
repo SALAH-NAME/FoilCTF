@@ -1,10 +1,8 @@
 
 import	'dotenv/config';
-import	express, {Request, Response, NextFunction}	from 'express';
+import	express, {Response, NextFunction}	from 'express';
 import	bcrypt						from 'bcrypt';
-import	jwt, {VerifyErrors, VerifyCallback, JwtPayload}	from 'jsonwebtoken';
-import	{ drizzle }					from 'drizzle-orm/node-postgres';
-import	{ serial }					from 'drizzle-orm/pg-core';
+import	jwt, {JwtPayload}	from 'jsonwebtoken';
 import	{ eq, or}						from 'drizzle-orm';
 import	{ users, sessions }				from './db/schema';
 import	{ db}						from './utils/db';
@@ -17,13 +15,11 @@ import	{ ZodError}					from 'zod';
 import	cookieParser					from 'cookie-parser';
 import	{	User,
 		AuthRequest,
-		Session,
-		logout_refresh_Schema,
 		registerSchema,
 		loginSchema
 		}					from './utils/types';
 
-import	{	authenticateToken,
+import	{
 		generateAccessToken,
 		generateID,
 		validate}				from './utils/utils';
@@ -101,11 +97,11 @@ app.post('/api/auth/login',
 })
 
 app.post('/api/auth/refresh',
-	validate(logout_refresh_Schema),
+	// validate(logout_refresh_Schema), only checking for a cookie
 	async (req: AuthRequest, res: Response) => {
 		try {
-			const	token = req.cookies.jwt;
-			const	payload	= jwt.verify(token, RefreshTokenSecret) as JwtPayload; // promisify??
+			const	token = req.cookies?.jwt ?? "";
+			jwt.verify(token, RefreshTokenSecret) as JwtPayload; // promisify??
 
 			const	[session] = await db.select()
 					.from(sessions).
