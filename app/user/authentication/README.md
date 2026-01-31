@@ -26,7 +26,7 @@ export interface User {
 	password:	string;
 }
 
-## API EndPoints
+## API Endpoints
 
 - POST /api/auth/register
 - POST /api/auth/login

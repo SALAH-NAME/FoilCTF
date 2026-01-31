@@ -17,9 +17,7 @@ export	interface AuthRequest extends Request {
 
 export	const logout_refresh_Schema = z.object({
 	cookies: z.object({
-		jwt: z.object({
-			token: z.string({ error: "Token is required"}),
-		})
+		jwt: z.string({ error: "Token is required"}),
 	}),
 });
 

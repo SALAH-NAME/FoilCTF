@@ -2,7 +2,7 @@
 import	jwt, {VerifyErrors, VerifyCallback, JwtPayload}	from 'jsonwebtoken';
 import	express, { Response, NextFunction }		from 'express';
 import	{ User, AuthRequest}				from './types';
-import	{ AccessTokenSecret, AccessTokenExpirationTime}	from './env';
+import	{ AccessTokenSecret, AccessTokenExpiry}		from './env';
 import	{ z, Schema}					from 'zod';
 import	{ db}						from './db';
 import	{ users}					from '../db/schema';
@@ -11,7 +11,7 @@ import	{ eq }						from 'drizzle-orm';
 export	function generateAccessToken(username: string, role: string) : string {
 	return jwt.sign(	{ username: username, role: role },
 				AccessTokenSecret,
-				{ expiresIn: AccessTokenExpirationTime as any}
+				{ expiresIn: AccessTokenExpiry as any}
 			);
 }
 
