@@ -8,7 +8,9 @@ import	{ serial }					from 'drizzle-orm/pg-core';
 import	{ eq }						from 'drizzle-orm';
 import	{ users, sessions }				from './db/schema';
 import	{ db}						from './utils/db';
-import	{ RefreshTokenSecret, PORT}			from './utils/env';
+import	{	RefreshTokenSecret,
+		PORT,
+		RefreshTokenExpirationTime}		from './utils/env';
 import	{ ZodError}					from 'zod';
 import	cookieParser					from 'cookie-parser';
 import	{ User,
@@ -67,8 +69,11 @@ app.post('/api/auth/login',
 		try {
 			const	passwordIsValid = await bcrypt.compare(password, user.password);
 			if (passwordIsValid) {
-				const	accessToken		= generateAccessToken(user.username as any, "user");
-				const	refreshToken		= jwt.sign({username: user.username}, RefreshTokenSecret, { expiresIn: '7d' });
+				const	accessToken		= generateAccessToken(user.username as any, "user"); // "user"
+				const	refreshToken		= jwt.sign(	{username: user.username},
+										RefreshTokenSecret,
+										{ expiresIn: RefreshTokenExpirationTime as any}
+									);
 				const	session: Session	= {
 						refreshtoken:	refreshToken,
 						expiry:		"2026-12-31", // demo !!
@@ -88,9 +93,9 @@ app.post('/api/auth/login',
 		}
 })
 
-app.post('/api/auth/refresh', // update this function
+app.post('/api/auth/refresh',
 	validate(logout_refresh_Schema),
-	async (req: AuthRequest, res: Response) => {
+	async (req: AuthRequest, res: Response) => { // update this callback
 	const	{ token } = req.cookies.jwt;
 
 	const	[session] = await db.select().from(sessions).where(eq(sessions.refreshtoken, token));
@@ -103,7 +108,7 @@ app.post('/api/auth/refresh', // update this function
 		res.status(400).send('You\'re trynna do something fancy');
 		return ;
 	}
-	const	newAccessToken = generateAccessToken(user.username as string, "user");
+	const	newAccessToken = generateAccessToken(user.username as string, "user"); // "user"
 	jwt.verify(token, RefreshTokenSecret,
 		((err: VerifyErrors | null, payload?: JwtPayload | string | undefined) => {
 		if (err) {
