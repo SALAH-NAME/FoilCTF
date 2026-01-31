@@ -43,7 +43,6 @@ app.post('/api/auth/register',
 		}
 		const	hashedPassword	= await bcrypt.hash(password, 10);
 		const	newUser: User	= {
-						id:		generateID(13), // TODO: must be generated in db! (and then remove this line)
 						username:	username,
 						email:		email,
 						password:	hashedPassword
@@ -72,8 +71,8 @@ app.post('/api/auth/login',
 
 			const	accessToken		= generateAccessToken(user.username as any, "user");
 			const	refreshToken		= jwt.sign(	{username: user.username},
-									RefreshTokenSecret,
-									{ expiresIn: RefreshTokenExpiry as any}
+													RefreshTokenSecret,
+													{ expiresIn: RefreshTokenExpiry as any}
 								);
 			const	duration	= ms(RefreshTokenExpiry as StringValue);
 			const	expiryDate	= new Date(Date.now() + duration);
@@ -97,7 +96,6 @@ app.post('/api/auth/login',
 })
 
 app.post('/api/auth/refresh',
-	// validate(logout_refresh_Schema), only checking for a cookie
 	async (req: AuthRequest, res: Response) => {
 		try {
 			const	token = req.cookies?.jwt ?? "";
@@ -126,7 +124,6 @@ app.post('/api/auth/refresh',
 )
 
 app.delete('/api/auth/logout',
-	//validate(logout_refresh_Schema), only checking for a cookie
 	async (req: AuthRequest, res: Response) => {
 		try {
 			const	token = req.cookies?.jwt;

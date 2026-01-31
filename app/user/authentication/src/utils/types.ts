@@ -1,7 +1,7 @@
 
-import	express, {Request}	from 'express';
+import	{Request}	from 'express';
 import	{ users, sessions}	from '../db/schema';
-import	{z, Schema}		from 'zod';
+import	{z}		from 'zod';
 
 export	type User	= typeof users.$inferInsert;
 export	type Session	= typeof sessions.$inferInsert;
@@ -24,7 +24,7 @@ export	const logout_refresh_Schema = z.object({
 export	const registerSchema = z.object({
 	body: z.object({
 		username:	z.string().min(3).max(15).regex(/^[a-zA-Z0-9_]+$/),
-		email:		z.string().email(),
+		email:		z.email({ pattern: z.regexes.email }),
 		password:	z.string().min(12),
 	}),
 });

@@ -1,12 +1,9 @@
 
 import	jwt, {VerifyErrors, VerifyCallback, JwtPayload}	from 'jsonwebtoken';
-import	express, { Response, NextFunction }		from 'express';
+import	{ Response, NextFunction }		from 'express';
 import	{ User, AuthRequest}				from './types';
 import	{ AccessTokenSecret, AccessTokenExpiry}		from './env';
-import	{ z, Schema}					from 'zod';
-import	{ db}						from './db';
-import	{ users}					from '../db/schema';
-import	{ eq }						from 'drizzle-orm';
+import	{ ZodObject }					from 'zod';
 
 export	function generateAccessToken(username: string, role: string) : string {
 	return jwt.sign(	{ username: username, role: role },
@@ -52,7 +49,7 @@ export	function	generateID(length: number) {
 	return result;
 }
 
-export	const	validate = (schema: Schema) =>
+export	const	validate = (schema: ZodObject) =>
 	async (req: AuthRequest, res: Response, next: NextFunction) =>
 	{
 		try {

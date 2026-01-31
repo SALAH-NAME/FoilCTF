@@ -1,6 +1,6 @@
 
 //import	{User, Post, AuthRequest}	from './types';
-// data base
+
 //export	const	users:	User[] = [];
 //export	const	posts:	Post[] = [
 //	{
@@ -12,7 +12,6 @@
 //		title: "post2"
 //	}
 //];
-// data base
 
 import	{ drizzle }	from 'drizzle-orm/node-postgres';
 import	{ DATABASE_URL}	from './env';
