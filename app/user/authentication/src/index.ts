@@ -21,7 +21,6 @@ import	{	User,
 
 import	{
 		generateAccessToken,
-		generateID,
 		validate}				from './utils/utils';
 
 
