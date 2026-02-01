@@ -34,21 +34,6 @@ export	function authenticateToken(req: AuthRequest, res: Response, next: NextFun
 	}) satisfies VerifyCallback)
 }
 
-
-export	function	generateRandom(min: number, max: number) {
-	return Math.floor(Math.random() * (max - min) + min);
-}
-
-export	function	generateID(length: number) {
-	let	result           = '';
-	let	characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-	let	charactersLength = characters.length;
-	for (let i = 0; i < length; i++ ) {
-		result += characters.charAt(Math.floor(Math.random() * charactersLength));
-	}
-	return result;
-}
-
 export	const	validate = (schema: ZodObject) =>
 	async (req: AuthRequest, res: Response, next: NextFunction) =>
 	{

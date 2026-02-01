@@ -3,9 +3,17 @@ import	dotenv	from 'dotenv';
 
 dotenv.config();
 
-export	const	AccessTokenSecret:		string = process.env.ACCESS_TOKEN_SECRET ?? "ATSecret";
-export	const	RefreshTokenSecret:		string = process.env.REFRESH_TOKEN_SECRET ?? "RTSECRET";
-export	const	PORT:				    number = Number(process.env.PORT ?? "3030");
-export	const	AccessTokenExpiry:		string = process.env.ACCESS_TOKEN_EXPIRY ?? "15m";
-export	const	RefreshTokenExpiry:		string = process.env.REFRESH_TOKEN_EXPIRY ?? "15m";
-export	const	DATABASE_URL:			string = process.env.DATABASE_URL ?? "DBURL";
+function	requireEnvVar(name: string): string {
+	const	value = process.env[name];
+	if (!value) {
+		throw Error(`Missing required environemnt variable: ${name}`);
+	}
+	return value;
+}
+
+export	const	AccessTokenSecret:		string = requireEnvVar("ACCESS_TOKEN_SECRET");
+export	const	RefreshTokenSecret:		string = requireEnvVar("REFRESH_TOKEN_SECRET");
+export	const	AccessTokenExpiry:		string = requireEnvVar("ACCESS_TOKEN_EXPIRY");
+export	const	RefreshTokenExpiry:		string = requireEnvVar("REFRESH_TOKEN_EXPIRY");
+export	const	DATABASE_URL:			string = requireEnvVar("DATABASE_URL");
+export	const	PORT:				number = Number(requireEnvVar("PORT"));

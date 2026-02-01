@@ -58,7 +58,7 @@ export const users = pgTable("users", {
 	email: text(),
 	username: text(),
 	avatar: text(),
-	role: text(),
+	role: varchar({ length: 64 }).default('user').notNull(),
 }, (table) => [
 	foreignKey({
 			columns: [table.profileId],

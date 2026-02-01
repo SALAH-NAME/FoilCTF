@@ -15,12 +15,6 @@ export	interface AuthRequest extends Request {
 	user?: User
 }
 
-export	const logout_refresh_Schema = z.object({
-	cookies: z.object({
-		jwt: z.string({ error: "Token is required"}),
-	}),
-});
-
 export	const registerSchema = z.object({
 	body: z.object({
 		username:	z.string().min(3).max(15).regex(/^[a-zA-Z0-9_]+$/),
@@ -31,7 +25,7 @@ export	const registerSchema = z.object({
 
 export	const loginSchema = z.object({
 	body: z.object({
-		username:	z.string(), //.min(3).max(15).regex(/^[a-zA-Z0-9_]+$/),
-		password:	z.string() //.min(12),
+		username:	z.string().min(3).max(15).regex(/^[a-zA-Z0-9_]+$/),
+		password:	z.string().min(12),
 	}),
 });

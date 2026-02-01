@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 CREATE TABLE IF NOT EXISTS users (
-  id                  VARCHAR(64) PRIMARY KEY,
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   password            VARCHAR(64) NOT NULL,
 
   created_at          TIMESTAMP DEFAULT now() NOT NULL,

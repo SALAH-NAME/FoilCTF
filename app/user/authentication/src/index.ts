@@ -32,7 +32,9 @@ app.post('/api/auth/register',
 	validate(registerSchema),
 	async (req: AuthRequest, res: Response) => {
 	try {
-		const	{username, email, password} = req.body;
+		let	{username, email, password} = req.body;
+		username	= username.toLowerCase();
+		email		= email.toLowerCase();
 		const   [existingUser] = await db.select()
 						.from(users)
 						.where(or(eq(users.username, username), eq(users.email, email)));
@@ -62,13 +64,14 @@ app.post('/api/auth/login',
 		const	{username, password} = req.body;
 		try {
 			const	[user] = await db.select().from(users).where(eq(users.username, username));
-			const	passwordIsValid = await bcrypt.compare(password, user?.password ?? ""); // timing attack!!
+			const	passwordIsValid = await bcrypt.compare(password,
+							user?.password ?? "$2b$10$dummyhashplaceholder");
 			if (user === undefined || !passwordIsValid) {
 				res.status(401).send('Invalid username or password');
 				return ;
 			}
 
-			const	accessToken		= generateAccessToken(user.username as any, "user");
+			const	accessToken		= generateAccessToken(user.username as any, user.role);
 			const	refreshToken		= jwt.sign(	{username: user.username},
 													RefreshTokenSecret,
 													{ expiresIn: RefreshTokenExpiry as any}
@@ -114,7 +117,7 @@ app.post('/api/auth/refresh',
 				res.status(400).send();
 				return ;
 			}
-			const	newAccessToken = generateAccessToken(user.username as string, "user");
+			const	newAccessToken = generateAccessToken(user.username as string, user.role);
 			res.json({ accessToken: newAccessToken });
 		} catch (err) {
 			return res.sendStatus(403);
