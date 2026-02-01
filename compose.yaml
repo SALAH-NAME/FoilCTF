@@ -3,37 +3,12 @@
 name: foilctf
 
 services:
-  # Reverse Proxy / Load Balancer
-  nginx:
-    build:
-      context: .
-      dockerfile: ./app/nginx/Containerfile
-    ports:
-      - "${NGINX_HTTP_PORT:-80}:80"
-      - "${NGINX_HTTPS_PORT:-443}:443"
-    networks:
-      - foilctf_net
-    depends_on:
-      - gateway
-      - frontend
-    restart: unless-stopped
-
-  # Frontend (React + Vite)
-  frontend:
-    build:
-      context: .
-      dockerfile: ./app/front/Containerfile
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-    networks:
-      - foilctf_net
-    restart: unless-stopped
-
-  # API Gateway
   gateway:
     build:
-      context: .
-      dockerfile: ./app/gateway/Containerfile
+      tags:
+        - "foilctf/gateway:latest"
+      context: ./app/gateway/
+      dockerfile: Containerfile
     environment:
       - PORT=${GATEWAY_PORT:-3000}
       - JWT_SECRET=${JWT_SECRET:-changeme-secret-key}
@@ -41,116 +16,9 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-warn}
     networks:
       - foilctf_net
-    depends_on:
-      - user
-      - challenge
-      - chat
-      - notification
-      - scoreboard
-      - sandbox
+    ports:
+      - "3000:3000" # For development access
     restart: unless-stopped
-
-  # User Service (Authentication & User Management)
-  user:
-    build:
-      context: .
-      dockerfile: ./app/user/Containerfile
-    environment:
-      - PORT=${USER_SERVICE_PORT:-3001}
-      - JWT_SECRET=${JWT_SECRET:-changeme-secret-key}
-      - SERVICE_NAME=${USER_SERVICE_NAME:-user}
-      - LOG_LEVEL=${LOG_LEVEL:-warn}
-      - NODE_ENV=${NODE_ENV:-development}
-    networks:
-      - foilctf_net
-    depends_on:
-      database:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # Challenge Service
-  challenge:
-    build:
-      context: .
-      dockerfile: ./app/challenge/Containerfile
-    environment:
-      - PORT=${CHALLENGE_SERVICE_PORT:-3002}
-      - SERVICE_NAME=${CHALLENGE_SERVICE_NAME:-challenge}
-      - LOG_LEVEL=${LOG_LEVEL:-warn}
-    networks:
-      - foilctf_net
-    depends_on:
-      database:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # Chat Service (with WebSocket)
-  chat:
-    build:
-      context: .
-      dockerfile: ./app/chat/Containerfile
-    environment:
-      - PORT=${CHAT_SERVICE_PORT:-3003}
-      - SERVICE_NAME=${CHAT_SERVICE_NAME:-chat}
-      - LOG_LEVEL=${LOG_LEVEL:-warn}
-    networks:
-      - foilctf_net
-    depends_on:
-      database:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # Notification Service
-  notification:
-    build:
-      context: .
-      dockerfile: ./app/notification/Containerfile
-    environment:
-      - PORT=${NOTIFICATION_SERVICE_PORT:-3004}
-      - SERVICE_NAME=${NOTIFICATION_SERVICE_NAME:-notification}
-      - LOG_LEVEL=${LOG_LEVEL:-warn}
-    networks:
-      - foilctf_net
-    depends_on:
-      database:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # Scoreboard Service (with WebSocket)
-  scoreboard:
-    build:
-      context: .
-      dockerfile: ./app/scoreboard/Containerfile
-    environment:
-      - PORT=${SCOREBOARD_SERVICE_PORT:-3005}
-      - SERVICE_NAME=${SCOREBOARD_SERVICE_NAME:-scoreboard}
-      - LOG_LEVEL=${LOG_LEVEL:-warn}
-    networks:
-      - foilctf_net
-    depends_on:
-      database:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # Sandbox Service (Go - Container Management)
-  sandbox:
-    build:
-      context: .
-      dockerfile: ./app/sandbox/Containerfile
-    environment:
-      - PORT=${SANDBOX_SERVICE_PORT:-8080}
-      - IMAGES_DIR=${SANDBOX_IMAGES_DIR:-/data/images}
-      - PODMAN_SOCKET=${PODMAN_SOCKET:-/run/podman/podman.sock}
-    # volumes:
-    #   - sandbox-images:/data/images
-    #   - /run/user/1000/podman/podman.sock:/run/podman/podman.sock
-    networks:
-      - foilctf_net
-    depends_on:
-      database:
-        condition: service_healthy
-    restart: unless-stopped
-    # privileged: true  #  it may be required for Podman operations
 
   # PostgreSQL Database Service
   # REFERENCE: https://github.com/docker-library/docs/blob/master/postgres/README.md
@@ -192,35 +60,42 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  # Prometheus (Metrics Collection)
   prometheus:
-    image: prom/prometheus:latest
-    # command:
-    #   - '--config.file=/etc/prometheus/prometheus.yml'
-    #   - ...
-
-    # volumes:
-    #   - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    #   - prometheus-data:/prometheus
+    image: docker.io/prom/prometheus:latest
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.external-url=http://localhost:3000/monitoring/prometheus'
+      - '--web.route-prefix=/monitoring/prometheus'
+    volumes:
+      - ./monitoring/promethues/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
     networks:
       - foilctf_net
-    ports:
-      - "9090:9090"
+    depends_on:
+      - gateway
     restart: unless-stopped
 
-  # Grafana (Metrics Visualization)
   grafana:
-    image: grafana/grafana:latest
+    image: docker.io/grafana/grafana:latest
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_HTTP_PORT=9091
+      - GF_SERVER_ROOT_URL=http://localhost:3000/monitoring/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
     networks:
       - foilctf_net
-    ports:
-      - "3001:3000"
     depends_on:
       - prometheus
     restart: unless-stopped
@@ -232,11 +107,7 @@ networks:
 
 volumes:
   postgres:
-    # driver_opts:
-    #   o: "bind"
-    #   type: "none"
-    #   device: "${DATABASE_VOLUME_DATA_DIR?}"
-  migrations: # TODO: read only
+  migrations:
     driver_opts:
       o: "bind"
       type: "none"
@@ -244,4 +115,3 @@ volumes:
   sandbox-images:
   prometheus-data:
   grafana-data:
-  elasticsearch-data:
