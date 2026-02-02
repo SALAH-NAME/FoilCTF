@@ -39,7 +39,6 @@ func (app *App) UnregisterLogStream(imageName string) {
 
 	for _, logger := range buildLoggers {
 		logger.Close()
-		logger.Close()
 	}
 	delete(app.LogStreams, imageName)
 }
