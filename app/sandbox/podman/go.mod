@@ -1,11 +1,12 @@
-module kodaic.ma/sandbox
+module kodaic.ma/sandbox/podman
 
 go 1.25.4
 
 require (
-	github.com/go-chi/chi/v5 v5.2.4
-	github.com/joho/godotenv v1.5.1
-	kodaic.ma/sandbox/podman v0.0.0-00010101000000-000000000000
+	github.com/containers/buildah v1.42.2
+	github.com/containers/podman/v5 v5.7.1
+	go.podman.io/common v0.66.1
+	go.podman.io/storage v1.61.0
 )
 
 require (
@@ -22,10 +23,8 @@ require (
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v1.0.0-rc.1 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.17.0 // indirect
-	github.com/containers/buildah v1.42.2 // indirect
 	github.com/containers/libtrust v0.0.0-20230121012942-c1716e8a8d01 // indirect
 	github.com/containers/ocicrypt v1.2.1 // indirect
-	github.com/containers/podman/v5 v5.7.1 // indirect
 	github.com/containers/psgo v1.9.1-0.20250826150930-4ae76f200c86 // indirect
 	github.com/coreos/go-systemd/v22 v22.6.0 // indirect
 	github.com/cyberphone/json-canonicalization v0.0.0-20241213102144-19d51d7fe467 // indirect
@@ -104,9 +103,7 @@ require (
 	go.opentelemetry.io/otel v1.36.0 // indirect
 	go.opentelemetry.io/otel/metric v1.36.0 // indirect
 	go.opentelemetry.io/otel/trace v1.36.0 // indirect
-	go.podman.io/common v0.66.1 // indirect
 	go.podman.io/image/v5 v5.38.0 // indirect
-	go.podman.io/storage v1.61.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/crypto v0.43.0 // indirect
 	golang.org/x/net v0.45.0 // indirect
@@ -124,5 +121,3 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 	tags.cncf.io/container-device-interface v1.0.1 // indirect
 )
-
-replace kodaic.ma/sandbox/podman => ./podman
