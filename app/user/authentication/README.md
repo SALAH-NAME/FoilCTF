@@ -19,12 +19,16 @@ Provides secure user registration, login, token refreshing and logout.
 
 ## Core Interfaces
 
+```
 export interface User {
 	id:		string;
 	email:		string;
 	username:	string;
 	password:	string;
+	avatar:		string;
+	role:		string;
 }
+```
 
 ## API Endpoints
 

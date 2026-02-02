@@ -19,7 +19,7 @@ export	function authenticateToken(req: AuthRequest, res: Response, next: NextFun
 		return ;
 	}
 	const	[bearer, token]	= authHeader.split(' ');
-	if (bearer !== 'Basic' || token === undefined) {
+	if (bearer !== 'Bearer' || !token) {
 		res.sendStatus(401);
 		return ;
 	}
