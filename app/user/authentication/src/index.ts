@@ -33,7 +33,6 @@ app.post('/api/auth/register',
 	async (req: AuthRequest, res: Response) => {
 	try {
 		let	{username, email, password} = req.body;
-		username	= username.toLowerCase();
 		email		= email.toLowerCase();
 		const   [existingUser] = await db.select()
 						.from(users)
@@ -61,7 +60,7 @@ app.post('/api/auth/register',
 app.post('/api/auth/login',
 	validate(loginSchema),
 	async (req: AuthRequest, res: Response) => {
-		const	{username, password} = req.body;
+		let	{username, password} = req.body;
 		try {
 			const	[user] = await db.select().from(users).where(eq(users.username, username));
 			const	passwordIsValid = await bcrypt.compare(password,
