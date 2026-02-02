@@ -1,17 +1,17 @@
 package main
 
 import (
-	"os"
-	"io"
-	"fmt"
-	"math"
-	"errors"
 	"context"
-	"strconv"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"log"
+	"math"
 	"net/http"
+	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"kodaic.ma/sandbox/podman"
@@ -360,7 +360,7 @@ func routeContainerStart(app *App, w http.ResponseWriter, r *http.Request) {
 		wJson.Encode(map[string]any{"error": err})
 		return
 	}
-	
+
 	w.WriteHeader(http.StatusOK)
 }
 func routeContainerStop(app *App, w http.ResponseWriter, r *http.Request) {
@@ -388,7 +388,7 @@ func routeContainerStop(app *App, w http.ResponseWriter, r *http.Request) {
 		wJson.Encode(map[string]any{"error": err})
 		return
 	}
-	
+
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -463,7 +463,7 @@ func middleContainerCreate(app *App, next http.Handler) http.Handler {
 	})
 }
 
-func RoutesContainer(app *App) func (r chi.Router) {
+func RoutesContainer(app *App) func(r chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", adapterRoute(app, routeContainerList))
 

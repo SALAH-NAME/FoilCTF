@@ -36,8 +36,8 @@ func main() {
 	srv.Use(middleware.Logger)
 	srv.Use(middleware.Recoverer)
 	srv.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{ "https://localhost:3006", "http://localhost:3006", "http://127.0.0.1:3006" },
-		AllowedMethods: []string{ http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodHead, http.MethodOptions },
+		AllowedOrigins: []string{"https://localhost:3006", "http://localhost:3006", "http://127.0.0.1:3006"},
+		AllowedMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodHead, http.MethodOptions},
 	}))
 
 	srv.Route("/api/sandbox/images", RoutesImage(&app))

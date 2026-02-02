@@ -1,25 +1,25 @@
 package main
 
 import (
+	"errors"
 	"io"
 	"sync"
-	"errors"
 )
 
 type Stream struct {
-	mutex		sync.Mutex
-	notEmpty	*sync.Cond
+	mutex    sync.Mutex
+	notEmpty *sync.Cond
 
-	buf			[]byte
-	closed		bool
-	err			error
-	limit		int
+	buf    []byte
+	closed bool
+	err    error
+	limit  int
 }
 
 var ErrClosedStream = errors.New("stream: read/write while already closed")
 
 func NewStream(limit int) *Stream {
-	stream := Stream{ limit: limit }
+	stream := Stream{limit: limit}
 	stream.notEmpty = sync.NewCond(&stream.mutex)
 	return &stream
 }
@@ -32,7 +32,7 @@ func (s *Stream) Write(p []byte) (n int, err error) {
 		return 0, ErrClosedStream
 	}
 	if s.limit > 0 {
-		for len(s.buf) + len(p) > s.limit && !s.closed {
+		for len(s.buf)+len(p) > s.limit && !s.closed {
 			s.notEmpty.Wait()
 		}
 		if s.closed {
@@ -65,7 +65,7 @@ func (s *Stream) Read(p []byte) (n int, err error) {
 func (s *Stream) Close() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	
+
 	s.closed = true
 	s.notEmpty.Broadcast()
 	return nil

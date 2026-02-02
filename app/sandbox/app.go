@@ -8,8 +8,8 @@ import (
 )
 
 type App struct {
-	Env               Environment
-	ConnPodman        context.Context
+	Env        Environment
+	ConnPodman context.Context
 	LogStreams map[string][2]*Stream
 }
 
@@ -28,7 +28,7 @@ func (app *App) RegisterLogStream(imageName string) (stdout, stderr *Stream) {
 	stdout = NewStream(0)
 	stderr = NewStream(0)
 
-	app.LogStreams[imageName] = [2]*Stream{ stdout, stderr }
+	app.LogStreams[imageName] = [2]*Stream{stdout, stderr}
 	return stdout, stderr
 }
 func (app *App) UnregisterLogStream(imageName string) {

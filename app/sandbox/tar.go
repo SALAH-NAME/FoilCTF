@@ -1,11 +1,11 @@
 package main
 
 import (
-	"io"
-	"os"
 	"archive/tar"
-	"path/filepath"
+	"io"
 	"mime/multipart"
+	"os"
+	"path/filepath"
 )
 
 func TarExtract(archive multipart.File, destPath string) error {

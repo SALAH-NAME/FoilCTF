@@ -37,8 +37,8 @@ func LoadEnvironment() (env Environment, err error) {
 
 	entries := map[string]Entry{
 		"SERVER_ADDRESS":    {fallback: ":3006", slot: &env.ServerAddress},
-		"PODMAN_DIR_IMAGES": {fallback: "runtime/images", slot: &env.PodmanDirImages, filepath: true },
-		"PODMAN_DIR_HEALTH": {fallback: "runtime/health", slot: &env.PodmanDirHealth, filepath: true },
+		"PODMAN_DIR_IMAGES": {fallback: "runtime/images", slot: &env.PodmanDirImages, filepath: true},
+		"PODMAN_DIR_HEALTH": {fallback: "runtime/health", slot: &env.PodmanDirHealth, filepath: true},
 		"PODMAN_URI":        {fallback: "", slot: &env.PodmanUri},
 		"DATABASE_URI":      {fallback: "", slot: &env.DatabaseUri},
 	}
