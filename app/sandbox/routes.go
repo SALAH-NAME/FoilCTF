@@ -297,7 +297,7 @@ func routeContainerList(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 
 	wJson := json.NewEncoder(w)
