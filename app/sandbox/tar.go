@@ -56,7 +56,9 @@ func tarExtractRegularFile(filePath string, r io.Reader) error {
 	return nil
 }
 
-func TarExtract(archive multipart.File, destPath string) error {
+func TarExtract(archive multipart.File, destPath string) (files []string, err error) {
+	files = make([]string, 0)
+
 	r := tar.NewReader(archive)
 	for {
 		header, err := r.Next()
@@ -64,18 +66,20 @@ func TarExtract(archive multipart.File, destPath string) error {
 			if err == io.EOF {
 				break
 			}
-			return err
+			return files, err
 		}
 
 		switch header.Typeflag {
 		case tar.TypeReg:
-			regPath := filepath.Join(destPath, filepath.Clean(header.Name))
+			regName := filepath.Clean(header.Name)
+			regPath := filepath.Join(destPath, regName)
 			if err := tarExtractRegularFile(regPath, r); err != nil {
-				return err
+				return files, err
 			}
+			files = append(files, regName)
 		default:
-			return fmt.Errorf("cannot extract unsupported file type %q", typeFlagString(header.Typeflag))
+			return files, fmt.Errorf("cannot extract unsupported file type %q", typeFlagString(header.Typeflag))
 		}
 	}
-	return nil
+	return files, nil
 }

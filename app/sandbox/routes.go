@@ -1,6 +1,7 @@
 package main
 
 import (
+	"slices"
 	"context"
 	"encoding/json"
 	"errors"
@@ -239,10 +240,19 @@ func middleImageCreate(app *App, next http.Handler) http.Handler {
 		defer os.RemoveAll(imageDirectory)
 
 		log.Printf("extracting %d bytes from file %q", archiveInfo.Size, archiveInfo.Filename)
-		if err := TarExtract(archiveFile, imageDirectory); err != nil {
+		tarFiles, err := TarExtract(archiveFile, imageDirectory)
+		if err != nil {
 			log.Printf("could not extract the archive for image %q due to:\n\t%v", imageName, err)
 
 			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if !slices.Contains(tarFiles, "Containerfile") {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Header().Set("Content-Type", "application/json")
+
+			wJson := json.NewEncoder(w)
+			wJson.Encode(map[string]any{"error": "uploaded tar archive is missing a \"Containerfile\" at the root level"})
 			return
 		}
 
