@@ -88,7 +88,7 @@ type ContainerElementState struct {
 	CgroupPath     string `json:"cgroup_path"`
 
 	RestoreLog    string `json:"restore_log"`
-	CheckpointLog string `json:"restore_log"`
+	CheckpointLog string `json:"checkpoint_log"`
 }
 
 type ContainerElementMount struct {
