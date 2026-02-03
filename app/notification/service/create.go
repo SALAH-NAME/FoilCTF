@@ -28,8 +28,7 @@ func (hub *Hub) CreateNotification(ntype, title, message, link string) error {
 		log.Printf("Error saving notification into database %v", err)
 		return err
 	}
-
-	hub.GlobalChan <- WsEvent{
+	event := WsEvent{
 		Event: "new",
 		Payload: map[string]any{
 			"id":         notification.ID,
@@ -41,6 +40,13 @@ func (hub *Hub) CreateNotification(ntype, title, message, link string) error {
 			"created_at": notification.CreatedAt,
 		},
 	}
-	log.Printf("Successfully created notification with ID: %d", notification.ID)
+
+	select {
+	case hub.GlobalChan <- event:
+		log.Printf("Successfully created notification with ID: %d", notification.ID)
+	case <-time.After(hub.Conf.BroadcastTimeout):
+		log.Printf("WARNING: Broadcast channel full for notification ID: %d, event not broadcasted", notification.ID)
+	}
+
 	return nil
 }

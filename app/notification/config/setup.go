@@ -11,14 +11,17 @@ type Config struct {
 	ClientBuffer     int
 	RegisterBuffer   int
 	BroadcastTimeout time.Duration
+	JWTSecret        []byte
 }
 
 func NewDefaultConfig() *Config {
+	jwtKey := GetEnv("SECRET_KEY", "")
 	return &Config{
-		GlobalBuffer:     50,
+		GlobalBuffer:     100,
 		ClientBuffer:     100,
 		RegisterBuffer:   20,
-		BroadcastTimeout: 5 * time.Second,
+		BroadcastTimeout: 2 * time.Second,
+		JWTSecret:        []byte(jwtKey),
 	}
 }
 

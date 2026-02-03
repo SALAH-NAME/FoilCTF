@@ -7,24 +7,30 @@ import (
 
 func HandleJoin(hub *Hub, client *Client) {
 	hub.Mutex.Lock()
+	defer hub.Mutex.Unlock()
 	if _, ok := hub.Clients[client.ID]; !ok {
 		hub.Clients[client.ID] = make(map[*Client]bool)
 	}
 	hub.Clients[client.ID][client] = true
-	hub.Mutex.Unlock()
 	log.Printf("INFO: userID: %s has joined the server", client.ID)
 }
 
 func HandleUnjoin(hub *Hub, client *Client) {
-	client.Connection.Close()
 	hub.Mutex.Lock()
-	if connections, ok := hub.Clients[client.ID]; ok {
-		delete(connections, client)
-		if len(connections) == 0 {
-			delete(hub.Clients, client.ID)
-		}
+	defer hub.Mutex.Unlock()
+	connections, ok := hub.Clients[client.ID]
+	if !ok {
+		return
 	}
-	hub.Mutex.Unlock()
+	if _, exists := connections[client]; !exists {
+		return
+	}
+	delete(connections, client)
+	if len(connections) == 0 {
+		delete(hub.Clients, client.ID)
+	}
+	client.Connection.Close()
+	close(client.Send) // now guaranteed to be closed once.
 	log.Printf("INFO: userID: %s has left the server", client.ID)
 }
 
@@ -50,6 +56,12 @@ func BroadcastNotification(hub *Hub, eventws *WsEvent) {
 }
 
 func SendToClient(hub *Hub, client *Client, ev WsEvent) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("ERROR: Panic in SendToClient for user %s: %v", client.ID, r)
+			hub.UnregisterChan <- client
+		}
+	}()
 	select {
 	case client.Send <- ev:
 	case <-time.After(hub.Conf.BroadcastTimeout):

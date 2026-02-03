@@ -10,14 +10,14 @@ import (
 func DbInit() (*gorm.DB, error) {
 	dbHost := GetEnv("DB_HOST", "localhost")
 	dbUser := GetEnv("DB_USER", "postgres")
-	dbPass := GetEnv("DB_PASS", "pass12345678")
+	dbPass := GetEnv("DB_PASS", "postgres")
 	dbName := GetEnv("DB_NAME", "foilctf")
 	dbPort := GetEnv("DB_PORT", "5432")
 
 	dns := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", dbHost, dbUser, dbPass, dbName, dbPort)
 	db, err := gorm.Open(postgres.Open(dns), &gorm.Config{})
 	if err != nil {
-		return nil, fmt.Errorf(" Failed to connect to database: %v", err)
+		return nil, fmt.Errorf("Failed to connect to database: %v", err)
 	}
 	sqlDB, err := db.DB()
 	if err != nil {

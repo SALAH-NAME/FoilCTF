@@ -38,15 +38,29 @@ This service provides a realtime notification system for FoilCTF platform, it ma
 
 **Standalone service usage**  
 - Connect to database (look at config/database.go)  
-    **Note:** you have to insert records in depending tables and use the appropriate IDs. 
-- Connect to Websocket, to do so we can use ```wscat``` command line:  
-```bash
-wscat -c ws://localhost:3004/api/notifications/ws -H "X-User-Id: 123"
+- Connect to Websocket, to do so we can use ```wscat``` command line:
+- For testing purpose use `https://token.dev/` to generate JWT tokens, use the secrete key example in .env (don't forget to turn off Base64 encoded button):
+```json
+// header
+{
+  "typ": "JWT",
+  "alg": "HS256"
+}
+// payload
+{
+  "userid": "ID",
+  "role": "ROLE",
+  "exp": 1956480000
+}
 ```
+```bash
+wscat -c ws://localhost:3004/api/notifications/ws -H "Authorization: Bearer TOKEN_HERE"
+```
+
 - Triggering a global notification:  
 Use this testing endpoint to simulate a new event, this will save the notification to PostgrSQL and broadcast it to all connected websocket clients.
 ```bash
-curl -X POST -H "X-User-Id: admin_123" http://localhost:3004/api/test/create \
+curl -X POST -H-H "Authorization: Bearer TOKEN_HERE" http://localhost:3004/api/test/create \
      -H "Content-Type: application/json" \
      -d '{
            "type": "announcement",
@@ -56,24 +70,23 @@ curl -X POST -H "X-User-Id: admin_123" http://localhost:3004/api/test/create \
          }'
 ```
 - Managing personal notifications:  
-These endpoints require an ```X-User-Id``` header to identify which user is performing the action.  
     - **List notifications:**  
     ```bash 
-    curl -H "X-User-Id: 123" "http://localhost:3004/api/notifications/?limit=10"
+    curl -H "Authorization: Bearer TOKEN_HERE" "http://localhost:3004/api/notifications/?limit=10"
     ```
     - **Mark a single notification as read:**
     ```bash 
-    curl -X PATCH -H "X-User-Id: 123" http://localhost:3004/api/notifications/1
+    curl -X PATCH -H "Authorization: Bearer TOKEN_HERE" http://localhost:3004/api/notifications/1
     ```
     - **Mark ALL notifications as read:**
     ```bash 
-    curl -X PATCH -H "X-User-Id: 123" http://localhost:3004/api/notifications/
+    curl -X PATCH -H "Authorization: Bearer TOKEN_HERE" http://localhost:3004/api/notifications/
     ```
     - **Dismiss a notification:**
     ```bash 
-    curl -X DELETE -H "X-User-Id: 123" http://localhost:3004/api/notifications/1
+    curl -X DELETE -H "Authorization: Bearer TOKEN_HERE" http://localhost:3004/api/notifications/1
     ```
     - **Dismiss ALL notifications:**
     ```bash 
-    curl -X DELETE -H "X-User-Id: 123" http://localhost:3004/api/notifications/
+    curl -X DELETE -H "Authorization: Bearer TOKEN_HERE" http://localhost:3004/api/notifications/
     ```

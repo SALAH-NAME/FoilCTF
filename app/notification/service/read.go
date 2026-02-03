@@ -32,7 +32,7 @@ func GetNonReadRecords(tx *gorm.DB, userID string) ([]UserNotification, error) {
 }
 
 func (hub *Hub) HandleReadAll(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("userID").(string)
+	userID := r.Context().Value(userIDKey).(string)
 
 	err := hub.Db.Transaction(func(tx *gorm.DB) error {
 		newRecords, err := GetNonReadRecords(tx, userID)
@@ -66,7 +66,7 @@ func (hub *Hub) HandleReadAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (hub *Hub) HandleReadSingle(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("userID").(string)
+	userID := r.Context().Value(userIDKey).(string)
 
 	notifID, err := GetID(w, r)
 	if err != nil {

@@ -8,7 +8,7 @@ import (
 )
 
 func (hub *Hub) HandleListNotifications(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("userID").(string)
+	userID := r.Context().Value(userIDKey).(string)
 	limit := getLimit(r)
 	ListNotifications(userID, limit, hub, w)
 }

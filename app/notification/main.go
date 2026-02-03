@@ -8,7 +8,6 @@ import (
 )
 
 func main() {
-
 	db_conf := config.NewDefaultConfig()
 
 	db, err := config.DbInit()
