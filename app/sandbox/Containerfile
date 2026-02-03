@@ -7,7 +7,7 @@ WORKDIR /app
 COPY go.mod go.sum app.go env.go main.go routes.go stream.go tar.go ./
 
 RUN mkdir podman/
-COPY ./podman/go.mod ./podman/go.sum ./podman/podman.go ./podman/containers.go ./podman/images.go ./podman
+COPY ./podman/go.mod ./podman/go.sum ./podman/podman.go ./podman/containers.go ./podman/images.go ./podman/
 
 RUN go mod tidy && go mod download
 RUN go build -o sandbox .
