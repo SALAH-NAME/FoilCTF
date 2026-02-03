@@ -14,11 +14,11 @@ type Route struct {
 
 func MakeRoutes(app *App) (routes, containers, images []Route) {
 	routes = append(routes, Route_Image_Create(app))
+	routes = append(routes, Route_Image_Build(app))
 	routes = append(routes, Route_Container_Create(app))
 
 	images = append(images, Route_Image_List(app))
 	images = append(images, Route_Image_Inspect(app))
-	images = append(images, Route_Image_Build(app))
 	images = append(images, Route_Image_Delete(app))
 
 	containers = append(containers, Route_Container_List(app))

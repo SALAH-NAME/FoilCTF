@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"time"
 
 	buildah "github.com/containers/buildah/define"
@@ -402,6 +404,18 @@ func Podman_Container_Exists(ctx context.Context, nameOrId string) (bool, error)
 
 /// SECTION: Images
 
+type BuildOptions struct {
+	Name             string
+	ContextDirectory string
+	SkipTLSVerify    *bool
+
+	ContainerFiles []string
+	Tags           []string
+
+	WriterStdout io.Writer
+	WriterStderr io.Writer
+}
+
 type ListImage struct {
 	Id       string            `json:"id"`
 	Os       string            `json:"os,omitempty"`
@@ -423,78 +437,7 @@ type ListImage struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func Podman_Image_List(ctx context.Context) ([]ListImage, error) {
-	var filters map[string][]string
-
-	listOptions := new(images.ListOptions).WithFilters(filters)
-	imgs, err := images.List(ctx, listOptions)
-	if err != nil {
-		return []ListImage{}, err
-	}
-
-	var listImages []ListImage
-	for _, image := range imgs {
-		listImages = append(listImages, ListImage{
-			Id:       image.ID,
-			Os:       image.Os,
-			Names:    image.Names,
-			Labels:   image.Labels,
-			RepoTags: image.RepoTags,
-
-			Size:        image.Size,
-			SharedSize:  image.SharedSize,
-			VirtualSize: image.VirtualSize,
-
-			Containers: image.Containers,
-
-			ReadOnly: image.ReadOnly,
-			Dangling: image.Dangling,
-
-			CreatedAt: time.UnixMilli(image.Created),
-		})
-	}
-
-	return listImages, nil
-}
-
-type BuildOptions struct {
-	ContainerFiles   []string `json:"ContainerFiles,omitempty"`
-	ContextDirectory string   `json:"ContainerDirectory"`
-	Name             string   `json:"Name"`
-	Tags             []string `json:"Tags"`
-	SkipTLSVerify    *bool    `json:"SkipTLSVerify,omitempty"` // FALLBACK: <unknown>
-}
-
 type BuiltImage = entities.BuildReport
-
-func Podman_Image_Build(ctx context.Context, opts BuildOptions) (*BuiltImage, error) {
-	for _, file := range opts.ContainerFiles {
-		// NOTE(xenobas): Disallow stdin
-		if file == "/dev/stdin" {
-			return nil, errors.New("disallowed container file \"/dev/stdin\"")
-		}
-	}
-
-	var buildOptions entities.BuildOptions
-
-	// TODO(xenobas): Review if these are actually sane defaults
-	buildOptions.PullPolicy = buildah.PullIfMissing
-	buildOptions.Compression = archive.Gzip
-	buildOptions.Layers = false
-	buildOptions.Squash = true
-	buildOptions.MaxPullPushRetries = 3
-
-	buildOptions.CommonBuildOpts = new(buildah.CommonBuildOptions)
-	// TODO(xenobas): Figure out the defaults for CommonBuildOpts, and whethere it too is configurable
-
-	buildOptions.Output = opts.Name
-	buildOptions.AdditionalTags = opts.Tags
-	buildOptions.ContextDirectory = opts.ContextDirectory
-	buildOptions.SkipTLSVerify = opts.SkipTLSVerify
-	// TODO(xenobas): Log files { buildOptions.In, buildOptions.Out, buildOptions.Err }
-
-	return images.Build(ctx, opts.ContainerFiles, buildOptions)
-}
 
 type InspectedImage struct {
 	Id           string `json:"id"`
@@ -512,7 +455,7 @@ type InspectedImage struct {
 	VirtualSize int64 `json:"size_virtual,omitempty"`
 
 	Version string `json:"version,omitempty"`
-	Author  string `json:"version,omitempty"`
+	Author  string `json:"author,omitempty"`
 }
 type InspectedImageConfig struct {
 	User   string   `json:"user,omitempty"`
@@ -568,6 +511,76 @@ func (image *InspectedImage) ParseImageInspectReport(data *entities.ImageInspect
 	image.Author = data.Author
 }
 
+const Podman_Label_Default = "foilctf=instance"
+
+func Podman_Image_List(ctx context.Context) ([]ListImage, error) {
+	filters := make(map[string][]string)
+	filters["label"] = []string{Podman_Label_Default}
+
+	listOptions := new(images.ListOptions).WithFilters(filters)
+	imgs, err := images.List(ctx, listOptions)
+	if err != nil {
+		return []ListImage{}, err
+	}
+
+	var listImages []ListImage
+	for _, image := range imgs {
+		listImages = append(listImages, ListImage{
+			Id:       image.ID,
+			Os:       image.Os,
+			Names:    image.Names,
+			Labels:   image.Labels,
+			RepoTags: image.RepoTags,
+
+			Size:        image.Size,
+			SharedSize:  image.SharedSize,
+			VirtualSize: image.VirtualSize,
+
+			Containers: image.Containers,
+
+			ReadOnly: image.ReadOnly,
+			Dangling: image.Dangling,
+
+			CreatedAt: time.UnixMilli(image.Created),
+		})
+	}
+
+	return listImages, nil
+}
+
+func Podman_Image_Build(ctx context.Context, opts BuildOptions) (*BuiltImage, error) {
+	for _, file := range opts.ContainerFiles {
+		// NOTE(xenobas): Disallow stdin
+		if file == "/dev/stdin" {
+			return nil, errors.New("disallowed container file \"/dev/stdin\"")
+		}
+	}
+
+	var buildOptions entities.BuildOptions
+
+	// TODO(xenobas): Review if these are actually sane defaults
+	buildOptions.PullPolicy = buildah.PullIfMissing
+	buildOptions.Compression = archive.Gzip
+	buildOptions.Layers = false
+	buildOptions.Squash = true
+	buildOptions.MaxPullPushRetries = 3
+
+	buildOptions.CommonBuildOpts = new(buildah.CommonBuildOptions)
+	// TODO(xenobas): Figure out the defaults for CommonBuildOpts, and whethere it too is configurable
+
+	buildOptions.Labels = []string{Podman_Label_Default}
+	buildOptions.Output = opts.Name
+	buildOptions.SkipTLSVerify = opts.SkipTLSVerify
+	buildOptions.AdditionalTags = opts.Tags
+	buildOptions.ContextDirectory = opts.ContextDirectory
+
+	buildOptions.Out = opts.WriterStdout
+	buildOptions.Err = opts.WriterStderr
+	// TODO(xenobas): Log files { buildOptions.In, buildOptions.Out, buildOptions.Err }
+
+	return images.Build(ctx, opts.ContainerFiles, buildOptions)
+}
+
 func Podman_Image_Inspect(ctx context.Context, nameOrId string, calculateSize bool) (*InspectedImage, error) {
 	getOptions := new(images.GetOptions).WithSize(calculateSize)
 	data, err := images.GetImage(ctx, nameOrId, getOptions)
@@ -578,10 +591,27 @@ func Podman_Image_Inspect(ctx context.Context, nameOrId string, calculateSize bo
 	image := new(InspectedImage)
 	image.ParseImageInspectReport(data)
 
-	return image, nil
+	if image.Config == nil {
+		return nil, errors.New("image doesn't have a config")
+	}
+	for _, label := range image.Config.Labels {
+		if label == "foilctf" {
+			return image, nil
+		}
+	}
+	return nil, nil
 }
 
 func Podman_Image_Remove(ctx context.Context, nameOrId string) error {
+	img, err := Podman_Image_Inspect(ctx, nameOrId, false)
+	if err != nil {
+		return err
+	}
+	if img == nil {
+		err := fmt.Sprintf("image %q doesn't exist", nameOrId)
+		return errors.New(err)
+	}
+
 	_, errs := images.Remove(ctx, []string{nameOrId}, nil)
 	if len(errs) > 0 {
 		return errs[0]
