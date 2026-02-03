@@ -1,5 +1,4 @@
 import express from 'express';
-import { type Request, type Response, type NextFunction } from 'express';
 
 import { ENV_API_PORT, ENV_API_HOST } from './env.ts';
 import orm, { ormInitModels, ORM_CONNECTION_STRING } from './orm/index.ts';
@@ -42,24 +41,10 @@ web.get(
 	middleware_id_exists,
 	route_challenge_inspect
 );
-web.get(
-	'/api/challenges/:id/attachments',
-	middleware_id_format,
-	middleware_id_exists,
-	route_attachments_list
-);
 web.post(
 	'/api/challenges',
 	middleware_json({ limit: '8kb' }),
 	route_challenge_create
-);
-web.post(
-	'/api/challenges/:id/attachments',
-	middleware_id_format,
-	middleware_id_exists,
-	middleware_json({ limit: '4kb' }),
-	middleware_error,
-	route_attachment_create
 );
 web.put(
 	'/api/challenges/:id',
@@ -73,6 +58,22 @@ web.delete(
 	middleware_id_format,
 	middleware_id_exists,
 	route_challenge_delete
+);
+
+// SECTION: Attachments
+web.get(
+	'/api/challenges/:id/attachments',
+	middleware_id_format,
+	middleware_id_exists,
+	route_attachments_list
+);
+web.post(
+	'/api/challenges/:id/attachments',
+	middleware_id_format,
+	middleware_id_exists,
+	middleware_json({ limit: '4kb' }),
+	middleware_error,
+	route_attachment_create
 );
 
 try {

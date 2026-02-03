@@ -1,18 +1,15 @@
-import { ENV_API_PORT, ENV_API_HOST } from './env.ts';
-
 import { challenges as Challenges } from './orm/entities/init-models.ts';
-import { challengesCreationAttributes as ChallengesCreatePayload } from './orm/entities/init-models.ts';
 
-import express, { json as middleware_json } from 'express';
+import { json as middleware_json } from 'express';
 import { type Request, type Response, type NextFunction } from 'express';
 
 // TODO(xenobas): Authorization middleware
 
 export function middleware_error(
 	err: Error,
-	req: Request,
+	_req: Request,
 	res: Response,
-	next: NextFunction
+	_next: NextFunction
 ) {
 	console.error(err);
 	res.sendStatus(500);

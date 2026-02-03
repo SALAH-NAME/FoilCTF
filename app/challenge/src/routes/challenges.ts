@@ -1,6 +1,5 @@
 import { type Request, type Response } from 'express';
 import {
-	check_object,
 	check_string,
 	check_number,
 	check_boolean,
@@ -16,7 +15,7 @@ import {
 } from '../orm/entities/init-models.ts';
 
 export async function route_challenges_list(
-	req: Request,
+	_req: Request,
 	res: Response
 ): Promise<void> {
 	// TODO(xenobas): List filter/order options
@@ -45,7 +44,7 @@ export async function route_challenges_list(
 	res.end();
 }
 export async function route_challenges_delete(
-	req: Request,
+	_req: Request,
 	res: Response
 ): Promise<void> {
 	// TODO(xenobas): Bulk delete
@@ -196,7 +195,7 @@ export async function route_challenge_update(
 	res.end();
 }
 export async function route_challenge_delete(
-	req: Request<{ id: string }>,
+	_req: Request<{ id: string }>,
 	res: Response
 ): Promise<void> {
 	const { id } = res.locals.challenge as Challenges;
@@ -207,7 +206,7 @@ export async function route_challenge_delete(
 	res.end();
 }
 export async function route_challenge_inspect(
-	req: Request<{ id: string }>,
+	_req: Request<{ id: string }>,
 	res: Response
 ): Promise<void> {
 	const challenge = res.locals.challenge as Challenges;
