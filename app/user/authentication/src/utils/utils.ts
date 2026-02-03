@@ -5,8 +5,8 @@ import	{ User, AuthRequest}				from './types';
 import	{ AccessTokenSecret, AccessTokenExpiry}		from './env';
 import	{ ZodObject }					from 'zod';
 
-export	function generateAccessToken(username: string, role: string) : string {
-	return jwt.sign(	{ username: username, role: role },
+export	function generateAccessToken(username: string, role: string, id: number) : string {
+	return jwt.sign(	{ username: username, role: role , id: id},
 				AccessTokenSecret,
 				{ expiresIn: AccessTokenExpiry as any}
 			);

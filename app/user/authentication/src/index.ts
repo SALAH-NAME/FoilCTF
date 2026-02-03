@@ -69,8 +69,8 @@ app.post('/api/auth/login',
 				return ;
 			}
 
-			const	accessToken		= generateAccessToken(user.username as any, user.role);
-			const	refreshToken		= jwt.sign(	{username: user.username},
+			const	accessToken		= generateAccessToken(user.username as any, user.role, user.id);
+			const	refreshToken		= jwt.sign(	{username: user.username, id: user.id},
 													RefreshTokenSecret,
 													{ expiresIn: RefreshTokenExpiry as any}
 								);
@@ -99,7 +99,7 @@ app.post('/api/auth/refresh',
 	async (req: AuthRequest, res: Response) => {
 		try {
 			const	token = req.cookies?.jwt ?? "";
-			jwt.verify(token, RefreshTokenSecret) as JwtPayload; // promisify??
+			jwt.verify(token, RefreshTokenSecret) as JwtPayload;
 
 			const	[session] = await db.select()
 					.from(sessions).
@@ -115,7 +115,7 @@ app.post('/api/auth/refresh',
 				res.status(400).send();
 				return ;
 			}
-			const	newAccessToken = generateAccessToken(user.username as string, user.role);
+			const	newAccessToken = generateAccessToken(user.username as string, user.role, user.id);
 			res.json({ accessToken: newAccessToken });
 		} catch (err) {
 			return res.sendStatus(403);
