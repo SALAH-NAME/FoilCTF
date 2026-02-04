@@ -54,8 +54,8 @@ func (hub *Hub) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		if claims.UserID == "" {
-			log.Printf("Unauthorized :X-User-Id required")
-			JSONError(w, "Unauthorized :X-User-Id required", http.StatusUnauthorized)
+			log.Printf("Unauthorized: UserId required")
+			JSONError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 		ctx := context.WithValue(r.Context(), userIDKey, claims.UserID)
