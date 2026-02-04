@@ -64,15 +64,22 @@ podman run -d \
   chat-service
 ```
 4. Mannual testing (Standalone)  
+- For testing purpose use `https://token.dev/` to generate JWT tokens, use the secrete key example in .env (don't forget to turn off Base64 encoded button):
+```json
+// header
+{
+  "typ": "JWT",
+  "alg": "HS256"
+}
+// payload
+{
+  "userid": "idexample",
+  "username": "example",
+  "role": "player",
+  "exp": 1956480000
+}
+```
 - Websocket interface: use Use ```wscat``` to simulate the handshake. Note that you must provide the headers the service expects.
 ```bash
-wscat -c "ws://localhost:3003/api/chat?room=1" -H "X-User-Id: 123" -H "X-User-Role: participant" -H "X-User-Name: Player1"
+wscat -c "ws://localhost:3003/api/chat?room=1" -H "Authorization: Bearer YOUR JWT token"
 ```
-- **note** : When testing the Chat Service, please ensure the PostgreSQL database is properly seeded to satisfy the Foreign Key (FK) constraints defined in the schema. Because the messages table relies on existing records from other tables, a "blind" test will fail.
-
-**resources**
-- https://go.dev/tour/welcome/1
-- https://pkg.go.dev/github.com/gorilla/websocket#section-readme
-- https://medium.com/@Aleroawani/bridging-functions-and-interfaces-how-http-handlerfunc-23433314f120
-- https://pkg.go.dev/github.com/google/uuid
-- https://medium.com/@parvjn616/building-a-websocket-chat-application-in-go-388fff758575

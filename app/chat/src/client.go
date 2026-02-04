@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/gorilla/websocket"
+	"golang.org/x/time/rate"
 	"log"
 	"strings"
 	"time"
 	"unicode/utf8"
-	"github.com/gorilla/websocket"
-	"golang.org/x/time/rate"
 )
 
 type Client struct {

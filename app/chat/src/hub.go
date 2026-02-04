@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/gorilla/websocket"
+	"gorm.io/gorm"
 	"log"
 	"net/http"
 	"strconv"
 	"sync"
-	"github.com/gorilla/websocket"
-	"gorm.io/gorm"
 )
 
 type Hub struct {

@@ -26,13 +26,14 @@ func Broadcast(h *Hub, message *Message, clientIdIgnore string) {
 		for client := range connections {
 			if client.RoomID == message.ChatRoomID {
 				go func(m Message, c *Client) {
-				select {	
-				case c.Send <- m:
-				case <-time.After(h.Conf.BroadcastTimeout):
-					log.Printf("User %s timed out", client.Name)
-					h.Unregister <- c
-				}
-			}(*message, client) }
+					select {
+					case c.Send <- m:
+					case <-time.After(h.Conf.BroadcastTimeout):
+						log.Printf("User %s timed out", client.Name)
+						h.Unregister <- c
+					}
+				}(*message, client)
+			}
 		}
 	}
 }
@@ -54,7 +55,7 @@ func SendError(userID string, h *Hub, mssg Message) {
 
 func HandleMessageEvent(h *Hub, eventMessage *Message) {
 	eventMessage.SentTime = time.Now()
-	err := h.Db.Create(eventMessage).Error;
+	err := h.Db.Create(eventMessage).Error
 
 	if err != nil {
 		log.Printf("DATABASE ERROR: Failed to save message: %v", err)
@@ -133,16 +134,16 @@ func HandleJoinEvent(h *Hub, client *Client) {
 	log.Printf("INFO: user %s (ID: %s) has joined the chat", client.Name, client.ID)
 
 	joinMssg := Message{
-		Event:    "join",
-		Name:     client.Name,
+		Event:      "join",
+		Name:       client.Name,
 		ChatRoomID: client.RoomID,
-		Content:  fmt.Sprintf("%s has joined the chat", client.Name),
-		SentTime: time.Now(),
+		Content:    fmt.Sprintf("%s has joined the chat", client.Name),
+		SentTime:   time.Now(),
 	}
 	Broadcast(h, &joinMssg, "")
 }
 
-func RemoveClient (h *Hub, client *Client){
+func RemoveClient(h *Hub, client *Client) {
 	h.Mutex.Lock()
 	defer h.Mutex.Unlock()
 	connections, ok := h.Clients[client.ID]
@@ -162,12 +163,12 @@ func RemoveClient (h *Hub, client *Client){
 
 func HandleLeaveEvent(h *Hub, client *Client) {
 	RemoveClient(h, client)
-	leaveMssg := Message {
-		Event:    "leave",
-		Name:     client.Name,
+	leaveMssg := Message{
+		Event:      "leave",
+		Name:       client.Name,
 		ChatRoomID: client.RoomID,
-		Content:  fmt.Sprintf("%s has left the chat", client.Name),
-		SentTime: time.Now(),
+		Content:    fmt.Sprintf("%s has left the chat", client.Name),
+		SentTime:   time.Now(),
 	}
 	Broadcast(h, &leaveMssg, "")
 }
