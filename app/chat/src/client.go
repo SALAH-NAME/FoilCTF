@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
-
 	"github.com/gorilla/websocket"
 	"golang.org/x/time/rate"
 )

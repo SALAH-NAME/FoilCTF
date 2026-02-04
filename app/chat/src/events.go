@@ -22,20 +22,17 @@ type Message struct {
 func Broadcast(h *Hub, message *Message, clientIdIgnore string) {
 	h.Mutex.Lock()
 	defer h.Mutex.Unlock()
-	for client := range h.Clients {
-		if client.RoomID == message.ChatRoomID && client.ID != clientIdIgnore {
-			go func(m Message, c *Client) {
-				select {
+	for _, connections := range h.Clients {
+		for client := range connections {
+			if client.RoomID == message.ChatRoomID {
+				go func(m Message, c *Client) {
+				select {	
 				case c.Send <- m:
 				case <-time.After(h.Conf.BroadcastTimeout):
-					{
-						// the timeout condition  is triggerd AFTER the channelbuffer of 200 is full,
-						// so the user is lagging, this makes zombie goroutines/connections consuming
-						// cpu and by the time crashing the server
-						h.Unregister <- c
-					}
+					log.Printf("User %s timed out", client.Name)
+					h.Unregister <- c
 				}
-			}(*message, client)
+			}(*message, client) }
 		}
 	}
 }
@@ -43,22 +40,24 @@ func Broadcast(h *Hub, message *Message, clientIdIgnore string) {
 func SendError(userID string, h *Hub, mssg Message) {
 	h.Mutex.Lock()
 	defer h.Mutex.Unlock()
-	for client := range h.Clients {
-		if client.ID == userID {
+	if connections, ok := h.Clients[userID]; ok {
+		for client := range connections {
 			select {
 			case client.Send <- mssg:
 			default:
 				log.Printf("WARNING: could not send error message to %s", userID)
+				return
 			}
-			return
 		}
 	}
 }
 
 func HandleMessageEvent(h *Hub, eventMessage *Message) {
 	eventMessage.SentTime = time.Now()
-	if result := h.Db.Create(eventMessage); result.Error != nil {
-		log.Printf("DATABASE ERROR: Failed to save message: %v", result.Error)
+	err := h.Db.Create(eventMessage).Error;
+
+	if err != nil {
+		log.Printf("DATABASE ERROR: Failed to save message: %v", err)
 		SendError(eventMessage.SenderID, h, Message{
 			Event:   "error",
 			Content: "SERVER: Could not save your message, please try again.",
@@ -126,28 +125,47 @@ func HandleTypingEvent(h *Hub, eventMessage *Message) {
 
 func HandleJoinEvent(h *Hub, client *Client) {
 	h.Mutex.Lock()
-	h.Clients[client] = true
+	if _, ok := h.Clients[client.ID]; !ok {
+		h.Clients[client.ID] = make(map[*Client]bool)
+	}
+	h.Clients[client.ID][client] = true
 	h.Mutex.Unlock()
 	log.Printf("INFO: user %s (ID: %s) has joined the chat", client.Name, client.ID)
+
 	joinMssg := Message{
 		Event:    "join",
 		Name:     client.Name,
+		ChatRoomID: client.RoomID,
 		Content:  fmt.Sprintf("%s has joined the chat", client.Name),
 		SentTime: time.Now(),
 	}
 	Broadcast(h, &joinMssg, "")
 }
 
-func HandleLeaveEvent(h *Hub, client *Client) {
-	close(client.Send)
-	client.Connection.Close()
+func RemoveClient (h *Hub, client *Client){
 	h.Mutex.Lock()
-	delete(h.Clients, client)
-	h.Mutex.Unlock()
-	log.Printf("INFO: user %s (ID: %s) has left the chat", client.Name, client.ID)
-	leaveMssg := Message{
+	defer h.Mutex.Unlock()
+	connections, ok := h.Clients[client.ID]
+	if !ok {
+		return
+	}
+	if _, exits := connections[client]; !exits {
+		return
+	}
+	delete(connections, client)
+	if len(connections) == 0 {
+		delete(h.Clients, client.ID)
+	}
+	client.Connection.Close()
+	close(client.Send)
+}
+
+func HandleLeaveEvent(h *Hub, client *Client) {
+	RemoveClient(h, client)
+	leaveMssg := Message {
 		Event:    "leave",
 		Name:     client.Name,
+		ChatRoomID: client.RoomID,
 		Content:  fmt.Sprintf("%s has left the chat", client.Name),
 		SentTime: time.Now(),
 	}
