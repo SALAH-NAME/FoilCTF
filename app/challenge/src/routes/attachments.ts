@@ -12,6 +12,7 @@ import {
 	challenges_attachments as ChallengesAttachments,
 } from '../orm/entities/init-models.ts';
 import orm from '../orm/index.ts';
+import { respondJSON } from '../web.ts';
 
 type PayloadAttachmentCreate = { name: string; contents: Record<string, any> };
 function parse_attachement_create(
@@ -46,12 +47,9 @@ export async function route_attachment_create(
 	const challenge = res.locals.challenge as Challenges;
 
 	const parse_result = parse_attachement_create(req.body);
-	if (!parse_result.ok) {
+	if (parse_result.ok === false) {
 		const { errors } = parse_result;
-		res.status(400);
-		res.header('Content-Type', 'application/json');
-		res.send(JSON.stringify({ errors }));
-		res.end();
+		respondJSON(res, { errors }, 400);
 
 		return;
 	}
@@ -67,10 +65,7 @@ export async function route_attachment_create(
 
 		await transaction.commit();
 
-		res.status(201);
-		res.header('Content-Type', 'application/json');
-		res.send(JSON.stringify(chall_attach));
-		res.end();
+		respondJSON(res, { challenge_attachment: chall_attach }, 201);
 	} catch (error) {
 		await transaction.rollback();
 
@@ -85,16 +80,10 @@ export async function route_attachments_list(
 ) {
 	// TODO(xenobas): Pagination might be needed ?
 	const challenge = res.locals.challenge as Challenges;
-
 	const attachments = await ChallengesAttachments.findAll({
 		where: { challenge_id: challenge.id },
 		include: [Attachments],
 	});
 
-	res.status(200);
-	res.header('Content-Type', 'application/json');
-	res.send(JSON.stringify(attachments));
-	res.end();
-
-	return;
+	respondJSON(res, { attachments }, 200);
 }

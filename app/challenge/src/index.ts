@@ -25,6 +25,7 @@ import {
 } from './routes/attachments.ts';
 
 const web = express();
+web.use(middleware_error);
 
 // SECTION: Bulk actions
 web.get('/api/challenges', route_challenges_list);
@@ -72,7 +73,6 @@ web.post(
 	middleware_id_format,
 	middleware_id_exists,
 	middleware_json({ limit: '4kb' }),
-	middleware_error,
 	route_attachment_create
 );
 
@@ -86,6 +86,11 @@ try {
 	process.exit(1);
 }
 
-web.listen(ENV_API_PORT, ENV_API_HOST, () => {
+web.listen(ENV_API_PORT, ENV_API_HOST, (error?: Error) => {
+	if (error) {
+		console.error(error);
+		return;
+	}
+
 	console.log(`REST API listening on port ${ENV_API_PORT}`);
 });

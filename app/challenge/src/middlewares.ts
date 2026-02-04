@@ -1,7 +1,7 @@
 import { challenges as Challenges } from './orm/entities/init-models.ts';
 
-import { json as middleware_json } from 'express';
 import { type Request, type Response, type NextFunction } from 'express';
+import { respondStatus } from './web.ts';
 
 // TODO(xenobas): Authorization middleware
 
@@ -12,7 +12,7 @@ export function middleware_error(
 	_next: NextFunction
 ) {
 	console.error(err);
-	res.sendStatus(500);
+	respondStatus(res, 500);
 }
 export async function middleware_id_format(
 	req: Request,
@@ -51,5 +51,4 @@ export async function middleware_id_exists(
 	res.locals.challenge = challenge;
 	next();
 }
-
-export { middleware_json };
+export { json as middleware_json } from 'express';

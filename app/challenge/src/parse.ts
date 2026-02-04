@@ -30,6 +30,7 @@ export function check_number(
 	if (typeof x === 'undefined' && (config?.allow_undefined ?? false))
 		return undefined;
 	if (typeof x !== 'number') return 'Must be a number';
+	if (!isFinite(x)) return 'Must be finite';
 	if (x < (config?.min ?? -Infinity)) return 'Too small';
 	if (x > (config?.max ?? +Infinity)) return 'Too large';
 	return undefined;

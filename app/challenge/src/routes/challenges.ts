@@ -1,4 +1,5 @@
 import { type Request, type Response } from 'express';
+
 import {
 	check_string,
 	check_number,
@@ -7,6 +8,7 @@ import {
 	type ParseErrors,
 	type ParseResult,
 } from '../parse.ts';
+import { parse_pagination, respondJSON, respondStatus } from '../web.ts';
 
 import {
 	users as Users,
@@ -15,10 +17,17 @@ import {
 } from '../orm/entities/init-models.ts';
 
 export async function route_challenges_list(
-	_req: Request,
+	req: Request,
 	res: Response
 ): Promise<void> {
-	// TODO(xenobas): List filter/order options
+	const parse_result = parse_pagination(req.query);
+	if (parse_result.ok === false) {
+		const { errors } = parse_result;
+		respondJSON(res, { errors }, 400);
+
+		return;
+	}
+
 	const challenges = await Challenges.findAll({
 		order: [
 			['id', 'ASC'],
@@ -34,22 +43,17 @@ export async function route_challenges_list(
 				'reward_decrements',
 			],
 		},
-		limit: 50,
-		offset: 0,
+		limit: parse_result.payload.limit,
+		offset: parse_result.payload.offset,
 	});
-
-	res.header('Content-Type', 'application/json');
-	res.status(200);
-	res.send(JSON.stringify(challenges));
-	res.end();
+	respondJSON(res, challenges);
 }
 export async function route_challenges_delete(
 	_req: Request,
 	res: Response
 ): Promise<void> {
 	// TODO(xenobas): Bulk delete
-	res.sendStatus(501);
-	res.end();
+	respondStatus(res, 501);
 }
 
 async function parse_challenge_upsert(
@@ -151,22 +155,15 @@ export async function route_challenge_create(
 	res: Response
 ): Promise<void> {
 	const parse_result = await parse_challenge_upsert(req.body);
-	if (!parse_result.ok) {
+	if (parse_result.ok === false) {
 		const { errors } = parse_result;
-		res.status(400);
-		res.header('Content-Type', 'application/json');
-		res.send(JSON.stringify({ errors }));
-		res.end();
+		respondJSON(res, { errors }, 400);
 
 		return;
 	}
 
 	const challenge = await Challenges.create(parse_result.payload);
-
-	res.header('Content-Type', 'application/json');
-	res.status(201);
-	res.send(JSON.stringify(challenge));
-	res.end();
+	respondJSON(res, { challenge }, 201);
 }
 export async function route_challenge_update(
 	req: Request<{ id: string }>,
@@ -175,35 +172,29 @@ export async function route_challenge_update(
 	const challenge = res.locals.challenge as Challenges;
 
 	const parse_result = await parse_challenge_upsert(req.body, challenge);
-	if (!parse_result.ok) {
+	if (parse_result.ok === false) {
 		const { errors } = parse_result;
-		res.status(400);
-		res.header('Content-Type', 'application/json');
-		res.send(JSON.stringify({ errors }));
-		res.end();
+		respondJSON(res, { errors }, 400);
 
 		return;
 	}
 
 	try {
 		await challenge.update(parse_result.payload);
-		res.sendStatus(200);
+		respondStatus(res, 200);
 	} catch (error) {
 		console.error(`Could not update challenge#${challenge.id}:`, error);
-		res.sendStatus(400);
+		respondStatus(res, 400);
 	}
-	res.end();
 }
 export async function route_challenge_delete(
 	_req: Request<{ id: string }>,
 	res: Response
 ): Promise<void> {
 	const { id } = res.locals.challenge as Challenges;
-
 	await Challenges.destroy({ where: { id } });
 
-	res.sendStatus(200);
-	res.end();
+	respondStatus(res, 200);
 }
 export async function route_challenge_inspect(
 	_req: Request<{ id: string }>,
@@ -211,8 +202,5 @@ export async function route_challenge_inspect(
 ): Promise<void> {
 	const challenge = res.locals.challenge as Challenges;
 
-	res.header('Content-Type', 'application/json');
-	res.status(200);
-	res.send(JSON.stringify(challenge));
-	res.end();
+	respondJSON(res, { challenge }, 200);
 }
