@@ -19,22 +19,35 @@ type Message struct {
 	DeletedAt  *time.Time `json:"deleted_at,omitempty" gorm:"index"`
 }
 
-func Broadcast(h *Hub, message *Message, clientIdIgnore string) {
+func GetClients(h *Hub, message *Message, clientIdIgnore string) [] *Client{
 	h.Mutex.Lock()
 	defer h.Mutex.Unlock()
-	for _, connections := range h.Clients {
+	targets := [] *Client{}
+	for userID, connections := range h.Clients {
+		if userID == clientIdIgnore {
+			continue
+		}
 		for client := range connections {
 			if client.RoomID == message.ChatRoomID {
-				go func(m Message, c *Client) {
-					select {
-					case c.Send <- m:
-					case <-time.After(h.Conf.BroadcastTimeout):
-						log.Printf("User %s timed out", client.Name)
-						h.Unregister <- c
-					}
-				}(*message, client)
+				targets = append(targets, client)
 			}
 		}
+	}
+	return targets
+}
+
+func Broadcast(h *Hub, message *Message, clientIdIgnore string) {
+	targets := GetClients(h, message, clientIdIgnore)
+	
+	for _, client := range targets {
+		go func(m Message, c *Client) {
+			select {
+			case c.Send <- m:
+			case <-time.After(h.Conf.BroadcastTimeout):
+				log.Printf("User %s timed out", c.Name)
+				h.Unregister <- c
+			}
+		}(*message, client)
 	}
 }
 
