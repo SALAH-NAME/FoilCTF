@@ -1,2 +1,4 @@
-challenge.tar
-images/
+sandbox
+runtime/
+
+*.tar

@@ -1,22 +1,24 @@
-FROM docker.io/library/golang:1.25.6-alpine3.23 AS builder
+FROM golang:1.25-alpine3.23 AS builder
 
 RUN apk add --no-cache \
-    gpgme-dev \
-    btrfs-progs-dev \
-    gcc \
-    musl-dev 
+	gpgme-dev btrfs-progs-dev gcc musl-dev
 
-WORKDIR /usr/src/app
-COPY    go.mod go.sum .
-RUN     go mod download
+WORKDIR /app
+COPY go.mod go.sum app.go env.go main.go routes.go stream.go tar.go ./
 
-COPY    . .
-RUN     go build -o /usr/local/bin/app-sandbox .
+RUN mkdir podman/
+COPY ./podman/go.mod ./podman/go.sum ./podman/podman.go ./podman/containers.go ./podman/images.go ./podman/
 
-FROM alpine:3.23
+RUN go mod tidy && go mod download
+RUN go build -o sandbox .
 
-RUN apk add --no-cache gpgme btrfs-progs
+FROM alpine:3.23 AS runner
 
-COPY --from=builder /usr/local/bin/app-sandbox /usr/local/bin/app-sandbox
+RUN apk add --no-cache \
+	gpgme btrfs-progs
 
-ENTRYPOINT [ "app-sandbox" ]
+WORKDIR /app
+COPY --from=builder /app/sandbox .
+
+EXPOSE 3006
+ENTRYPOINT [ "./sandbox" ]
