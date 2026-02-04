@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/gorilla/websocket"
-	"golang.org/x/time/rate"
 	"log"
 	"strings"
 	"time"
 	"unicode/utf8"
+	"github.com/gorilla/websocket"
+	"golang.org/x/time/rate"
 )
 
 type Client struct {
@@ -60,10 +60,10 @@ func (c *Client) ReadFromConnectionTunnel() {
 		c.LastSeen = time.Now()
 		if !c.RateLimiter.Allow() {
 			log.Printf("WARNING: Rate limit exceeded for user %s (ID: %s)", c.Name, c.ID)
-			c.Send <- Message{
+			SendError(c.ID, c.Hub, Message{
 				Event:   "error",
 				Content: "WARNING: you are sending messages too fast. Please slow down.",
-			}
+			}) 
 			continue
 		}
 		cleanContent := strings.TrimSpace(msg.Content)
@@ -75,16 +75,25 @@ func (c *Client) ReadFromConnectionTunnel() {
 			}
 			if contentRuneCount > c.Hub.Conf.MaxContentLimit {
 				log.Printf("REJECT : User %s (ID: %s) messgae too long", c.Name, c.ID)
-				c.Send <- Message{
+				SendError(c.ID, c.Hub, Message{
 					Event:   "error",
 					Content: fmt.Sprintf("You exceeded the character limit (%d characters max).", c.Hub.Conf.MaxContentLimit),
-				}
+				})
 				continue
 			}
 		}
 		msg.SenderID = c.ID
 		msg.ChatRoomID = c.RoomID
 		msg.Content = cleanContent
-		c.Hub.MessageChannel <- msg
+		select {
+			case c.Hub.MessageChannel <- msg:
+			case <-time.After(c.Hub.Conf.BroadcastTimeout):
+				log.Printf("Message dropped: message channel full. User %s (ID %s)", c.Name, c.ID)
+				SendError(c.ID, c.Hub, Message{
+					Event: "error",
+					Content: fmt.Sprintf("Server too busy to process your message. Please try again"),
+				})
+		}
+		
 	}
 }

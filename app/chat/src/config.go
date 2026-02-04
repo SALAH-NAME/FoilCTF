@@ -27,7 +27,7 @@ func NewDefaultConfig() Config {
 		RateLimitRequest: 3,
 		RateLimitBrust:   6,
 		EditLimit:        1 * time.Minute,
-		BroadcastTimeout: 5 * time.Second,
+		BroadcastTimeout: 1 * time.Second,
 		JWTSecret:        []byte(jwtKey),
 	}
 }

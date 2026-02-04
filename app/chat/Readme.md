@@ -83,3 +83,7 @@ podman run -d \
 ```bash
 wscat -c "ws://localhost:3003/api/chat?room=1" -H "Authorization: Bearer YOUR JWT token"
 ```
+- Example of message: 
+```json
+{"content": "Hello everyone!", "event": "message"}
+```
