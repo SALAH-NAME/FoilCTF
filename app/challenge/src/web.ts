@@ -30,7 +30,7 @@ interface Pagination {
 	limit: number;
 	offset: number;
 }
-interface QueryPagination extends ParsedQs { }
+interface QueryPagination extends ParsedQs {}
 export function parse_pagination(
 	query: QueryPagination
 ): ParseResult<Pagination> {
