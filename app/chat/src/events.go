@@ -19,10 +19,10 @@ type Message struct {
 	DeletedAt  *time.Time `json:"deleted_at,omitempty" gorm:"index"`
 }
 
-func GetClients(h *Hub, message *Message, clientIdIgnore string) [] *Client{
+func GetClients(h *Hub, message *Message, clientIdIgnore string) []*Client {
 	h.Mutex.Lock()
 	defer h.Mutex.Unlock()
-	targets := [] *Client{}
+	targets := []*Client{}
 	for userID, connections := range h.Clients {
 		if userID == clientIdIgnore {
 			continue
@@ -38,7 +38,7 @@ func GetClients(h *Hub, message *Message, clientIdIgnore string) [] *Client{
 
 func Broadcast(h *Hub, message *Message, clientIdIgnore string) {
 	targets := GetClients(h, message, clientIdIgnore)
-	
+
 	for _, client := range targets {
 		go func(m Message, c *Client) {
 			select {
