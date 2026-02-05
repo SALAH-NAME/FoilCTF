@@ -1,8 +1,11 @@
 CREATE TABLE IF NOT EXISTS profiles (
   id       	SERIAL PRIMARY KEY,
 
-  username	TEXT NOT NULL UNIQUE,
-  avatar	TEXT DEFAULT NULL
+  username		TEXT NOT NULL UNIQUE,
+  avatar		TEXT DEFAULT NULL,
+  challengesSolved	INTEGER DEFAULT NULL,
+  eventsParticipated	INTEGER DEFAULT NULL,
+  totalPoints		INTEGER DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS users (

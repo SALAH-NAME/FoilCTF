@@ -1,4 +1,4 @@
-import { pgTable, serial, text, foreignKey, unique, varchar, timestamp, integer, check, json } from "drizzle-orm/pg-core"
+import { pgTable, unique, serial, text, integer, foreignKey, varchar, timestamp, check, json } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
@@ -7,7 +7,12 @@ export const profiles = pgTable("profiles", {
 	id: serial().primaryKey().notNull(),
 	username: text().notNull(),
 	avatar: text(),
-});
+	challengessolved: integer(),
+	eventsparticipated: integer(),
+	totalpoints: integer(),
+}, (table) => [
+	unique("profiles_username_key").on(table.username),
+]);
 
 export const users = pgTable("users", {
 	id: serial().primaryKey().notNull(),
@@ -42,6 +47,16 @@ export const sessions = pgTable("sessions", {
 		}).onDelete("cascade"),
 ]);
 
+export const ctfs = pgTable("ctfs", {
+	id: serial().primaryKey().notNull(),
+	teamMembersMin: integer("team_members_min").default(1).notNull(),
+	teamMembersMax: integer("team_members_max"),
+	metadata: json(),
+}, (table) => [
+	check("constraint_members_min_gt_zero", sql`team_members_min > 0`),
+	check("constraint_members_min_lteq_max", sql`team_members_min <= team_members_max`),
+]);
+
 export const teams = pgTable("teams", {
 	id: serial().primaryKey().notNull(),
 	profileId: integer("profile_id"),
@@ -51,16 +66,6 @@ export const teams = pgTable("teams", {
 			foreignColumns: [profiles.id],
 			name: "constraint_profile"
 		}),
-]);
-
-export const ctfs = pgTable("ctfs", {
-	id: serial().primaryKey().notNull(),
-	teamMembersMin: integer("team_members_min").default(1).notNull(),
-	teamMembersMax: integer("team_members_max"),
-	metadata: json(),
-}, (table) => [
-	check("constraint_members_min_gt_zero", sql`team_members_min > 0`),
-	check("constraint_members_min_lteq_max", sql`team_members_min <= team_members_max`),
 ]);
 
 export const attachments = pgTable("attachments", {

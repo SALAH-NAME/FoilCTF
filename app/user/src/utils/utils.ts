@@ -12,26 +12,22 @@ export	function generateAccessToken(username: string, role: string, id: number) 
 			);
 }
 
-export	function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) : void {
+export	function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
 	const	authHeader = req.get('authorization');
 	if (authHeader === undefined) {
-		res.sendStatus(400);
-		return ;
+		return res.sendStatus(400);
 	}
 	const	[bearer, token]	= authHeader.split(' ');
 	if (bearer !== 'Bearer' || !token) {
-		res.sendStatus(401);
-		return ;
+		return res.sendStatus(401);
 	}
-
-	jwt.verify(token, AccessTokenSecret, ((err: VerifyErrors | null, payload?: JwtPayload | string | undefined) => {
-		if (err) {
-			res.sendStatus(403);
-			return ;
-		}
-		req.user = payload as User; // LGHALB ALLAH
+	try {
+		const	decoded = jwt.verify(token, AccessTokenSecret) as User;
+		req.user = decoded;
 		next();
-	}) satisfies VerifyCallback)
+	} catch (err) {
+		return res.sendStatus(403);
+	}
 }
 
 export	const	validate = (schema: ZodObject) =>

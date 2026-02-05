@@ -9,11 +9,13 @@ import	{ db}						from './utils/db';
 import	ms, {StringValue}				from 'ms';
 import	{	RefreshTokenSecret,
 		PORT,
-		RefreshTokenExpiry
+		RefreshTokenExpiry,
+		AccessTokenSecret
 	}						from './utils/env';
 import	{ ZodError}					from 'zod';
 import	cookieParser					from 'cookie-parser';
 import	{	User,
+		Profile,
 		AuthRequest,
 		registerSchema,
 		loginSchema
@@ -21,7 +23,8 @@ import	{	User,
 
 import	{
 		generateAccessToken,
-		validate}				from './utils/utils';
+		validate,
+		authenticateToken}				from './utils/utils';
 
 const	app = express();
 app.use(express.json());
@@ -45,7 +48,10 @@ const	register = async (req: AuthRequest, res: Response) => {
 					  };
 		await db.insert(users).values(newUser);
 		await db.insert(profiles).values({ // user profile creation on registry
-							username:	username
+							username:		username,
+							challengessolved:	0,
+							eventsparticipated:	0,
+							totalpoints:		0
 						});
 		console.log(`New user created: ${username}`);
 		res.sendStatus(201);
@@ -95,7 +101,7 @@ const	login = async (req: AuthRequest, res: Response) => {
 
 const	refresh = async (req: AuthRequest, res: Response) => {
 	try {
-		const	token = req.cookies?.jwt ?? "";
+		const	token = req.cookies?.jwt ?? ""; // cookie or auth header?
 		jwt.verify(token, RefreshTokenSecret) as JwtPayload;
 
 		const	[session] = await db.select()
@@ -121,7 +127,7 @@ const	refresh = async (req: AuthRequest, res: Response) => {
 
 const	logout = async (req: AuthRequest, res: Response) => {
 	try {
-		const	token = req.cookies?.jwt;
+		const	token = req.cookies?.jwt; // cookie or auth header?
 		if (token) {
 			await db.delete(sessions).where(eq(sessions.refreshtoken, token));
 			console.log('user session got deleted');
@@ -139,19 +145,64 @@ const	logout = async (req: AuthRequest, res: Response) => {
 	}
 };
 
-const	getProfileById = async (req: AuthRequest, res: Response) => {
+const	selectProfile = async (req: AuthRequest, res: Response) => {
+	const	requestedUsername = req.params.username as string;
+	if (!requestedUsername) { 
+		res.sendStatus(400);
+		return (null);
+	}
+	const	[profile]	= await db.select()
+					.from(profiles)
+					.where(eq(profiles.username, requestedUsername));
+	if (!profile) {
+		res.sendStatus(404);
+		return (null);
+	}
+	return	(profile);
+}
+
+const	getProfile = async (req: AuthRequest, res: Response) => {
 	try {
-		const	requestedUsername = req.params.username as string;
-		if (!requestedUsername) { 
-			res.sendStatus(400);
+		const	profile = await selectProfile(req, res);
+		res.json(profile);
+	} catch (err) {
+		console.log(err);
+		res.sendStatus(500);
+	}
+}
+
+const	authenticateTokenProfile = async (req: AuthRequest, res: Response, next: NextFunction) => {
+	try {
+		const	authHeader = req.get('authorization');
+		if (authHeader === undefined) {
+			throw new Error();
 		}
-		const	[profile]	= await db.select()
-						.from(profiles)
-						.where(eq(profiles.username, requestedUsername));
-		if (!profile) {
-			return res.sendStatus(404);
+		const	[bearer, token]	= authHeader.split(' ');
+		if (bearer !== 'Bearer' || !token) {
+			throw new Error();
 		}
-		return res.json(profile);
+		const	decoded = jwt.verify(token, AccessTokenSecret) as User;
+		req.user = decoded;
+		next();
+	} catch (err) {
+		const	profile = await selectProfile(req, res) as Profile;
+		res.json({
+				username:		profile.username,
+				avatar:			profile.avatar,
+				challengessolved:	profile.challengessolved,
+				eventsparticipated:	profile.eventsparticipated,
+				totalpoints:		profile.totalpoints
+			});
+	}
+}
+
+const	uploadAvatar = async (req: AuthRequest, res: Response) => {
+	try {
+		const	avatar = req.body?.avatar;
+		if (!avatar) {
+			return res.sendStatus(400);
+		}
+		return res.send(`avatar sent: ${avatar}`); // what does the avatar look like?
 	} catch (err) {
 		console.log(err);
 		res.sendStatus(500);
@@ -160,13 +211,24 @@ const	getProfileById = async (req: AuthRequest, res: Response) => {
 
 app.post('/api/auth/register',
 	validate(registerSchema),
-	register);
+	register
+	);
 app.post('/api/auth/login',
 	validate(loginSchema),
-	login);
+	login
+	);
+
 app.post('/api/auth/refresh', refresh);
 app.delete('/api/auth/logout', logout);
-app.get('/api/profiles/:username', getProfileById);
+
+app.get('/api/profiles/:username',
+	authenticateTokenProfile,
+	getProfile
+	);
+app.post('/api/profiles/:username/avatar',
+	authenticateToken,
+	uploadAvatar
+	);
 
 app.use((err: any, req: AuthRequest, res: Response, next: NextFunction) => {
 	if (err instanceof ZodError) {
