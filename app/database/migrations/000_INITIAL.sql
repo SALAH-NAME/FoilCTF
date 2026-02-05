@@ -1,8 +1,8 @@
 CREATE TABLE IF NOT EXISTS profiles (
-  id       SERIAL PRIMARY KEY,
+  id       	SERIAL PRIMARY KEY,
 
-  name     TEXT NOT NULL,
-  image    TEXT DEFAULT NULL
+  username	TEXT NOT NULL UNIQUE,
+  avatar	TEXT DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS users (
 
   email		      TEXT DEFAULT NULL UNIQUE,
   username	      TEXT NOT NULL UNIQUE,
-  avatar	      TEXT DEFAULT NULL,
   role		      VARCHAR(64) NOT NULL DEFAULT 'user',
 
   profile_id          INTEGER DEFAULT NULL,

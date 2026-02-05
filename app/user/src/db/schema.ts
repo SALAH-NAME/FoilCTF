@@ -5,8 +5,8 @@ import { sql } from "drizzle-orm"
 
 export const profiles = pgTable("profiles", {
 	id: serial().primaryKey().notNull(),
-	name: text().notNull(),
-	image: text(),
+	username: text().notNull(),
+	avatar: text(),
 });
 
 export const users = pgTable("users", {
@@ -16,7 +16,6 @@ export const users = pgTable("users", {
 	bannedUntil: timestamp("banned_until", { mode: 'string' }),
 	email: text(),
 	username: text().notNull(),
-	avatar: text(),
 	role: varchar({ length: 64 }).default('user').notNull(),
 	profileId: integer("profile_id"),
 }, (table) => [

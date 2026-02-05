@@ -15,17 +15,17 @@ export	interface AuthRequest extends Request {
 	user?: User
 }
 
-export	const registerSchema = z.object({
+export	const registerSchema = z.object({ // trim spaces
 	body: z.object({
-		username:	z.string().min(3).max(15).regex(/^[a-zA-Z0-9_]+$/),
-		email:		z.email({ pattern: z.regexes.email }),
-		password:	z.string().min(12),
+		username:	z.string().trim().min(3).max(15).regex(/^[a-zA-Z0-9_-]+$/), // add '-', so yait-nas is valid
+		email:		z.string().trim().email({ pattern: z.regexes.email }), // is this ok?
+		password:	z.string().trim().min(12),
 	}),
 });
 
-export	const loginSchema = z.object({
+export	const loginSchema = z.object({ // same here
 	body: z.object({
-		username:	z.string().min(3).max(15).regex(/^[a-zA-Z0-9_]+$/),
-		password:	z.string().min(12),
+		username:	z.string().trim().min(3).max(15).regex(/^[a-zA-Z0-9_-]+$/), // same here
+		password:	z.string().trim().min(12),
 	}),
 });
