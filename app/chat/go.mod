@@ -1,4 +1,4 @@
-module chat-service
+module kodaic.ma/chat
 
 go 1.25.5
 

@@ -24,7 +24,10 @@ func NewServer(router http.Handler) (*http.Server, string) {
 }
 
 func main() {
-	db := DbInit()
+	db, err := DbInit()
+	if err != nil {
+		log.Fatalf("Database Error: %v", err)
+	}
 	conf := NewDefaultConfig()
 	hub := NewHub(db, &conf)
 	go hub.TrackChannels()
