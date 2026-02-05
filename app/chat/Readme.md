@@ -1,38 +1,27 @@
+**Core Dependencies**
+- **gorilla/websocket**: Handles protocol upgrading and low-level frame management.
+- **gorilla/mux**: request routing and middleware integration.
+- **golang-jwt/jwt/v5**: Secure token parsing and identity verification.
+- **gorm.io/gorm**: ORM for database.
+
 **Concurrency model**  
-*  Hub: maintains global state  
-*  Channels: used for thrad-safe communication 
-*  Goroutines : every connected user gets two lightweight goroutines (one for reading and one for writing) (look at ```serveChat()``` function)
+*  Hub: maintains global state.
+*  Channels: used for thrad-safe communication .
+*  Goroutines : every connected user gets two lightweight goroutines (one for reading and one for writing).
 
-**The Hub**
-- I used the ```Hub``` as the brain of the service, it manages the state of the chat and ensures that every action (joining, leaving, messaging) happens in a safe synchronized order. 
-```go
-type Hub struct {
-	db             *gorm.DB            -----> database connection
-	MessageChannel chan Message 
-	register       chan *Client        
-	unregister     chan *Client
-	clients        map[*Client]bool    -----> tracking online users
-	upgrader       websocket.Upgrader
-	mutex          sync.Mutex          
-}
-```
 **Channels**
-- As you can see I used three channels which are managed by the ```hubChannel.TrackChannels()``` function running in the background:  
-1. **```register```** when the user passes authentication in ```serveChat()``` the ```client``` object is sent to this channel to add them into map ```map[*Client]bool``` and trigger "join" broadcast  
-2. **```unregister```** acts as a clean up for disconnected users which is detected in ```readFromConnectionTunnel()``` function, I close their private channel  ```send``` and i remove them from the map
-3. **```MessageChannel```** a buffered channels that handles all real-time data (messages, typings, edits, deletes), it receives any json payload and the hub routes it to the correct handler.  
-        - ```message``` before processing the Hub checks rate limiting and content validity(length), if valid saves the record to PostresSQL for history retrieval and then broadcasts it to all connected clients in the room.  
-        - ```typing``` this event is strictly a "pass-through", I just broadcast it to all connected clients in the room.  
-        -```edit``` I check if the request falls within one-minute period and the requester is the original author, then update the database record and broadcast it.  
-        -```delete``` Insteed of removing the row, i perform a soft delete by updating the deleted_at timestamp ensuring te content is hidden from users but preserved for organizers.
-
-
+- The Hub synchronizes server state via TrackChannels, utilizing three core channels:  
+1. **Register / Unregister:** Handles client lifecycles, map updates, and connection cleanup.
+3. **MessageChannel** a buffered channel for al real time events:  
+        - ```message``` Validates rate limits/length, persists to PostgreSQL, and broadcasts.  
+        - ```typing``` "pass-through" broadcast.    
+        - ```edit``` Enforces authorship and a 1-minute window before DB sync.  
+        - ```delete``` Executes soft deletes via deleted_at timestamps for data auditability.  
 
 **endpoints**
-* **Websocket upgrading:**   the primary ```/api/chat``` acts as a gateway it uses ```Gorilla Websocket Upgrader``` to trasform HTTP requests into a long-lived bidirectional connections, before upgrading "Role-Based Access Control" is checked. the endpoint is managed by ```serveChat()``` method.  
-* **Chat History:**   the ```/api/chat/messages``` endpoint is managed as a standard GET request. it queries PostgresSQL via ```GORM``` to fetch 50 most recent records ```serveChatHistory()``` method..  
-* **User Monitoring:**  the ```/api/users```  allows server to safely export the "online" state as a JSON response without interfering with the active broadcast loops, it uses a Mutex-protected read operation on the Hub's internal client map, it is manages by ```serveGetUsers()``` method.  
-
+- ```GET /api/chat:``` Upgrades connection to WebSocket.
+- ```GET /api/chat/list:``` Returns a JSON array of the most recent messages for a specific room using GORM.
+- ```GET /api/chat/users:``` Returns a list of currently online users and their metadata.
 
 **Standalone service usage**  
 The chat service is designed to run as a microservice behind a Gateway. For standalone testing or development, follow these steps.
@@ -46,24 +35,8 @@ The service expects the following evironment variables to connect to database. f
 *  DB_NAME
 *  DB_PORT
 
-2. Build the chat service  
-```bash
-podman build -t chat-service .
-```
-3. Run the container  
-To allow the container to connect to the database service running on your ```localhost```, use the ```--network=host``` flag.  
-```bash
-podman run -d \
-  --name chat-app \
-  --network=host \
-  -e DB_HOST=localhost \
-  -e DB_USER=postgres \
-  -e DB_PASS=pass12345678 \
-  -e DB_NAME=foil_ctf \
-  -e PORT=3003 \
-  chat-service
-```
-4. Mannual testing (Standalone)  
+2. Build and run the service
+3. Mannual testing (Standalone)  
 - For testing purpose use `https://token.dev/` to generate JWT tokens, use the secrete key example in .env (don't forget to turn off Base64 encoded button):
 ```json
 // header
