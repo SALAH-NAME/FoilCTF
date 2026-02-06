@@ -8,7 +8,6 @@ import {
 	schema_challenge_update,
 	schema_pagination,
 } from '../schemas.ts';
-import { ENV_SANDBOX_ORIGIN } from '../env.ts';
 
 export async function route_challenges_list(
 	req: Request,
@@ -17,9 +16,7 @@ export async function route_challenges_list(
 	const parse_result = vb.safeParse(schema_pagination, req.query);
 	if (!parse_result.success) {
 		const { issues: errors } = parse_result;
-		respondJSON(res, { errors }, 400);
-
-		return;
+		return respondJSON(res, { errors }, 400);
 	}
 
 	const challenges = await Challenges.findAll({
@@ -60,9 +57,7 @@ export async function route_challenge_create(
 	);
 	if (!parse_result.success) {
 		const { issues: errors } = parse_result;
-		respondJSON(res, { errors }, 400);
-
-		return;
+		return respondJSON(res, { errors }, 400);
 	}
 
 	const challenge = await Challenges.create(parse_result.output);
@@ -80,9 +75,7 @@ export async function route_challenge_update(
 	);
 	if (!parse_result.success) {
 		const { issues: errors } = parse_result;
-		respondJSON(res, { errors }, 400);
-
-		return;
+		return respondJSON(res, { errors }, 400);
 	}
 
 	try {

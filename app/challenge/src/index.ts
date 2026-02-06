@@ -7,7 +7,8 @@ import {
 	middleware_error,
 	middleware_json,
 	middleware_id_format,
-	middleware_id_exists,
+	middleware_attachment_exists,
+	middleware_challenge_exists,
 	middleware_not_found,
 } from './middlewares.ts';
 
@@ -21,8 +22,9 @@ import {
 } from './routes/challenges.ts';
 
 import {
-	route_attachment_create,
 	route_attachments_list,
+	route_attachment_create,
+	route_attachment_delete,
 } from './routes/attachments.ts';
 
 const web = express();
@@ -37,9 +39,9 @@ web.delete(
 
 // SECTION: Per Challenge actions
 web.get(
-	'/api/challenges/:id',
-	middleware_id_format,
-	middleware_id_exists,
+	'/api/challenges/:challenge_id',
+	middleware_id_format('challenge_id'),
+	middleware_challenge_exists,
 	route_challenge_inspect
 );
 web.post(
@@ -48,32 +50,39 @@ web.post(
 	route_challenge_create
 );
 web.put(
-	'/api/challenges/:id',
-	middleware_id_format,
-	middleware_id_exists,
+	'/api/challenges/:challenge_id',
+	middleware_id_format('challenge_id'),
+	middleware_challenge_exists,
 	middleware_json({ limit: '8kb' }),
 	route_challenge_update
 );
 web.delete(
-	'/api/challenges/:id',
-	middleware_id_format,
-	middleware_id_exists,
+	'/api/challenges/:challenge_id',
+	middleware_id_format('challenge_id'),
+	middleware_challenge_exists,
 	route_challenge_delete
 );
 
 // SECTION: Attachments
 web.get(
-	'/api/challenges/:id/attachments',
-	middleware_id_format,
-	middleware_id_exists,
+	'/api/challenges/:challenge_id/attachments',
+	middleware_id_format('challenge_id'),
+	middleware_challenge_exists,
 	route_attachments_list
 );
 web.post(
-	'/api/challenges/:id/attachments',
-	middleware_id_format,
-	middleware_id_exists,
+	'/api/challenges/:challenge_id/attachments',
+	middleware_id_format('challenge_id'),
+	middleware_challenge_exists,
 	middleware_json({ limit: '4kb' }),
 	route_attachment_create
+);
+web.delete(
+	'/api/challenges/:challenge_id/attachments/:attachment_id',
+	middleware_id_format('challenge_id', 'attachment_id'),
+	middleware_challenge_exists,
+	middleware_attachment_exists,
+	route_attachment_delete
 );
 
 web.use(middleware_not_found);

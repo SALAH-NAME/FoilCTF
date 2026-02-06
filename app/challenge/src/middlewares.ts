@@ -1,7 +1,10 @@
-import { challenges as Challenges } from './orm/entities/init-models.ts';
-
 import { type Request, type Response, type NextFunction } from 'express';
+
 import { respondStatus } from './web.ts';
+import {
+	challenges as Challenges,
+	challenges_attachments as ChallengesAttachments,
+} from './orm/entities/init-models.ts';
 
 // TODO(xenobas): Authorization middleware
 
@@ -20,44 +23,55 @@ export function middleware_not_found(
 	next: NextFunction
 ) {
 	if (!req.route) {
-		respondStatus(res, 404);
-		return;
+		return respondStatus(res, 404);
 	}
 	next();
 }
-export async function middleware_id_format(
-	req: Request,
-	res: Response,
-	next: NextFunction
-) {
-	const { id } = req.params;
-	if (typeof id !== 'string') {
-		respondStatus(res, 404);
-		return;
-	}
-
+export function middleware_id_format(
+	...param_keys: string[]
+): (req: Request, res: Response, next: NextFunction) => Promise<void> {
 	const re = new RegExp(/^[1-9][0-9]*$/);
-	if (!re.test(id)) {
-		respondStatus(res, 404);
-		return;
-	}
-
-	next();
+	return async function (req: Request, res: Response, next: NextFunction) {
+		for (const key of param_keys) {
+			const id = req.params[key];
+			if (typeof id !== 'string' || !re.test(id)) {
+				return respondStatus(res, 404);
+			}
+			next();
+		}
+	};
 }
-export async function middleware_id_exists(
+export async function middleware_challenge_exists(
 	req: Request,
 	res: Response,
 	next: NextFunction
 ) {
-	const { id } = req.params;
+	const id = req.params['challenge_id'];
 
-	const challenge = await Challenges.findOne({ where: { id: Number(id) } });
+	const challenge = await Challenges.findByPk(Number(id));
 	if (challenge === null) {
-		respondStatus(res, 404);
-		return;
+		return respondStatus(res, 404);
 	}
 
 	res.locals.challenge = challenge;
+	next();
+}
+export async function middleware_attachment_exists(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	const challenge_id = Number(req.params['challenge_id']);
+	const attachment_id = Number(req.params['attachment_id']);
+
+	const challenge_attachment = await ChallengesAttachments.findOne({
+		where: { challenge_id, attachment_id },
+	});
+	if (challenge_attachment === null) {
+		return respondStatus(res, 404);
+	}
+
+	res.locals.challenge_attachment = challenge_attachment;
 	next();
 }
 export { json as middleware_json } from 'express';

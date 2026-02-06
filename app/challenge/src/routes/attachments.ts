@@ -1,27 +1,44 @@
+import * as vb from 'valibot';
 import { type Request, type Response, type NextFunction } from 'express';
 
-import {
+import orm, {
 	challenges as Challenges,
 	attachments as Attachments,
 	challenges_attachments as ChallengesAttachments,
-} from '../orm/entities/init-models.ts';
-import orm from '../orm/index.ts';
-import * as vb from 'valibot';
-import { respondJSON } from '../web.ts';
-import { schema_attachment_create } from '../schemas.ts';
+} from '../orm/index.ts';
+import { respondJSON, respondStatus } from '../web.ts';
+import { schema_attachment_create, schema_pagination } from '../schemas.ts';
 
+export async function route_attachments_list(
+	req: Request,
+	res: Response<{}, { challenge: Challenges }>
+) {
+	const { challenge } = res.locals;
+
+	const parse_result = vb.safeParse(schema_pagination, req.query);
+	if (!parse_result.success) {
+		const { issues: errors } = parse_result;
+		return respondJSON(res, { errors }, 400);
+	}
+
+	const attachments = await ChallengesAttachments.findAll({
+		where: { challenge_id: challenge.id },
+		include: [Attachments],
+		limit: parse_result.output.limit,
+		offset: parse_result.output.offset,
+	});
+	return respondJSON(res, { attachments }, 200);
+}
 export async function route_attachment_create(
 	req: Request,
-	res: Response<{}, { challenge: Challenges }>,
-	next: NextFunction
+	res: Response<{}, { challenge: Challenges }>
 ) {
 	const { challenge } = res.locals;
 
 	const parse_result = vb.safeParse(schema_attachment_create, req.body);
 	if (!parse_result.success) {
 		const { issues: errors } = parse_result;
-		respondJSON(res, { errors }, 400);
-		return;
+		return respondJSON(res, { errors }, 400);
 	}
 
 	const { name, contents } = parse_result.output;
@@ -35,24 +52,19 @@ export async function route_attachment_create(
 		await transaction.commit();
 
 		respondJSON(res, { challenge_attachment: one_to_one }, 201);
-	} catch (error) {
+	} catch (err) {
 		await transaction.rollback();
-
-		next(error);
-		return;
+		throw err;
 	}
 }
-export async function route_attachments_list(
+export async function route_attachment_delete(
 	_req: Request,
-	res: Response,
-	_next: NextFunction
+	res: Response<
+		{},
+		{ challenge: Challenges; challenge_attachment: ChallengesAttachments }
+	>
 ) {
-	// TODO(xenobas): Pagination might be needed ?
-	const challenge = res.locals.challenge as Challenges;
-	const attachments = await ChallengesAttachments.findAll({
-		where: { challenge_id: challenge.id },
-		include: [Attachments],
-	});
-
-	respondJSON(res, { attachments }, 200);
+	const { challenge_attachment } = res.locals;
+	await challenge_attachment.destroy();
+	respondStatus(res, 204);
 }

@@ -24,6 +24,3 @@ if (ENV_DATABASE_PASS === '') throw new Error('Please set DATABASE_PASS');
 
 export const ENV_DATABASE_NAME = process.env['DATABASE_NAME'] ?? '';
 if (ENV_DATABASE_NAME === '') throw new Error('Please set DATABASE_NAME');
-
-export const ENV_SANDBOX_ORIGIN = process.env['SANDBOX_ORIGIN'] ?? '';
-if (ENV_SANDBOX_ORIGIN === '') throw new Error('Please set SANDBOX_ORIGIN');

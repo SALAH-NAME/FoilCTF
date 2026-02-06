@@ -89,8 +89,12 @@ CREATE TABLE IF NOT EXISTS challenges_attachments (
 
   name           TEXT NOT NULL,
 
-  CONSTRAINT constraint_challenge FOREIGN KEY (challenge_id) REFERENCES challenges,
-  CONSTRAINT constraint_attachment FOREIGN KEY (attachment_id) REFERENCES attachments
+  CONSTRAINT constraint_challenge
+		FOREIGN KEY (challenge_id) REFERENCES challenges
+		ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT constraint_attachment
+		FOREIGN KEY (attachment_id) REFERENCES attachments
+		ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS hints (
