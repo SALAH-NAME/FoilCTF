@@ -12,16 +12,15 @@ import { schema_attachment_create } from '../schemas.ts';
 
 export async function route_attachment_create(
 	req: Request,
-	res: Response,
+	res: Response<{}, { challenge: Challenges }>,
 	next: NextFunction
 ) {
-	const challenge = res.locals.challenge as Challenges;
+	const { challenge } = res.locals;
 
 	const parse_result = vb.safeParse(schema_attachment_create, req.body);
 	if (!parse_result.success) {
 		const { issues: errors } = parse_result;
 		respondJSON(res, { errors }, 400);
-
 		return;
 	}
 
@@ -29,14 +28,13 @@ export async function route_attachment_create(
 	const transaction = await orm.transaction();
 	try {
 		const attachment = await Attachments.create({ contents }, { transaction });
-		const chall_attach = await ChallengesAttachments.create(
+		const one_to_one = await ChallengesAttachments.create(
 			{ challenge_id: challenge.id, attachment_id: attachment.id, name },
 			{ transaction }
 		);
-
 		await transaction.commit();
 
-		respondJSON(res, { challenge_attachment: chall_attach }, 201);
+		respondJSON(res, { challenge_attachment: one_to_one }, 201);
 	} catch (error) {
 		await transaction.rollback();
 

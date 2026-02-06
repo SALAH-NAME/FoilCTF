@@ -14,6 +14,17 @@ export function middleware_error(
 	console.error(err);
 	respondStatus(res, 500);
 }
+export function middleware_not_found(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	if (!req.route) {
+		respondStatus(res, 404);
+		return;
+	}
+	next();
+}
 export async function middleware_id_format(
 	req: Request,
 	res: Response,
@@ -21,13 +32,13 @@ export async function middleware_id_format(
 ) {
 	const { id } = req.params;
 	if (typeof id !== 'string') {
-		res.sendStatus(400);
+		respondStatus(res, 404);
 		return;
 	}
 
 	const re = new RegExp(/^[1-9][0-9]*$/);
 	if (!re.test(id)) {
-		res.sendStatus(404);
+		respondStatus(res, 404);
 		return;
 	}
 
@@ -42,9 +53,7 @@ export async function middleware_id_exists(
 
 	const challenge = await Challenges.findOne({ where: { id: Number(id) } });
 	if (challenge === null) {
-		res.sendStatus(404);
-		res.end();
-
+		respondStatus(res, 404);
 		return;
 	}
 

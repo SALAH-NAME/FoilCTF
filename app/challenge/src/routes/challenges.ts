@@ -1,6 +1,6 @@
+import * as vb from 'valibot';
 import { type Request, type Response } from 'express';
 
-import * as vb from 'valibot';
 import { challenges as Challenges } from '../orm/index.ts';
 import { respondJSON, respondStatus } from '../web.ts';
 import {
@@ -8,6 +8,7 @@ import {
 	schema_challenge_update,
 	schema_pagination,
 } from '../schemas.ts';
+import { ENV_SANDBOX_ORIGIN } from '../env.ts';
 
 export async function route_challenges_list(
 	req: Request,
@@ -67,12 +68,11 @@ export async function route_challenge_create(
 	const challenge = await Challenges.create(parse_result.output);
 	respondJSON(res, { challenge }, 201);
 }
-
 export async function route_challenge_update(
 	req: Request<{ id: string }>,
-	res: Response
+	res: Response<any, { challenge: Challenges }>
 ): Promise<void> {
-	const challenge = res.locals.challenge as Challenges;
+	const challenge = res.locals.challenge;
 
 	const parse_result = await vb.safeParseAsync(
 		schema_challenge_update,
@@ -95,16 +95,16 @@ export async function route_challenge_update(
 }
 export async function route_challenge_delete(
 	_req: Request<{ id: string }>,
-	res: Response
+	res: Response<any, { challenge: Challenges }>
 ): Promise<void> {
-	const { id } = res.locals.challenge as Challenges;
+	const { id } = res.locals.challenge;
 	await Challenges.destroy({ where: { id } });
 
 	respondStatus(res, 200);
 }
 export async function route_challenge_inspect(
 	_req: Request<{ id: string }>,
-	res: Response
+	res: Response<any, { challenge: Challenges }>
 ): Promise<void> {
 	const challenge = res.locals.challenge as Challenges;
 

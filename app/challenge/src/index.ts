@@ -8,6 +8,7 @@ import {
 	middleware_json,
 	middleware_id_format,
 	middleware_id_exists,
+	middleware_not_found,
 } from './middlewares.ts';
 
 import {
@@ -25,7 +26,6 @@ import {
 } from './routes/attachments.ts';
 
 const web = express();
-web.use(middleware_error);
 
 // SECTION: Bulk actions
 web.get('/api/challenges', route_challenges_list);
@@ -75,6 +75,9 @@ web.post(
 	middleware_json({ limit: '4kb' }),
 	route_attachment_create
 );
+
+web.use(middleware_not_found);
+web.use(middleware_error); // NOTE(xenobas): This must be always the last middleware, in order to guarantee that it catches all exceptions
 
 try {
 	await orm.authenticate();

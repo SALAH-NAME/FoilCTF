@@ -1,6 +1,4 @@
-import { join } from 'node:path';
-import { stdin, stdout, exit } from 'node:process';
-import { createInterface } from 'node:readline/promises';
+import { exit } from 'node:process';
 
 import SequelizeAuto from 'sequelize-auto';
 import {
@@ -12,9 +10,6 @@ import {
 } from '../src/env.ts';
 
 // TODO(xenobas): Completer interface
-// const rl = createInterface({ input: stdin, output: stdout });
-// const directory = await rl.question('Choose an output directory: ');
-// rl.close();
 const directory = './src/orm/entities';
 
 const instance = new SequelizeAuto(
