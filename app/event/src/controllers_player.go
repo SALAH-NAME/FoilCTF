@@ -10,6 +10,9 @@ func (s *Server)RequestSandbox(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (s *Server)KillSandbox(w http.ResponseWriter, r *http.Request) {
+
+}
 func (s *Server)SubmitFlag(w http.ResponseWriter, r *http.Request) {
 
 }

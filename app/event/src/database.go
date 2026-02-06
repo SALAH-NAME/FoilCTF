@@ -6,7 +6,6 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"log"
-	"os"
 )
 
 func DbInit() (*gorm.DB, error) {
@@ -30,11 +29,4 @@ func DbInit() (*gorm.DB, error) {
 	}
 	log.Println("Successfully connected to PostgreSQL!")
 	return db, nil
-}
-
-func GetEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return fallback
 }
