@@ -10,7 +10,7 @@
 		"dev": "nodemon",
 		"clean": "rm -rf dist",
 		"format": "prettier --write src/ scripts/",
-		"schema": "node scripts/entities.ts"
+		"schema": "node scripts/entities_generate.ts"
 	},
 	"devDependencies": {
 		"@types/express": "^5.0.6",
@@ -25,7 +25,8 @@
 		"express": "^5.2.1",
 		"pg": "^8.17.1",
 		"pg-hstore": "^2.3.4",
-		"sequelize": "^6.37.7"
+		"sequelize": "^6.37.7",
+		"valibot": "^1.2.0"
 	},
 	"prettier": {
 		"semi": true,

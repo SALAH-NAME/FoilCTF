@@ -19,4 +19,5 @@ function ormInitModels() {
 }
 
 export { ormInitModels, ORM_CONNECTION_STRING };
+export * from './entities/init-models.ts';
 export default orm;
