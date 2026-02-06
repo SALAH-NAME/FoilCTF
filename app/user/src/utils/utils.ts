@@ -1,7 +1,7 @@
 
 import	jwt, {VerifyErrors, VerifyCallback, JwtPayload}	from 'jsonwebtoken';
-import	{ Response, NextFunction }		from 'express';
-import	{ User, AuthRequest}				from './types';
+import	{ Response, NextFunction }			from 'express';
+import	{ User, AuthRequest}			from './types';
 import	{ AccessTokenSecret, AccessTokenExpiry}		from './env';
 import	{ ZodObject }					from 'zod';
 
@@ -46,3 +46,7 @@ export	const	validate = (schema: ZodObject) =>
 			next(error);
 		}
 	}
+
+export	const	getRandomNumber = (min: number, max: number) => {
+	return (Math.floor(Math.random() * (max - min + 1) + min));
+}

@@ -1,4 +1,4 @@
-import { pgTable, unique, serial, text, integer, foreignKey, varchar, timestamp, check, json } from "drizzle-orm/pg-core"
+import { pgTable, unique, serial, text, integer, boolean, foreignKey, varchar, timestamp, check, json } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
@@ -10,6 +10,10 @@ export const profiles = pgTable("profiles", {
 	challengessolved: integer(),
 	eventsparticipated: integer(),
 	totalpoints: integer(),
+	bio: text(),
+	location: text(),
+	socialmedialinks: text(),
+	private: boolean().default(false),
 }, (table) => [
 	unique("profiles_username_key").on(table.username),
 ]);

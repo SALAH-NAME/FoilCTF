@@ -5,7 +5,11 @@ CREATE TABLE IF NOT EXISTS profiles (
   avatar		TEXT DEFAULT NULL,
   challengesSolved	INTEGER DEFAULT NULL,
   eventsParticipated	INTEGER DEFAULT NULL,
-  totalPoints		INTEGER DEFAULT NULL
+  totalPoints		INTEGER DEFAULT NULL,
+  bio			TEXT DEFAULT NULL,
+  location		TEXT DEFAULT NULL,
+  socialMediaLinks	TEXT DEFAULT NULL,
+  private		BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS users (

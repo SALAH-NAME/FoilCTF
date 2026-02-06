@@ -1,7 +1,6 @@
-
 import	'dotenv/config';
-import	express, {Response, NextFunction}		from 'express';
 import	bcrypt						from 'bcrypt';
+import	express, {Response, NextFunction}		from 'express';
 import	jwt, {JwtPayload}				from 'jsonwebtoken';
 import	{ eq, or}					from 'drizzle-orm';
 import	{ users, sessions, profiles }			from './db/schema';
@@ -24,7 +23,16 @@ import	{	User,
 import	{
 		generateAccessToken,
 		validate,
-		authenticateToken}				from './utils/utils';
+		authenticateToken,
+	}						from './utils/utils';
+import	{
+		getProfile,
+		authenticateTokenProfile,
+		updateProfile,
+		uploadAvatar,
+		upload,
+	}						from './utils/profile';
+import	multer, {FileFilterCallback}			from 'multer';
 
 const	app = express();
 app.use(express.json());
@@ -145,94 +153,37 @@ const	logout = async (req: AuthRequest, res: Response) => {
 	}
 };
 
-const	selectProfile = async (req: AuthRequest, res: Response) => {
-	const	requestedUsername = req.params.username as string;
-	if (!requestedUsername) { 
-		res.sendStatus(400);
-		return (null);
-	}
-	const	[profile]	= await db.select()
-					.from(profiles)
-					.where(eq(profiles.username, requestedUsername));
-	if (!profile) {
-		res.sendStatus(404);
-		return (null);
-	}
-	return	(profile);
-}
-
-const	getProfile = async (req: AuthRequest, res: Response) => {
-	try {
-		const	profile = await selectProfile(req, res);
-		res.json(profile);
-	} catch (err) {
-		console.log(err);
-		res.sendStatus(500);
-	}
-}
-
-const	authenticateTokenProfile = async (req: AuthRequest, res: Response, next: NextFunction) => {
-	try {
-		const	authHeader = req.get('authorization');
-		if (authHeader === undefined) {
-			throw new Error();
-		}
-		const	[bearer, token]	= authHeader.split(' ');
-		if (bearer !== 'Bearer' || !token) {
-			throw new Error();
-		}
-		const	decoded = jwt.verify(token, AccessTokenSecret) as User;
-		req.user = decoded;
-		next();
-	} catch (err) {
-		const	profile = await selectProfile(req, res) as Profile;
-		res.json({
-				username:		profile.username,
-				avatar:			profile.avatar,
-				challengessolved:	profile.challengessolved,
-				eventsparticipated:	profile.eventsparticipated,
-				totalpoints:		profile.totalpoints
-			});
-	}
-}
-
-const	uploadAvatar = async (req: AuthRequest, res: Response) => {
-	try {
-		const	avatar = req.body?.avatar;
-		if (!avatar) {
-			return res.sendStatus(400);
-		}
-		return res.send(`avatar sent: ${avatar}`); // what does the avatar look like?
-	} catch (err) {
-		console.log(err);
-		res.sendStatus(500);
-	}
-}
-
 app.post('/api/auth/register',
 	validate(registerSchema),
-	register
-	);
+	register);
 app.post('/api/auth/login',
 	validate(loginSchema),
-	login
-	);
-
-app.post('/api/auth/refresh', refresh);
-app.delete('/api/auth/logout', logout);
+	login);
+app.post('/api/auth/refresh',
+	refresh);
+app.delete('/api/auth/logout',
+	logout);
 
 app.get('/api/profiles/:username',
 	authenticateTokenProfile,
-	getProfile
-	);
+	getProfile);
 app.post('/api/profiles/:username/avatar',
 	authenticateToken,
-	uploadAvatar
-	);
+	upload.single('avatar'),
+	uploadAvatar);
+app.put('/api/profiles/:username',
+	authenticateToken,
+	updateProfile);
 
 app.use((err: any, req: AuthRequest, res: Response, next: NextFunction) => {
 	if (err instanceof ZodError) {
-		return res.sendStatus(400);
+		return res.status(400).send(`zod error`);
+	}
+	if (err instanceof multer.MulterError) {
+		return res.status(400).json({ code: err.code, message: err.message });
+	}
+	if (err.message === 'Invalid file type') {
+		return res.status(400).json({ error: 'Only images are allowed' });
 	}
 	console.error(err);
 	res.sendStatus(500);
