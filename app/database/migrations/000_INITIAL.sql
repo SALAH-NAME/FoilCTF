@@ -6,11 +6,16 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 CREATE TABLE IF NOT EXISTS users (
-  id                  VARCHAR(64) PRIMARY KEY,
+  id                  SERIAL PRIMARY KEY,
   password            VARCHAR(64) NOT NULL,
 
   created_at          TIMESTAMP DEFAULT now() NOT NULL,
   banned_until        TIMESTAMP DEFAULT NULL,
+
+  email		      TEXT DEFAULT NULL UNIQUE,
+  username	      TEXT NOT NULL UNIQUE,
+  avatar	      TEXT DEFAULT NULL,
+  role		      VARCHAR(64) NOT NULL DEFAULT 'user',
 
   profile_id          INTEGER DEFAULT NULL,
   CONSTRAINT profile  FOREIGN KEY (profile_id) REFERENCES profiles
@@ -18,8 +23,12 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS sessions (
   id               SERIAL PRIMARY KEY,
-  token            TEXT NOT NULL,
-  expiry           TIMESTAMP NOT NULL
+  expiry           TIMESTAMP NOT NULL,
+
+  refreshtoken	   TEXT NOT NULL,
+  user_id	   INTEGER NOT NULL,
+  created_at	   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_id FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE -- delete session on user delete !!
 );
 
 CREATE TABLE IF NOT EXISTS ctfs (
