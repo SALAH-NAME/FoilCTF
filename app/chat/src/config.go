@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"time"
 )
@@ -18,7 +19,10 @@ type Config struct {
 }
 
 func NewDefaultConfig() Config {
-	jwtKey := GetEnv("SECRET_KEY", "")
+	jwtKey := GetEnv("JWT_SECRET", "")
+	if jwtKey == "" {
+		log.Fatal("FATAL: JWT_SECRET environment variable is required")
+	}
 	return Config{
 		MaxContentLimit:  500,
 		GlobalBuffer:     100,
