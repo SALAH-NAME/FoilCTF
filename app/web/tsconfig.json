@@ -1,5 +1,4 @@
 {
-	"extends": "../../tsconfig.json",
 	"include": [
 		"**/*",
 		"**/.server/**/*",
@@ -15,7 +14,7 @@
 		"jsx": "react-jsx",
 		"rootDirs": [".", "./.react-router/types"],
 		"rootDir": ".",
-		"baseUrl": ".",
+		"outDir": "./dist",
 		"paths": {
 			"~/*": ["./app/*"]
 		},
@@ -24,6 +23,9 @@
 		"noEmit": true,
 		"resolveJsonModule": true,
 		"skipLibCheck": true,
-		"strict": true
-  }
+		"strict": true,
+		"forceConsistentCasingInFileNames": true,
+		"declaration": true,
+		"sourceMap": true
+	}
 }

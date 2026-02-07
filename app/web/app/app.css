@@ -1,15 +1,44 @@
 @import 'tailwindcss';
 
+@layer base {
+	html {
+		box-sizing: border-box;
+	}
+	*,
+	*::after,
+	*::before {
+		margin: 0;
+		padding: 0;
+		box-sizing: inherit;
+	}
+}
+
+/* Gold */
+/* @theme {
+	--color-primary: #f9ba32;
+	--color-secondary: #426e86;
+	--color-background: #f8f1e5;
+	--color-dark: #2f3131;
+	--color-accent: #f0810f;
+} */
+/* --color-secondary: #5D90B0; */
+
+/* Red */
 @theme {
+	--color-primary: #ef4444;
+	--color-secondary: #a3a3a3;
+	--color-background: #e5e5e5;
+	--color-dark: #272727;
+	--color-accent: #bd5b5b;
 }
 
 @layer components {
 	body {
-		@apply text-zinc-700 border-zinc-700 bg-white;
+		@apply text-dark bg-background;
 	}
 
 	hr {
-		@apply border-indigo-600;
+		@apply border-primary;
 	}
 
 	label + input:not([type='file']) {
@@ -24,23 +53,20 @@
 	}
 
 	button {
-		@apply py-2 px-4 text-sm font-bold rounded-md bg-indigo-600 text-white items-center;
+		@apply py-2 px-4 text-sm font-bold rounded-md bg-primary text-white items-center;
 		&.snippet-icon {
 			@apply py-1 px-2 aspect-square inline-block w-fit;
 		}
 		&:hover {
-			&:not(.snippet-anchor) {
-				@apply bg-indigo-700;
-			}
 			@apply cursor-pointer;
 		}
 	}
 
 	dialog {
 		place-self: center;
-		@apply shadow-xl rounded-md border text-zinc-800;
+		@apply shadow-xl rounded-md border text-dark;
 		&:focus-within {
-			@apply outline-none border-indigo-600;
+			@apply outline-none border-primary;
 		}
 	}
 
@@ -57,8 +83,6 @@
 
 	a,
 	.snippet-anchor {
-		all: unset;
-		@apply w-fit inline appearance-none bg-transparent text-indigo-600;
 		&:hover {
 			@apply underline cursor-pointer;
 		}
@@ -77,12 +101,23 @@
 
 	.spinner_aj0A,
 	.spinner_V8m1 {
-		@apply text-indigo-600 fill-indigo-600;
+		@apply text-primary fill-primary;
 	}
 
 	button:disabled,
 	input:disabled,
 	textarea:disabled {
 		@apply opacity-50 cursor-not-allowed;
+	}
+
+	.sidebar-transition {
+		transition:
+			transform 300ms cubic-bezier(0.4, 0, 0.2, 1),
+			width 300ms cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	a:focus-visible,
+	button:focus-visible {
+		@apply outline-2 outline-offset-2 outline-primary;
 	}
 }

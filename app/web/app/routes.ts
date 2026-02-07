@@ -8,8 +8,15 @@ import {
 const routes = [
 	layout('./layouts/dashboard.tsx', [
 		index('routes/index.tsx'),
+		route('events', 'routes/events.tsx'),
+		route('dashboard', 'routes/dashboard.tsx'),
 		route('instances', 'routes/instances.tsx'),
 		route('challenges', 'routes/challenges.tsx'),
+		route('register', 'routes/register.tsx'),
+		route('signin', 'routes/signin.tsx'),
+		route('profile', 'routes/profile.tsx'),
+		route('privacy-policy', 'routes/privacy-policy.tsx'),
+		route('terms-of-service', 'routes/terms-of-service.tsx'),
 	]),
 	route('*', 'routes/not_found.tsx'),
 ] satisfies RouteConfig;
