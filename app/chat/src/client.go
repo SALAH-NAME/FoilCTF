@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"strings"
-	"time"
-	"unicode/utf8"
 	"github.com/gorilla/websocket"
 	"golang.org/x/time/rate"
+	"log"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+	"unicode/utf8"
 )
 
 type Client struct {
@@ -20,6 +22,9 @@ type Client struct {
 	Send        chan Message
 	RateLimiter *rate.Limiter
 	LastSeen    time.Time
+	closed      int32        // if channel is closed
+	closeOnce   sync.Once    // ensures close only once
+	sendMutex   sync.RWMutex // protects sending
 }
 
 func NewClient(conn *websocket.Conn, hub *Hub, userId string, userRole string, userName string, idRoom int) *Client {
@@ -32,6 +37,38 @@ func NewClient(conn *websocket.Conn, hub *Hub, userId string, userRole string, u
 		Connection:  conn,
 		Send:        make(chan Message, hub.Conf.ClientBuffer),
 		RateLimiter: rate.NewLimiter(rate.Limit(hub.Conf.RateLimitRequest), hub.Conf.RateLimitBrust),
+		closed:      0,
+	}
+}
+
+func (c *Client) IsClosed() bool {
+	return atomic.LoadInt32(&c.closed) == 1
+}
+
+func (c *Client) SafeClose() {
+	c.closeOnce.Do(func() {
+		c.sendMutex.Lock()
+		defer c.sendMutex.Unlock()
+
+		atomic.StoreInt32(&c.closed, 1)
+		close(c.Send)
+		c.Connection.Close()
+	})
+}
+
+func (c *Client) SafeSend(msg Message, timeout time.Duration) bool {
+	c.sendMutex.RLock()
+	defer c.sendMutex.RUnlock()
+
+	if c.IsClosed() {
+		return false
+	}
+
+	select {
+	case c.Send <- msg:
+		return true
+	case <-time.After(timeout):
+		return false
 	}
 }
 
@@ -63,7 +100,7 @@ func (c *Client) ReadFromConnectionTunnel() {
 			SendError(c.ID, c.Hub, Message{
 				Event:   "error",
 				Content: "WARNING: you are sending messages too fast. Please slow down.",
-			}) 
+			})
 			continue
 		}
 		cleanContent := strings.TrimSpace(msg.Content)
@@ -86,14 +123,14 @@ func (c *Client) ReadFromConnectionTunnel() {
 		msg.ChatRoomID = c.RoomID
 		msg.Content = cleanContent
 		select {
-			case c.Hub.MessageChannel <- msg:
-			case <-time.After(c.Hub.Conf.BroadcastTimeout):
-				log.Printf("Message dropped: message channel full. User %s (ID %s)", c.Name, c.ID)
-				SendError(c.ID, c.Hub, Message{
-					Event: "error",
-					Content: fmt.Sprintf("Server too busy to process your message. Please try again"),
-				})
+		case c.Hub.MessageChannel <- msg:
+		case <-time.After(c.Hub.Conf.BroadcastTimeout):
+			log.Printf("Message dropped: message channel full. User %s (ID %s)", c.Name, c.ID)
+			SendError(c.ID, c.Hub, Message{
+				Event:   "error",
+				Content: "Server too busy to process your message. Please try again",
+			})
 		}
-		
+
 	}
 }

@@ -28,7 +28,7 @@ func GetClients(h *Hub, message *Message, clientIdIgnore string) []*Client {
 			continue
 		}
 		for client := range connections {
-			if client.RoomID == message.ChatRoomID {
+			if client.RoomID == message.ChatRoomID && !client.IsClosed() {
 				targets = append(targets, client)
 			}
 		}
@@ -41,10 +41,8 @@ func Broadcast(h *Hub, message *Message, clientIdIgnore string) {
 
 	for _, client := range targets {
 		go func(m Message, c *Client) {
-			select {
-			case c.Send <- m:
-			case <-time.After(h.Conf.BroadcastTimeout):
-				log.Printf("User %s timed out", c.Name)
+			if !c.SafeSend(m, h.Conf.BroadcastTimeout) {
+				log.Printf("Broadcast failed for user %s - unregistering", c.Name)
 				h.Unregister <- c
 			}
 		}(*message, client)
@@ -53,15 +51,17 @@ func Broadcast(h *Hub, message *Message, clientIdIgnore string) {
 
 func SendError(userID string, h *Hub, mssg Message) {
 	h.Mutex.Lock()
-	defer h.Mutex.Unlock()
+	var clientList []*Client
 	if connections, ok := h.Clients[userID]; ok {
 		for client := range connections {
-			select {
-			case client.Send <- mssg:
-			default:
-				log.Printf("WARNING: could not send error message to %s", userID)
-				return
-			}
+			clientList = append(clientList, client)
+		}
+	}
+	h.Mutex.Unlock()
+
+	for _, client := range clientList {
+		if !client.SafeSend(mssg, 100*time.Millisecond) {
+			log.Printf("WARNING: could not send error message to %s (channel closed or full)", userID)
 		}
 	}
 }
@@ -170,8 +170,7 @@ func RemoveClient(h *Hub, client *Client) {
 	if len(connections) == 0 {
 		delete(h.Clients, client.ID)
 	}
-	client.Connection.Close()
-	close(client.Send)
+	client.SafeClose()
 }
 
 func HandleLeaveEvent(h *Hub, client *Client) {

@@ -41,21 +41,25 @@ func (h *Hub) HandleOnlineUsers(RoomID int) []UserResponse {
 	h.Mutex.Lock()
 	defer h.Mutex.Unlock()
 	onlineUsers := []UserResponse{}
-	for _, connections := range h.Clients {
-		if len(connections) > 0 {
-			for user := range connections {
-				if user.RoomID == RoomID {
-					resp := UserResponse{
-						Id:       user.ID,
-						Name:     user.Name,
-						Role:     user.Role,
-						LastSeen: user.LastSeen,
-					}
-					onlineUsers = append(onlineUsers, resp)
+	seenUsers := make(map[string]bool)
+
+	for userID, connections := range h.Clients {
+		if seenUsers[userID] {
+			continue
+		}
+
+		for user := range connections {
+			if user.RoomID == RoomID {
+				resp := UserResponse{
+					Id:       user.ID,
+					Name:     user.Name,
+					Role:     user.Role,
+					LastSeen: user.LastSeen,
 				}
+				onlineUsers = append(onlineUsers, resp)
+				seenUsers[userID] = true
 				break
 			}
-
 		}
 	}
 	return onlineUsers
