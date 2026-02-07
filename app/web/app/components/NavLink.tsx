@@ -24,14 +24,12 @@ interface NavLinkProps {
 
 export function NavLink({ item, isNested = false }: NavLinkProps) {
 	const location = useLocation();
-	const { isExpanded } = useSidebar();
+	const { isExpanded, isMobileOpen } = useSidebar();
 	const [isOpen, setIsOpen] = useState(true);
 
 	const hasChildren = item.children && item.children.length > 0;
 	const isActive = item.to ? location.pathname === item.to : false;
-	const isChildActive = hasChildren
-		? item.children?.some((child) => child.to === location.pathname)
-		: false;
+	const showLabels = isExpanded || isMobileOpen;
 
 	if (hasChildren) {
 		return (
@@ -48,12 +46,12 @@ export function NavLink({ item, isNested = false }: NavLinkProps) {
 							transition-colors gap-3  w-full no-underline
 							${isNested ? 'pl-2' : ''}
 						`}
-						title={isExpanded ? undefined : item.label}
+						title={showLabels ? undefined : item.label}
 					>
 						<Icon name={item.icon} className="size-5 shrink-0" />
 						<span
 							className={`text-left whitespace-nowrap transition-opacity duration-300 
-								${isExpanded ? 'opacity-100 delay-300' : 'opacity-0 w-0 overflow-hidden'}`}
+								${showLabels ? 'opacity-100 delay-300' : 'md:opacity-0 md:w-0 md:overflow-hidden opacity-100'}`}
 						>
 							{item.label}
 						</span>
@@ -64,7 +62,7 @@ export function NavLink({ item, isNested = false }: NavLinkProps) {
 						className={`
 								p-1 px-2 mx-2 rounded-md bg-transparent hover:bg-background text-dark
 								transition-opacity duration-300
-								${isExpanded ? 'opacity-100 delay-300' : 'opacity-0 overflow-hidden pointer-events-none'}
+								${showLabels ? 'opacity-100 delay-300' : 'md:opacity-0 md:overflow-hidden md:pointer-events-none opacity-100'}
 								`}
 						aria-label={isOpen ? 'Collapse' : 'Expand'}
 					>
@@ -79,7 +77,7 @@ export function NavLink({ item, isNested = false }: NavLinkProps) {
 
 				<div
 					className={`overflow-hidden transition-all duration-300 ease-in-out ${
-						isExpanded && isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+						showLabels && isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
 					}`}
 				>
 					<div className="ml-4 mt-1 space-y-1">
@@ -99,15 +97,17 @@ export function NavLink({ item, isNested = false }: NavLinkProps) {
 				flex items-center px-3 py-2 rounded-md
 				transition-colors  w-full no-underline
 				${isActive ? 'bg-primary hover:bg-accent/20 hover:text-dark text-white' : 'hover:bg-primary text-dark'}
-				${isExpanded ? 'gap-3' : ''}
+				${showLabels ? 'gap-3' : 'md:gap-0 gap-3'}
 				${isNested ? 'text-dark/80' : ''}
 			`}
-			title={isExpanded ? undefined : item.label}
+			title={showLabels ? undefined : item.label}
 		>
 			<Icon name={item.icon} className="size-5 shrink-0" />
 			<span
 				className={`whitespace-nowrap transition-opacity duration-300 ${
-					isExpanded ? 'opacity-100 delay-300' : 'opacity-0 w-0 overflow-hidden'
+					showLabels
+						? 'opacity-100 delay-300'
+						: 'md:opacity-0 md:w-0 md:overflow-hidden opacity-100'
 				}`}
 			>
 				{item.label}

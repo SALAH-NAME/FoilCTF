@@ -1,5 +1,7 @@
 import Icon from '../components/Icon';
 import Spinner from '../components/Spinner';
+import PageHeader from '../components/PageHeader';
+import Button from '../components/Button';
 
 import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -358,16 +360,19 @@ export default function Page() {
 
 	return (
 		<>
-			<header className="flex flex-row items-center justify-between p-4">
-				<h1 className="text-xl font-bold">Instances</h1>
-				<button
-					className="inline-flex flex-row gap-2"
-					onClick={() => setDialogCreate(true)}
-				>
-					{' '}
-					<Icon name="add" /> <span>New Instance</span>{' '}
-				</button>
-			</header>
+			<PageHeader
+				title="Instances"
+				action={
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => setDialogCreate(true)}
+						icon={<Icon name="add" />}
+					>
+						New Instance
+					</Button>
+				}
+			/>
 			<TableList onSelect={setSelectedInstanceId} />
 			<DialogCreate
 				open={dialogCreate}

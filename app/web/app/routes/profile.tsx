@@ -1,4 +1,6 @@
 import type { Route } from './+types/profile';
+import Button from '../components/Button';
+import StatsCard from '../components/StatsCard';
 
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Profile' }];
@@ -18,10 +20,10 @@ export default function Page() {
 	};
 
 	return (
-		<div className="h-full bg-background p-4 md:p-8">
+		<div className="h-full bg-background p-4">
 			<div className="max-w-4xl mx-auto space-y-6">
 				<div className="bg-white rounded-md p-6 md:p-8 border border-dark/10">
-					<div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+					<div className="flex flex-col md:flex-row items-center md:items-center gap-4">
 						<div className="w-20 h-20 md:w-24 md:h-24 bg-secondary rounded-full flex items-center justify-center shrink-0">
 							<span className="text-3xl md:text-4xl font-bold text-white">
 								{user.username.charAt(0)}
@@ -33,31 +35,14 @@ export default function Page() {
 							</h1>
 							<p className="text-sm text-dark/50">Joined {user.joinedDate}</p>
 						</div>
-						<button className="w-full md:w-auto bg-primary text-white font-semibold px-6 py-2.5 rounded-md hover:bg-primary/90 transition-colors">
-							Edit Profile
-						</button>
+						<Button className="w-full md:w-auto">Edit</Button>
 					</div>
 				</div>
 
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-					<div className="bg-white rounded-md p-6 border border-dark/10 text-center">
-						<p className="text-4xl font-bold text-primary mb-2">
-							{user.stats.solved}
-						</p>
-						<p className="text-dark/60 font-medium">Challenges Solved</p>
-					</div>
-					<div className="bg-white rounded-md p-6 border border-dark/10 text-center">
-						<p className="text-4xl font-bold text-primary mb-2">
-							{user.stats.events}
-						</p>
-						<p className="text-dark/60 font-medium">Events Participated In</p>
-					</div>
-					<div className="bg-white rounded-md p-6 border border-dark/10 text-center">
-						<p className="text-4xl font-bold text-primary mb-2">
-							{user.stats.points}
-						</p>
-						<p className="text-dark/60 font-medium">Total Points</p>
-					</div>
+					<StatsCard value={user.stats.solved} label="Challenges Solved" />
+					<StatsCard value={user.stats.events} label="Events Participated In" />
+					<StatsCard value={user.stats.points} label="Total Points" />
 				</div>
 
 				<div className="bg-white rounded-md p-6 md:p-8 border border-dark/10">
@@ -75,14 +60,14 @@ export default function Page() {
 						</div>
 						<div className="pb-4 border-b border-dark/10">
 							<h3 className="text-sm font-semibold text-dark mb-1">Password</h3>
-							<button className="text-primary bg-transparent border-primary border-2 font-semibold hover:underline">
+							<Button variant="secondary" size="sm">
 								Change Password
-							</button>
+							</Button>
 						</div>
 						<div className="pt-2">
-							<button className="text-red-600 bg-transparent border-red-600 border-2 font-semibold hover:underline">
+							<Button variant="danger" size="sm">
 								Delete Account
-							</button>
+							</Button>
 						</div>
 					</div>
 				</div>
