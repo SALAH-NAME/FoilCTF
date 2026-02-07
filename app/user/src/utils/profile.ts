@@ -1,7 +1,7 @@
 import	express, {Response, NextFunction}	from 'express';
 import	jwt					from 'jsonwebtoken';
 import	{ AccessTokenSecret }			from './env';
-import	{ profiles }				from '../db/schema';
+import	{ profiles, users }			from '../db/schema';
 import	{ db}					from './db';
 import	{ eq }					from 'drizzle-orm';
 import	multer, {FileFilterCallback}		from 'multer';
@@ -74,7 +74,7 @@ const	storage = multer.diskStorage({
 		file:	Express.Multer.File,
 		cb: (error: Error | null, destination: string) => void
 	) => {
-		cb(null, './uploads/avatars'); // .env variable?
+		cb(null, './uploads/avatars/'); // .env variable?
 	},
 	filename: (
 		req:	AuthRequest,
@@ -110,7 +110,7 @@ export	const	uploadAvatar = async (req: AuthRequest, res: Response) => {
 		}
 		console.log(`received ${file.filename}, size: ${file.size} bytes`);
 		const	user = req.user as User;
-		const	filename = "./uploads/avatars" + file.filename; // env variable?
+		const	filename = "./uploads/avatars/" + file.filename; // env variable?
 		await db.update(profiles).set({avatar: filename}).where(eq(profiles.username, user.username));
 		return res.send({
 			message:	"Avatar uploaded successfully",
@@ -124,6 +124,30 @@ export	const	uploadAvatar = async (req: AuthRequest, res: Response) => {
 
 export	const	updateProfile = async (req: AuthRequest, res: Response) => {
 	try {
+		const	updateData	= req.body;
+		if (!req.body) {
+			return res.sendStatus(400);
+		}
+		const	username	= req.user?.username;
+		if (!username) {
+			return res.sendStatus(401);
+		}
+		console.log(`object received: `, req.body);
+		console.log(`from ${username}`);
+		const	{password, email, ...restOfBody} = req.body;
+		const	updatePayload	= { ...restOfBody };
+		if (updatePayload.username || password || email) {
+			await	db
+				.update(users)
+				.set({
+					username:	updatePayload.username,
+					password:	password,
+					email:		email,
+				})
+				.where(eq(users.username, username));
+		}
+		await	db.update(profiles).set(updatePayload).where(eq(profiles.username, username));
+		return	res.sendStatus(200);
 	} catch (err) {
 		console.log(err);
 		return res.sendStatus(500);

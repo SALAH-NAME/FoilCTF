@@ -17,7 +17,8 @@ import	{	User,
 		Profile,
 		AuthRequest,
 		registerSchema,
-		loginSchema
+		loginSchema,
+		updateProfileSchema,
 		}					from './utils/types';
 
 import	{
@@ -173,6 +174,7 @@ app.post('/api/profiles/:username/avatar',
 	uploadAvatar);
 app.put('/api/profiles/:username',
 	authenticateToken,
+	validate(updateProfileSchema),
 	updateProfile);
 
 app.use((err: any, req: AuthRequest, res: Response, next: NextFunction) => {
