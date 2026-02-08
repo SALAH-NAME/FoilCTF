@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm"
 
 export const profiles = pgTable("profiles", {
 	id: serial().primaryKey().notNull(),
-	username: text().notNull(),
+	username: text(),
 	avatar: text(),
 	challengessolved: integer(),
 	eventsparticipated: integer(),
@@ -13,7 +13,7 @@ export const profiles = pgTable("profiles", {
 	bio: text(),
 	location: text(),
 	socialmedialinks: text(),
-	private: boolean().default(false),
+	isprivate: boolean().default(false),
 }, (table) => [
 	unique("profiles_username_key").on(table.username),
 ]);

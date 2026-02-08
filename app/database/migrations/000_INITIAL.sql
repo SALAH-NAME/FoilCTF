@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS profiles (
   id       	SERIAL PRIMARY KEY,
 
-  username		TEXT NOT NULL UNIQUE,
+  username		TEXT DEFAULT NULL UNIQUE,
   avatar		TEXT DEFAULT NULL,
   challengesSolved	INTEGER DEFAULT NULL,
   eventsParticipated	INTEGER DEFAULT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   bio			TEXT DEFAULT NULL,
   location		TEXT DEFAULT NULL,
   socialMediaLinks	TEXT DEFAULT NULL,
-  private		BOOLEAN DEFAULT FALSE
+  isprivate		BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS users (

@@ -4,6 +4,8 @@ import	{ AccessTokenSecret }			from './env';
 import	{ profiles, users }			from '../db/schema';
 import	{ db}					from './db';
 import	{ eq }					from 'drizzle-orm';
+import	bcrypt					from 'bcrypt';
+import	path					from 'path';
 import	multer, {FileFilterCallback}		from 'multer';
 import	{
 		User,
@@ -12,11 +14,13 @@ import	{
 	}					from './types';
 import	{
 		getRandomNumber,
+		isEmpty,
 	}					from './utils';
+import	{ AvatarsDir }				from './env';
 
 const	selectProfile = async (req: AuthRequest, res: Response) => {
 	const	requestedUsername = req.params.username as string;
-	if (!requestedUsername) { 
+	if (!requestedUsername) {
 		res.sendStatus(400);
 		return (null);
 	}
@@ -45,16 +49,18 @@ export	const	authenticateTokenProfile = async (req: AuthRequest, res: Response, 
 		next();
 	} catch (err) {
 		const	profile = await selectProfile(req, res) as Profile;
-		res.json({
-				username:		profile.username,
-				avatar:			profile.avatar,
-				challengessolved:	profile.challengessolved,
-				eventsparticipated:	profile.eventsparticipated,
-				totalpoints:		profile.totalpoints,
-				bio:			profile.bio,
-				location:		profile.location,
-				socialmedialinks:	profile.socialmedialinks,
-			});
+		const	responseObject = {} as Profile;
+		responseObject.username			= profile.username;
+		responseObject.avatar			= profile.avatar;
+		responseObject.challengessolved		= profile.challengessolved;
+		responseObject.eventsparticipated	= profile.eventsparticipated;
+		responseObject.totalpoints		= profile.totalpoints;
+		if (profile.isprivate === false) { // public profile
+			responseObject.bio		= profile.bio;
+			responseObject.location		= profile.location;
+			responseObject.socialmedialinks	= profile.socialmedialinks;
+		}
+		res.json(responseObject);
 	}
 }
 
@@ -74,7 +80,7 @@ const	storage = multer.diskStorage({
 		file:	Express.Multer.File,
 		cb: (error: Error | null, destination: string) => void
 	) => {
-		cb(null, './uploads/avatars/'); // .env variable?
+		cb(null, AvatarsDir); 
 	},
 	filename: (
 		req:	AuthRequest,
@@ -94,6 +100,9 @@ export	const	upload = multer({
 			file:	Express.Multer.File,
 			cb:	FileFilterCallback
 			) => {
+				if (req.user?.username !== req.params?.username) { // ownership check before uploading the file
+					cb(new Error('Unauthorized'));
+				}
 				if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
 					cb(null, true);
 				} else {
@@ -109,9 +118,13 @@ export	const	uploadAvatar = async (req: AuthRequest, res: Response) => {
 			return res.sendStatus(400); // no file | file too large
 		}
 		console.log(`received ${file.filename}, size: ${file.size} bytes`);
-		const	user = req.user as User;
-		const	filename = "./uploads/avatars/" + file.filename; // env variable?
-		await db.update(profiles).set({avatar: filename}).where(eq(profiles.username, user.username));
+		const	user = req.user;
+		if (!user || user.id === undefined) {
+			return res.sendStatus(400);
+		}
+		console.log(AvatarsDir);
+		const	filename = `/api/profiles/${user.username}/avatar/${AvatarsDir}` + file.filename;
+		await db.update(profiles).set({avatar: filename}).where(eq(profiles.id, user.id));
 		return res.send({
 			message:	"Avatar uploaded successfully",
 			filename:	file.originalname
@@ -125,28 +138,28 @@ export	const	uploadAvatar = async (req: AuthRequest, res: Response) => {
 export	const	updateProfile = async (req: AuthRequest, res: Response) => {
 	try {
 		const	updateData	= req.body;
-		if (!req.body) {
+		if (!req.body || !req.user || req.user.id === undefined) {
 			return res.sendStatus(400);
 		}
-		const	username	= req.user?.username;
-		if (!username) {
-			return res.sendStatus(401);
+		const	authenticatedUsername	= req.user?.username;
+		const	urlUsername		= req.params?.username;
+		if (!authenticatedUsername || authenticatedUsername !== urlUsername) { // ownership check
+			return res.sendStatus(403);
 		}
-		console.log(`object received: `, req.body);
-		console.log(`from ${username}`);
-		const	{password, email, ...restOfBody} = req.body;
-		const	updatePayload	= { ...restOfBody };
-		if (updatePayload.username || password || email) {
+		const	{email, password, ...profileData} = req.body;
+		if (profileData.username || password || email) {
+			const	userUpdate: any = {};
+			if (profileData.username)	userUpdate.username	= profileData.username;
+			if (email) 			userUpdate.email	= email;
+			if (password)			userUpdate.password	= await bcrypt.hash(password, 10);
 			await	db
 				.update(users)
-				.set({
-					username:	updatePayload.username,
-					password:	password,
-					email:		email,
-				})
-				.where(eq(users.username, username));
+				.set(userUpdate)
+				.where(eq(users.id, req.user.id));
 		}
-		await	db.update(profiles).set(updatePayload).where(eq(profiles.username, username));
+		if (profileData && !isEmpty(profileData)) {
+			await	db.update(profiles).set(profileData).where(eq(profiles.id, req.user.id));
+		}
 		return	res.sendStatus(200);
 	} catch (err) {
 		console.log(err);

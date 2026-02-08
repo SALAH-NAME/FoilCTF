@@ -38,7 +38,7 @@ const	profileBody = z.object({
 	bio:			z.string().trim().max(500),
 	location:		z.string().trim().max(50),
 	socialmedia:		z.string().trim().url(),
-	private:		z.coerce.boolean(),
+	isprivate:		z.coerce.boolean(),
 });
 
 export	const	updateProfileSchema = z.object({

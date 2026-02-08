@@ -34,12 +34,10 @@ export	const	validate = (schema: ZodObject) =>
 	async (req: AuthRequest, res: Response, next: NextFunction) =>
 	{
 		try {
-			await schema.parseAsync({
+			const	parsed	= await schema.parseAsync({
 				body:		req.body,
-				query:		req.query,
-				params:		req.params,
-				cookies:	req.cookies
 				});
+			req.body	= parsed.body;
 			return next();
 		}
 		catch (error) {
@@ -49,4 +47,11 @@ export	const	validate = (schema: ZodObject) =>
 
 export	const	getRandomNumber = (min: number, max: number) => {
 	return (Math.floor(Math.random() * (max - min + 1) + min));
+}
+
+export	const	isEmpty = (obj: Record<string, unknown>) => {
+	if (obj == null || typeof obj !== 'object') {
+		return (false);
+	}
+	return (Object.keys(obj).length === 0);
 }

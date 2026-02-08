@@ -6,10 +6,12 @@ import	{ eq, or}					from 'drizzle-orm';
 import	{ users, sessions, profiles }			from './db/schema';
 import	{ db}						from './utils/db';
 import	ms, {StringValue}				from 'ms';
+import	path						from 'path';
 import	{	RefreshTokenSecret,
 		PORT,
 		RefreshTokenExpiry,
-		AccessTokenSecret
+		AccessTokenSecret,
+		AvatarsDir,
 	}						from './utils/env';
 import	{ ZodError}					from 'zod';
 import	cookieParser					from 'cookie-parser';
@@ -32,6 +34,7 @@ import	{
 		updateProfile,
 		uploadAvatar,
 		upload,
+		//getAvatar,
 	}						from './utils/profile';
 import	multer, {FileFilterCallback}			from 'multer';
 
