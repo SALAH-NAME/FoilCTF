@@ -32,15 +32,15 @@ export class users
 	extends Model<usersAttributes, usersCreationAttributes>
 	implements usersAttributes
 {
-	id!: number;
-	password!: string;
-	created_at!: Date;
-	banned_until?: Date;
-	email?: string;
-	username!: string;
-	avatar?: string;
-	role!: string;
-	profile_id?: number;
+	declare id: number;
+	declare password: string;
+	declare created_at: Date;
+	declare banned_until?: Date;
+	declare email?: string;
+	declare username: string;
+	declare avatar?: string;
+	declare role: string;
+	declare profile_id?: number;
 
 	static initModel(sequelize: Sequelize.Sequelize): typeof users {
 		return users.init(

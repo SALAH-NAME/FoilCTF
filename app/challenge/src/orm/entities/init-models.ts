@@ -59,7 +59,10 @@ import type {
 	profilesCreationAttributes,
 } from './Profiles.ts';
 import { reports as _reports } from './Reports.ts';
-import type { reportsAttributes, reportsCreationAttributes } from './Reports.ts';
+import type {
+	reportsAttributes,
+	reportsCreationAttributes,
+} from './Reports.ts';
 import { sessions as _sessions } from './Sessions.ts';
 import type {
 	sessionsAttributes,
