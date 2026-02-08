@@ -3,13 +3,15 @@ import { DataTypes, Model, Optional } from 'sequelize';
 
 export interface sessionsAttributes {
 	id: number;
-	token: string;
 	expiry: Date;
+	refreshtoken: string;
+	user_id: number;
+	created_at?: Date;
 }
 
 export type sessionsPk = 'id';
 export type sessionsId = sessions[sessionsPk];
-export type sessionsOptionalAttributes = 'id';
+export type sessionsOptionalAttributes = 'id' | 'created_at';
 export type sessionsCreationAttributes = Optional<
 	sessionsAttributes,
 	sessionsOptionalAttributes
@@ -20,8 +22,10 @@ export class sessions
 	implements sessionsAttributes
 {
 	id!: number;
-	token!: string;
 	expiry!: Date;
+	refreshtoken!: string;
+	user_id!: number;
+	created_at?: Date;
 
 	static initModel(sequelize: Sequelize.Sequelize): typeof sessions {
 		return sessions.init(
@@ -32,13 +36,22 @@ export class sessions
 					allowNull: false,
 					primaryKey: true,
 				},
-				token: {
-					type: DataTypes.TEXT,
-					allowNull: false,
-				},
 				expiry: {
 					type: DataTypes.DATE,
 					allowNull: false,
+				},
+				refreshtoken: {
+					type: DataTypes.TEXT,
+					allowNull: false,
+				},
+				user_id: {
+					type: DataTypes.INTEGER,
+					allowNull: false,
+				},
+				created_at: {
+					type: DataTypes.DATE,
+					allowNull: true,
+					defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP'),
 				},
 			},
 			{

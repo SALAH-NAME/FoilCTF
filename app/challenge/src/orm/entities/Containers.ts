@@ -3,7 +3,9 @@ import { DataTypes, Model, Optional } from 'sequelize';
 
 export interface containersAttributes {
 	id: number;
-	name: string;
+	participation_id: number;
+	ctf_id: number;
+	challenge_id: number;
 }
 
 export type containersPk = 'id';
@@ -19,7 +21,9 @@ export class containers
 	implements containersAttributes
 {
 	id!: number;
-	name!: string;
+	participation_id!: number;
+	ctf_id!: number;
+	challenge_id!: number;
 
 	static initModel(sequelize: Sequelize.Sequelize): typeof containers {
 		return containers.init(
@@ -30,8 +34,16 @@ export class containers
 					allowNull: false,
 					primaryKey: true,
 				},
-				name: {
-					type: DataTypes.TEXT,
+				participation_id: {
+					type: DataTypes.INTEGER,
+					allowNull: false,
+				},
+				ctf_id: {
+					type: DataTypes.INTEGER,
+					allowNull: false,
+				},
+				challenge_id: {
+					type: DataTypes.INTEGER,
 					allowNull: false,
 				},
 			},

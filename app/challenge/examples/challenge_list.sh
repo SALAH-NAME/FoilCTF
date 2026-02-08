@@ -3,14 +3,12 @@ set -Eeu -o pipefail
 
 LIST_LIMIT=50
 read -p "Choose a limit for your query (defaults to $LIST_LIMIT): " -r
-echo
 if [[ -n "$REPLY" ]]; then
 	LIST_LIMIT=$REPLY
 fi
 
 LIST_OFFSET=0
 read -p "Choose a limit for your query (defaults to $LIST_OFFSET): " -r
-echo
 if [[ -n "$REPLY" ]]; then
 	LIST_OFFSET=$REPLY
 fi

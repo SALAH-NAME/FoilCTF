@@ -6,7 +6,7 @@ export interface reportsAttributes {
 	done: boolean;
 	contents: string;
 	issued_at: Date;
-	issuer_id?: string;
+	issuer_id?: number;
 }
 
 export type reportsPk = 'id';
@@ -25,7 +25,7 @@ export class reports
 	done!: boolean;
 	contents!: string;
 	issued_at!: Date;
-	issuer_id?: string;
+	issuer_id?: number;
 
 	static initModel(sequelize: Sequelize.Sequelize): typeof reports {
 		return reports.init(
@@ -51,9 +51,8 @@ export class reports
 					defaultValue: Sequelize.Sequelize.fn('now'),
 				},
 				issuer_id: {
-					type: DataTypes.STRING(64),
+					type: DataTypes.INTEGER,
 					allowNull: true,
-					defaultValue: 'NULL',
 				},
 			},
 			{

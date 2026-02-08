@@ -3,7 +3,7 @@ import { DataTypes, Model, Optional } from 'sequelize';
 
 export interface team_membersAttributes {
 	team_id: number;
-	member_id: string;
+	member_id: number;
 }
 
 export type team_membersPk = 'team_id' | 'member_id';
@@ -15,7 +15,7 @@ export class team_members
 	implements team_membersAttributes
 {
 	team_id!: number;
-	member_id!: string;
+	member_id!: number;
 
 	static initModel(sequelize: Sequelize.Sequelize): typeof team_members {
 		return team_members.init(
@@ -26,7 +26,7 @@ export class team_members
 					primaryKey: true,
 				},
 				member_id: {
-					type: DataTypes.STRING(64),
+					type: DataTypes.INTEGER,
 					allowNull: false,
 					primaryKey: true,
 				},

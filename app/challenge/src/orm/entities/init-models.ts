@@ -14,6 +14,11 @@ import type {
 	challenges_attachmentsAttributes,
 	challenges_attachmentsCreationAttributes,
 } from './ChallengesAttachments.ts';
+import { containers as _containers } from './Containers.ts';
+import type {
+	containersAttributes,
+	containersCreationAttributes,
+} from './Containers.ts';
 import { ctf_organizers as _ctf_organizers } from './CtfOrganizers.ts';
 import type {
 	ctf_organizersAttributes,
@@ -54,10 +59,7 @@ import type {
 	profilesCreationAttributes,
 } from './Profiles.ts';
 import { reports as _reports } from './Reports.ts';
-import type {
-	reportsAttributes,
-	reportsCreationAttributes,
-} from './Reports.ts';
+import type { reportsAttributes, reportsCreationAttributes } from './Reports.ts';
 import { sessions as _sessions } from './Sessions.ts';
 import type {
 	sessionsAttributes,
@@ -77,6 +79,7 @@ export {
 	_attachments as attachments,
 	_challenges as challenges,
 	_challenges_attachments as challenges_attachments,
+	_containers as containers,
 	_ctf_organizers as ctf_organizers,
 	_ctfs as ctfs,
 	_ctfs_challenges as ctfs_challenges,
@@ -100,6 +103,8 @@ export type {
 	challengesCreationAttributes,
 	challenges_attachmentsAttributes,
 	challenges_attachmentsCreationAttributes,
+	containersAttributes,
+	containersCreationAttributes,
 	ctf_organizersAttributes,
 	ctf_organizersCreationAttributes,
 	ctfsAttributes,
@@ -134,6 +139,7 @@ export function initModels(sequelize: Sequelize) {
 	const attachments = _attachments.initModel(sequelize);
 	const challenges = _challenges.initModel(sequelize);
 	const challenges_attachments = _challenges_attachments.initModel(sequelize);
+	const containers = _containers.initModel(sequelize);
 	const ctf_organizers = _ctf_organizers.initModel(sequelize);
 	const ctfs = _ctfs.initModel(sequelize);
 	const ctfs_challenges = _ctfs_challenges.initModel(sequelize);
@@ -149,30 +155,11 @@ export function initModels(sequelize: Sequelize) {
 	const teams = _teams.initModel(sequelize);
 	const users = _users.initModel(sequelize);
 
-	challenges_attachments.belongsTo(challenges, {
-		foreignKey: 'challenge_id',
-		targetKey: 'id',
-	});
-	challenges_attachments.belongsTo(attachments, {
-		foreignKey: 'attachment_id',
-		targetKey: 'id',
-	});
-
-	challenges.hasMany(challenges_attachments, {
-		foreignKey: 'challenge_id',
-		sourceKey: 'id',
-		as: 'challenge_links',
-	});
-	attachments.hasMany(challenges_attachments, {
-		foreignKey: 'attachment_id',
-		sourceKey: 'id',
-		as: 'attachment_links',
-	});
-
 	return {
 		attachments: attachments,
 		challenges: challenges,
 		challenges_attachments: challenges_attachments,
+		containers: containers,
 		ctf_organizers: ctf_organizers,
 		ctfs: ctfs,
 		ctfs_challenges: ctfs_challenges,

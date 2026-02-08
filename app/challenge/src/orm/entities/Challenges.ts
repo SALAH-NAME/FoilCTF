@@ -10,7 +10,7 @@ export interface challengesAttributes {
 	reward_min: number;
 	reward_first_blood: number;
 	reward_decrements: boolean;
-	author_id: string;
+	author_id: number;
 	created_at: Date;
 	updated_at: Date;
 }
@@ -44,7 +44,7 @@ export class challenges
 	declare reward_min: number;
 	declare reward_first_blood: number;
 	declare reward_decrements: boolean;
-	declare author_id: string;
+	declare author_id: number;
 	declare created_at: Date;
 	declare updated_at: Date;
 
@@ -93,7 +93,7 @@ export class challenges
 					defaultValue: true,
 				},
 				author_id: {
-					type: DataTypes.STRING(64),
+					type: DataTypes.INTEGER,
 					allowNull: false,
 				},
 				created_at: {

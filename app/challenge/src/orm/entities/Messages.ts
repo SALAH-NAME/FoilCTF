@@ -8,7 +8,7 @@ export interface messagesAttributes {
 	sent_at: Date;
 	edited_at?: Date;
 	deleted_at?: Date;
-	writer_id?: string;
+	writer_id?: number;
 }
 
 export type messagesPk = 'id' | 'chatroom_id';
@@ -34,7 +34,7 @@ export class messages
 	sent_at!: Date;
 	edited_at?: Date;
 	deleted_at?: Date;
-	writer_id?: string;
+	writer_id?: number;
 
 	static initModel(sequelize: Sequelize.Sequelize): typeof messages {
 		return messages.init(
@@ -68,7 +68,7 @@ export class messages
 					allowNull: true,
 				},
 				writer_id: {
-					type: DataTypes.STRING(64),
+					type: DataTypes.INTEGER,
 					allowNull: true,
 				},
 			},

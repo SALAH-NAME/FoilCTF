@@ -3,7 +3,7 @@ import { DataTypes, Model, Optional } from 'sequelize';
 
 export interface ctf_organizersAttributes {
 	ctf_id: number;
-	organizer_id: string;
+	organizer_id: number;
 }
 
 export type ctf_organizersCreationAttributes = ctf_organizersAttributes;
@@ -13,7 +13,7 @@ export class ctf_organizers
 	implements ctf_organizersAttributes
 {
 	ctf_id!: number;
-	organizer_id!: string;
+	organizer_id!: number;
 
 	static initModel(sequelize: Sequelize.Sequelize): typeof ctf_organizers {
 		return ctf_organizers.init(
@@ -23,7 +23,7 @@ export class ctf_organizers
 					allowNull: false,
 				},
 				organizer_id: {
-					type: DataTypes.STRING(64),
+					type: DataTypes.INTEGER,
 					allowNull: false,
 				},
 			},

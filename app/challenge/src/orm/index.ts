@@ -15,7 +15,18 @@ const orm = new Sequelize(ORM_CONNECTION_STRING, {
 });
 
 function ormInitModels() {
-	return initModels(orm);
+	const models = initModels(orm);
+
+	models.challenges_attachments.belongsTo(models.challenges, {
+		targetKey: 'id',
+		foreignKey: 'challenge_id',
+	});
+	models.challenges_attachments.belongsTo(models.attachments, {
+		targetKey: 'id',
+		foreignKey: 'attachment_id',
+	});
+
+	return models;
 }
 
 export { ormInitModels, ORM_CONNECTION_STRING };

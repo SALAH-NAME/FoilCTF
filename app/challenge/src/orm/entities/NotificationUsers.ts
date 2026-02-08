@@ -3,8 +3,10 @@ import { DataTypes, Model, Optional } from 'sequelize';
 
 export interface notification_usersAttributes {
 	notification_id: number;
-	user_id: string;
+	user_id: number;
 	read_at?: Date;
+	is_dismissed: boolean;
+	is_read: boolean;
 }
 
 export type notification_usersPk = 'notification_id' | 'user_id';
@@ -23,8 +25,10 @@ export class notification_users
 	implements notification_usersAttributes
 {
 	notification_id!: number;
-	user_id!: string;
+	user_id!: number;
 	read_at?: Date;
+	is_dismissed!: boolean;
+	is_read!: boolean;
 
 	static initModel(sequelize: Sequelize.Sequelize): typeof notification_users {
 		return notification_users.init(
@@ -35,13 +39,23 @@ export class notification_users
 					primaryKey: true,
 				},
 				user_id: {
-					type: DataTypes.STRING(64),
+					type: DataTypes.INTEGER,
 					allowNull: false,
 					primaryKey: true,
 				},
 				read_at: {
 					type: DataTypes.DATE,
 					allowNull: true,
+				},
+				is_dismissed: {
+					type: DataTypes.BOOLEAN,
+					allowNull: false,
+					defaultValue: false,
+				},
+				is_read: {
+					type: DataTypes.BOOLEAN,
+					allowNull: false,
+					defaultValue: false,
 				},
 			},
 			{

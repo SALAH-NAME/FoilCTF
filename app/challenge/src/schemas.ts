@@ -2,7 +2,7 @@ import * as vb from 'valibot';
 import { users as Users } from './orm/index.ts';
 
 const constraint_author_exists = async (
-	author_id: string
+	author_id: number
 ): Promise<boolean> => {
 	// TODO(xenobas): Make sure this is the active session user later
 	// NOTE(xenobas): only include id (pk) to optimize the query since it is only an existence check
@@ -28,10 +28,7 @@ export const schema_challenge_create = vb.pipeAsync(
 		reward_decrements: vb.optional(vb.boolean(), true),
 
 		author_id: vb.pipeAsync(
-			vb.string(),
-			vb.trim(),
-			vb.nonEmpty(),
-			vb.maxLength(64),
+			vb.number(),
 			vb.checkAsync(constraint_author_exists, message_author_exists)
 		),
 	}),
