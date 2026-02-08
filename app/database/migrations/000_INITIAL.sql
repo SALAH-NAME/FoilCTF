@@ -1,3 +1,5 @@
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS profiles (
   id       	SERIAL PRIMARY KEY,
 
@@ -50,7 +52,7 @@ CREATE TABLE IF NOT EXISTS ctfs (
 );
 CREATE TABLE IF NOT EXISTS ctf_organizers (
   ctf_id        INTEGER NOT NULL,
-  organizer_id  VARCHAR(64) NOT NULL,
+  organizer_id  INTEGER NOT NULL,
 
   CONSTRAINT constraint_ctf FOREIGN KEY (ctf_id) REFERENCES ctfs,
   CONSTRAINT constraint_organizer FOREIGN KEY (organizer_id) REFERENCES users
@@ -64,7 +66,7 @@ CREATE TABLE IF NOT EXISTS teams (
 );
 CREATE TABLE IF NOT EXISTS team_members (
   team_id    INTEGER NOT NULL,
-  member_id  VARCHAR(64) NOT NULL,
+  member_id  INTEGER NOT NULL,
   PRIMARY KEY (team_id, member_id),
 
   CONSTRAINT constraint_team FOREIGN KEY (team_id) REFERENCES teams,
@@ -89,7 +91,7 @@ CREATE TABLE IF NOT EXISTS challenges (
   reward_first_blood  INTEGER DEFAULT 0    NOT NULL,
   reward_decrements   BOOLEAN DEFAULT TRUE NOT NULL,
 
-  author_id           VARCHAR(64) NOT NULL,
+  author_id           INTEGER NOT NULL,
   created_at          TIMESTAMP DEFAULT now() NOT NULL,
   updated_at          TIMESTAMP DEFAULT now() NOT NULL,
 
@@ -157,10 +159,11 @@ CREATE TABLE IF NOT EXISTS ctfs_challenges (
 CREATE TABLE IF NOT EXISTS containers (
   id                SERIAL PRIMARY KEY,
   participation_id  INTEGER NOT NULL,
-  ctf_challenge_id  INTEGER NOT NULL,
+  ctf_id            INTEGER NOT NULL,
+  challenge_id      INTEGER NOT NULL,
 
   CONSTRAINT constraint_participation FOREIGN KEY (participation_id) REFERENCES participations,
-  CONSTRAINT constraint_ctf_challenge FOREIGN KEY (ctf_challenge_id) REFERENCES ctfs_challenges
+  CONSTRAINT constraint_ctf_challenge FOREIGN KEY (ctf_id, challenge_id) REFERENCES ctfs_challenges (ctf_id, challenge_id)
 );
 
 CREATE TABLE IF NOT EXISTS notifications (
@@ -171,7 +174,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 CREATE TABLE IF NOT EXISTS notification_users (
   notification_id  INTEGER NOT NULL,
-  user_id          VARCHAR(64) NOT NULL,
+  user_id          INTEGER NOT NULL,
   PRIMARY KEY (notification_id, user_id),
 
   read_at          TIMESTAMP NULL,
@@ -190,7 +193,7 @@ CREATE TABLE IF NOT EXISTS messages (
   edited_at    TIMESTAMP DEFAULT NULL,
   deleted_at   TIMESTAMP DEFAULT NULL,
 
-  writer_id    VARCHAR(64), -- NOTE: NULL means System message
+  writer_id    INTEGER, -- NOTE: NULL means System message
 
   CONSTRAINT constraint_writer FOREIGN KEY (writer_id) REFERENCES users,
   CONSTRAINT constraint_chatroom FOREIGN KEY (chatroom_id) REFERENCES ctfs
@@ -202,9 +205,11 @@ CREATE TABLE IF NOT EXISTS reports (
   done       BOOLEAN DEFAULT FALSE NOT NULL,
   contents   TEXT NOT NULL,
   issued_at  TIMESTAMP DEFAULT now() NOT NULL,
-  issuer_id  VARCHAR(64) DEFAULT NULL,
+  issuer_id  INTEGER DEFAULT NULL,
 
   CONSTRAINT constraint_issuer FOREIGN KEY (issuer_id) REFERENCES users
 );
 
 -- TODO: Files (Attachments, Containerfiles...)
+
+COMMIT;
