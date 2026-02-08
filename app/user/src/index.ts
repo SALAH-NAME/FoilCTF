@@ -34,7 +34,6 @@ import	{
 		updateProfile,
 		uploadAvatar,
 		upload,
-		//getAvatar,
 	}						from './utils/profile';
 import	multer, {FileFilterCallback}			from 'multer';
 
@@ -113,9 +112,10 @@ const	login = async (req: AuthRequest, res: Response) => {
 
 const	refresh = async (req: AuthRequest, res: Response) => {
 	try {
-		const	token = req.cookies?.jwt ?? ""; // cookie or auth header?
-		jwt.verify(token, RefreshTokenSecret) as JwtPayload;
-
+		const	token = req.headers?.authorization?.split(' ')[1]; // already parsed and authenticated
+		if (!token) {
+			return res.sendStatus(401); // to make tsc STFU
+		}
 		const	[session] = await db.select()
 				.from(sessions).
 				where(eq(sessions.refreshtoken, token));
@@ -139,11 +139,12 @@ const	refresh = async (req: AuthRequest, res: Response) => {
 
 const	logout = async (req: AuthRequest, res: Response) => {
 	try {
-		const	token = req.cookies?.jwt; // cookie or auth header?
-		if (token) {
-			await db.delete(sessions).where(eq(sessions.refreshtoken, token));
-			console.log('user session got deleted');
+		const	token = req.headers?.authorization?.split(' ')[1]; // already parsed and authenticated
+		if (!token) {
+			return res.sendStatus(401); // to make tsc STFU
 		}
+		await db.delete(sessions).where(eq(sessions.refreshtoken, token));
+		console.log('user session got deleted');
 
 		res.clearCookie('jwt', {
 			httpOnly:	true,
@@ -164,8 +165,10 @@ app.post('/api/auth/login',
 	validate(loginSchema),
 	login);
 app.post('/api/auth/refresh',
+	authenticateToken,
 	refresh);
 app.delete('/api/auth/logout',
+	authenticateToken,
 	logout);
 
 app.get('/api/profiles/:username',

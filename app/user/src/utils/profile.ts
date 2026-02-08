@@ -122,8 +122,7 @@ export	const	uploadAvatar = async (req: AuthRequest, res: Response) => {
 		if (!user || user.id === undefined) {
 			return res.sendStatus(400);
 		}
-		console.log(AvatarsDir);
-		const	filename = `/api/profiles/${user.username}/avatar/${AvatarsDir}` + file.filename;
+		const	filename = `/api/profiles/${user.username}/avatar/` + file.filename;
 		await db.update(profiles).set({avatar: filename}).where(eq(profiles.id, user.id));
 		return res.send({
 			message:	"Avatar uploaded successfully",
@@ -158,7 +157,7 @@ export	const	updateProfile = async (req: AuthRequest, res: Response) => {
 				.where(eq(users.id, req.user.id));
 		}
 		if (profileData && !isEmpty(profileData)) {
-			await	db.update(profiles).set(profileData).where(eq(profiles.id, req.user.id));
+			await	db.update(profiles).set(profileData).where(eq(profiles.id, req.user.id)); // "isprivate": "" to set the profile to private
 		}
 		return	res.sendStatus(200);
 	} catch (err) {
