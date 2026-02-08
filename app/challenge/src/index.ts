@@ -6,11 +6,14 @@ import orm, { ormInitModels, ORM_CONNECTION_STRING } from './orm/index.ts';
 import {
 	middleware_error,
 	middleware_json,
+	middleware_metric_reqs,
 	middleware_id_format,
 	middleware_attachment_exists,
 	middleware_challenge_exists,
 	middleware_not_found,
 } from './middlewares.ts';
+
+import { route_metrics } from './routes/metrics.ts';
 
 import {
 	route_challenges_list,
@@ -28,6 +31,9 @@ import {
 } from './routes/attachments.ts';
 
 const web = express();
+
+web.get('/metrics', route_metrics);
+web.use(middleware_metric_reqs);
 
 // SECTION: Bulk actions
 web.get('/api/challenges', route_challenges_list);

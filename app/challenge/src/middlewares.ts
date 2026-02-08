@@ -1,6 +1,8 @@
-import { type Request, type Response, type NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 
+import { metric_lats, metric_reqs } from './prometheus.ts';
 import { respondStatus } from './web.ts';
+
 import {
 	challenges as Challenges,
 	challenges_attachments as ChallengesAttachments,
@@ -40,6 +42,14 @@ export function middleware_id_format(
 			next();
 		}
 	};
+}
+export function middleware_metric_reqs(req: Request, res: Response, next: NextFunction) {
+	const lat_end = metric_lats.startTimer();
+		next();
+	lat_end();
+	metric_reqs.inc({ status_code: res.statusCode });
+
+	console.log("%s :: %d", req.method, res.statusCode);
 }
 export async function middleware_challenge_exists(
 	req: Request,
