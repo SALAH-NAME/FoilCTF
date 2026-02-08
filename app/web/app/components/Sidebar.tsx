@@ -7,7 +7,16 @@ import { useEffect } from 'react';
 
 const navItems: NavItemConfig[] = [
 	{ to: '/', label: 'Home', icon: 'home' },
-	{ to: '/events', label: 'Events', icon: 'calendar' },
+	{
+		to: '/events',
+		label: 'Events',
+		icon: 'calendar',
+		children: [
+			{ to: '/events?filter=active', label: 'Active', icon: 'calendar' },
+			{ to: '/events?filter=upcoming', label: 'Upcoming', icon: 'calendar' },
+			{ to: '/events?filter=ended', label: 'Past', icon: 'calendar' },
+		],
+	},
 	{
 		to: '/dashboard',
 		label: 'Dashboard',
@@ -27,7 +36,7 @@ export default function Sidebar() {
 
 	useEffect(() => {
 		closeMobile();
-	}, [location.pathname, closeMobile]);
+	}, [location.pathname, location.search, closeMobile]);
 
 	useEffect(() => {
 		if (isMobileOpen) {

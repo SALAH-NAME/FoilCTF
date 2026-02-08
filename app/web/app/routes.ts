@@ -9,6 +9,8 @@ const routes = [
 	layout('./layouts/dashboard.tsx', [
 		index('routes/index.tsx'),
 		route('events', 'routes/events.tsx'),
+		route('events/:id', 'routes/events.$id.tsx'),
+		route('events/:id/leaderboard', 'routes/events.$id.leaderboard.tsx'),
 		route('dashboard', 'routes/dashboard.tsx'),
 		route('instances', 'routes/instances.tsx'),
 		route('challenges', 'routes/challenges.tsx'),

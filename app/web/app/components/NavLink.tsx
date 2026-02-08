@@ -28,7 +28,13 @@ export function NavLink({ item, isNested = false }: NavLinkProps) {
 	const [isOpen, setIsOpen] = useState(true);
 
 	const hasChildren = item.children && item.children.length > 0;
-	const isActive = item.to ? location.pathname === item.to : false;
+
+	const isActive = item.to
+		? item.to.includes('?')
+			? location.pathname + location.search === item.to
+			: location.pathname === item.to
+		: false;
+
 	const showLabels = isExpanded || isMobileOpen;
 
 	if (hasChildren) {
@@ -36,7 +42,7 @@ export function NavLink({ item, isNested = false }: NavLinkProps) {
 			<div>
 				<div
 					className={`flex items-center gap-1 w-full rounded-md
-					${isActive ? 'bg-primary hover:bg-accent/20 hover:text-dark text-white' : 'hover:bg-primary text-dark'}
+					${isActive ? 'bg-primary hover:bg-accent/20 hover:text-dark text-white font-bold' : 'hover:bg-primary text-dark hover:text-white'}
 					`}
 				>
 					<Link
@@ -96,9 +102,9 @@ export function NavLink({ item, isNested = false }: NavLinkProps) {
 			className={`
 				flex items-center px-3 py-2 rounded-md
 				transition-colors  w-full no-underline
-				${isActive ? 'bg-primary hover:bg-accent/20 hover:text-dark text-white' : 'hover:bg-primary text-dark'}
+				${isActive ? 'bg-primary hover:bg-accent/20 hover:text-dark text-white font-bold' : 'hover:bg-primary hover:text-white text-dark'}
 				${showLabels ? 'gap-3' : 'md:gap-0 gap-3'}
-				${isNested ? 'text-dark/80' : ''}
+				${isNested ? 'text-dark/80 text-sm' : ''}
 			`}
 			title={showLabels ? undefined : item.label}
 		>
