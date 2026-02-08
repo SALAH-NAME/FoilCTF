@@ -1,20 +1,19 @@
 package main
 
 import (
-	"net/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-
+	"net/http"
 )
 
-func (s * Server) RegisterRoutes() http.Handler {
+func (s *Server) RegisterRoutes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RealIP)
 
 	r.Use(s.IdentityMiddleware)
-	r.Route("/api",  func(r chi.Router) {
+	r.Route("/api", func(r chi.Router) {
 		r.Group(s.PublicRoutes)
 		r.Group(s.ProtectedRoutes)
 		r.Group(s.OrganizerRoutes)
@@ -22,7 +21,7 @@ func (s * Server) RegisterRoutes() http.Handler {
 	return r
 }
 
-func (s * Server) PublicRoutes(r chi.Router) {
+func (s *Server) PublicRoutes(r chi.Router) {
 	r.Get("/events", s.ListEvents)
 	r.Get("/events/{id}", s.GetEvent)
 }
@@ -40,19 +39,19 @@ func (s *Server) ProtectedRoutes(r chi.Router) {
 }
 
 func (s *Server) OrganizerRoutes(r chi.Router) {
-	r.Route("/admin/events",func(r chi.Router) {
+	r.Route("/admin/events", func(r chi.Router) {
 		r.Use(s.OrganizerAuthMiddleware)
 		r.Get("/", s.ListAllEvents)
 		r.Post("/", s.CreateEvent)
 
-		r.Route("/{id}", func (r chi.Router){
+		r.Route("/{id}", func(r chi.Router) {
 			r.Use(s.EnsureEventOwnership)
 			r.Put("/", s.UpdateEvent)
 			r.Delete("/", s.DeleteEvent)
-			r.Route("/challenges", func (r chi.Router){
+			r.Route("/challenges", func(r chi.Router) {
 				r.Post("/", s.LinkChallenge)
-				r.Delete("/", s.UnlinkChallenge)
-		})
+				r.Delete("/{chall_id}", s.UnlinkChallenge)
+			})
 		})
 
 	})

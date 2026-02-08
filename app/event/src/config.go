@@ -5,13 +5,13 @@ import (
 )
 
 type Config struct {
-	JWTSecret        []byte
+	JWTSecret []byte
 }
 
 func NewDefaultConfig() Config {
 	jwtKey := GetEnv("SECRET_KEY", "")
 	return Config{
-		JWTSecret:        []byte(jwtKey),
+		JWTSecret: []byte(jwtKey),
 	}
 }
 func GetEnv(key, fallback string) string {

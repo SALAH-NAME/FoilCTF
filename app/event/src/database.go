@@ -1,6 +1,5 @@
 package main
 
-
 import (
 	"fmt"
 	"gorm.io/driver/postgres"

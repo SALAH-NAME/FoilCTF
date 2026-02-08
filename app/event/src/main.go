@@ -2,11 +2,10 @@ package main
 
 // import "log"
 
-func main () {
+func main() {
 	// db, err := DbInit()
 	// if err != nil {
 	// 	log.Fatalf("Database Error: %v", err)
 	// }
-	
-}
 
+}

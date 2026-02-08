@@ -3,14 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
-
-	"github.com/go-chi/chi/v5"
-	"github.com/golang-jwt/jwt/v5"
 )
+
 type contextKey string
 
 const (
@@ -26,14 +24,14 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func (s *Server)VerifySigningMethod(token *jwt.Token) (interface{}, error) {
+func (s *Server) VerifySigningMethod(token *jwt.Token) (interface{}, error) {
 	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 		return nil, fmt.Errorf("Unexpected signing method : %v", token.Header["alg"])
 	}
 	return s.Conf.JWTSecret, nil
 }
 
-func (s *Server)IdentityMiddleware(next http.Handler) http.Handler {
+func (s *Server) IdentityMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
@@ -42,8 +40,8 @@ func (s *Server)IdentityMiddleware(next http.Handler) http.Handler {
 		}
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		claims := Claims{}
-		token , err := jwt.ParseWithClaims(tokenString, &claims, s.VerifySigningMethod)
-		if err != nil || !token.Valid{
+		token, err := jwt.ParseWithClaims(tokenString, &claims, s.VerifySigningMethod)
+		if err != nil || !token.Valid {
 			log.Printf("Identity: Invalid or expired token (treating as guest): %v", err)
 			next.ServeHTTP(w, r)
 			return
@@ -61,22 +59,27 @@ func GetUserInfo(r *http.Request) (string, string, error) {
 	if !okID || !okRole || userID == "" || userRole == "" {
 		return "", "", fmt.Errorf("User identity missing from the context")
 	}
-	return userID,  userRole, nil
+	return userID, userRole, nil
 }
 
-func (s *Server)PlayerAuthMiddleware(next http.Handler) http.Handler {
+func (s *Server) PlayerAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _, err := GetUserInfo(r)
+		_, userRole, err := GetUserInfo(r)
 		if err != nil {
 			log.Printf("Unauthorized: Valid authentication required %v", err)
 			JSONError(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		if userRole != "player" {
+			log.Printf("Forbidden")
+			JSONError(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
 }
 
-func (s *Server)OrganizerAuthMiddleware(next http.Handler) http.Handler {
+func (s *Server) OrganizerAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, userRole, err := GetUserInfo(r)
 		if err != nil {
@@ -93,34 +96,32 @@ func (s *Server)OrganizerAuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server)EnsureEventOwnership(next http.Handler) http.Handler {
+func (s *Server) EnsureEventOwnership(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userID, userRole, _ := GetUserInfo(r) // err already checked above.
-		if(userRole == "admin") {
-			next.ServeHTTP(w, r)
-			return
-		}
-		eventIDString := chi.URLParam(r, "id")
-		eventID, err := strconv.Atoi(eventIDString)
+		userID, userRole, err := GetUserInfo(r)
 		if err != nil {
-			log.Printf("Bad request: Invalid eventID. for user: %s", userID)
-			JSONError(w, "Bad request: Invalid eventID.", http.StatusBadRequest)
+			log.Printf("Unauthorized: %v", err)
+			JSONError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		var count int64
-		err = s.Db.Table("ctf_organizers").
-			Where("ctf_id = ? AND organizer_id = ?", eventID, userID).
-			Count(&count).
-			Error
-		if err != nil || count == 0 {
-			log.Printf("Forbidden: ownership check failed for user: %s, eventID: %d", userID, eventID)
-			JSONError(w, "Forbidden: You do not manage this event.", http.StatusForbidden)
-			return
+		if userRole != "admin" {
+			eventID, err := s.ReadIntParam(r, "id")
+			if err != nil {
+				log.Printf("Bad request: Invalid eventID. for user: %s", userID)
+				JSONError(w, "Bad request: Invalid eventID.", http.StatusBadRequest)
+				return
+			}
+			var count int64
+			err = s.Db.Table("ctf_organizers").
+				Where("ctf_id = ? AND organizer_id = ?", eventID, userID).
+				Count(&count).
+				Error
+			if err != nil || count == 0 {
+				log.Printf("Forbidden: ownership check failed for user: %s, eventID: %d", userID, eventID)
+				JSONError(w, "Forbidden: You do not manage this event.", http.StatusForbidden)
+				return
+			}
 		}
 		next.ServeHTTP(w, r)
 	})
 }
-
-
-
-
