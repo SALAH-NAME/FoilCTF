@@ -14,8 +14,11 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/go-chi/chi/v5"
 	"kodaic.ma/sandbox/podman"
+	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func adapterRoute(app *App, routeImpl func(app *App, w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
@@ -28,6 +31,31 @@ func adapterMiddleware(app *App, middleImpl func(*App, http.Handler) http.Handle
 		return middleImpl(app, next)
 	})
 }
+
+// ---
+
+func MiddlePrometheus(app* App, next http.Handler) http.Handler {
+	optsRequestsTotal := prometheus.CounterOpts{ Name: "requests_total", Help: "Requests processed by the service" }
+	requestsTotal := promauto.With(app.Registry).NewCounterVec(optsRequestsTotal, []string{ "method", "code" })
+
+	optsRequestsLatency := prometheus.SummaryOpts{ Name: "requests_latency", Help: "Duration spent processing requests" }
+	requestsLatency := promauto.With(app.Registry).NewSummaryVec(optsRequestsLatency, []string{ })
+
+	instrument := promhttp.InstrumentHandlerCounter(
+		requestsTotal,
+		promhttp.InstrumentHandlerDuration(
+			requestsLatency,
+			next,
+		),
+	)
+	return instrument
+}
+func RoutePrometheus(app* App, w http.ResponseWriter, r *http.Request) {
+	handler := promhttp.HandlerFor(app.Registry, promhttp.HandlerOpts{})
+	handler.ServeHTTP(w, r)
+}
+
+// ---
 
 func routeImageList(app *App, w http.ResponseWriter, r *http.Request) {
 	images, err := podman.ImageList(app.ConnPodman)
