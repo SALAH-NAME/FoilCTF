@@ -1,7 +1,6 @@
 package main
 
 import (
-	"slices"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,13 +11,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 
-	"kodaic.ma/sandbox/podman"
 	"github.com/go-chi/chi/v5"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"kodaic.ma/sandbox/podman"
 )
 
 func adapterRoute(app *App, routeImpl func(app *App, w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
@@ -34,23 +32,17 @@ func adapterMiddleware(app *App, middleImpl func(*App, http.Handler) http.Handle
 
 // ---
 
-func MiddlePrometheus(app* App, next http.Handler) http.Handler {
-	optsRequestsTotal := prometheus.CounterOpts{ Name: "requests_total", Help: "Requests processed by the service" }
-	requestsTotal := promauto.With(app.Registry).NewCounterVec(optsRequestsTotal, []string{ "method", "code" })
-
-	optsRequestsLatency := prometheus.SummaryOpts{ Name: "requests_latency", Help: "Duration spent processing requests" }
-	requestsLatency := promauto.With(app.Registry).NewSummaryVec(optsRequestsLatency, []string{ })
-
+func MiddlePrometheus(app *App, next http.Handler) http.Handler {
 	instrument := promhttp.InstrumentHandlerCounter(
-		requestsTotal,
+		app.requestsTotal,
 		promhttp.InstrumentHandlerDuration(
-			requestsLatency,
+			app.requestDuration,
 			next,
 		),
 	)
 	return instrument
 }
-func RoutePrometheus(app* App, w http.ResponseWriter, r *http.Request) {
+func RoutePrometheus(app *App, w http.ResponseWriter, r *http.Request) {
 	handler := promhttp.HandlerFor(app.Registry, promhttp.HandlerOpts{})
 	handler.ServeHTTP(w, r)
 }

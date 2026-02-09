@@ -4,9 +4,9 @@ import (
 	"context"
 	"log"
 
-	"kodaic.ma/sandbox/podman"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
+	"kodaic.ma/sandbox/podman"
 )
 
 type App struct {
@@ -14,6 +14,9 @@ type App struct {
 	ConnPodman context.Context
 	LogStreams map[string][2]*Stream
 	Registry   *prometheus.Registry
+
+	requestsTotal   *prometheus.CounterVec
+	requestDuration *prometheus.HistogramVec
 }
 
 func (app *App) Init() {
@@ -24,6 +27,30 @@ func (app *App) Init() {
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
+
+	app.requestsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "sandbox",
+			Subsystem: "http",
+			Name:      "requests_total",
+			Help:      "Total number of HTTP requests processed",
+		},
+		[]string{"method", "code"},
+	)
+
+	app.requestDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: "sandbox",
+			Subsystem: "http",
+			Name:      "request_duration_seconds",
+			Help:      "HTTP request latencies in seconds",
+			Buckets:   prometheus.DefBuckets,
+		},
+		[]string{"method"},
+	)
+
+	app.Registry.MustRegister(app.requestsTotal)
+	app.Registry.MustRegister(app.requestDuration)
 }
 func (app *App) ConnectPodman() (err error) {
 	if app.ConnPodman, err = podman.Connect(app.Env.PodmanUri); err != nil {

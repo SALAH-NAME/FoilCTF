@@ -3,12 +3,11 @@ module kodaic.ma/sandbox
 go 1.25.4
 
 require (
-	kodaic.ma/sandbox/podman v0.0.0-00010101000000-000000000000
-
-	github.com/joho/godotenv v1.5.1
 	github.com/go-chi/chi/v5 v5.2.4
 	github.com/go-chi/cors v1.2.2
+	github.com/joho/godotenv v1.5.1
 	github.com/prometheus/client_golang v1.23.2
+	kodaic.ma/sandbox/podman v0.0.0-00010101000000-000000000000
 )
 
 require (

@@ -53,11 +53,11 @@ func main() {
 	}))
 
 	srv.Get("/metrics", adapterRoute(&app, RoutePrometheus))
-	srv.Route("/api/sandbox", func (r chi.Router) {
+	srv.Route("/api/sandbox", func(r chi.Router) {
 		r.Use(adapterMiddleware(&app, MiddlePrometheus))
 		r.Route("/images", RoutesImage(&app))
 		r.Route("/containers", RoutesContainer(&app))
-	});
+	})
 
 	if err := http.ListenAndServe(app.Env.ServerAddress, srv); err != nil {
 		log.Fatalf("failed during listen and serve due to:\n\t%v", err)
