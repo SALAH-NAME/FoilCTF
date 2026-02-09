@@ -1,7 +1,9 @@
+import cors from 'cors';
 import type { Request, Response, NextFunction } from 'express';
 
-import { metric_lats, metric_reqs } from './prometheus.ts';
 import { respondStatus } from './web.ts';
+import { ENV_API_ORIGINS_WHITELIST } from './env.ts';
+import { metric_lats, metric_reqs } from './prometheus.ts';
 
 import {
 	challenges as Challenges,
@@ -10,6 +12,9 @@ import {
 
 // TODO(xenobas): Authorization middleware
 
+export const middleware_cors = cors({
+	origin: ENV_API_ORIGINS_WHITELIST,
+});
 export function middleware_error(
 	err: Error,
 	_req: Request,
@@ -43,13 +48,17 @@ export function middleware_id_format(
 		}
 	};
 }
-export function middleware_metric_reqs(req: Request, res: Response, next: NextFunction) {
+export function middleware_metric_reqs(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
 	const lat_end = metric_lats.startTimer();
-		next();
+	next();
 	lat_end();
 	metric_reqs.inc({ status_code: res.statusCode });
 
-	console.log("%s :: %d", req.method, res.statusCode);
+	console.log('%s :: %d', req.method, res.statusCode);
 }
 export async function middleware_challenge_exists(
 	req: Request,

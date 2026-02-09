@@ -8,6 +8,14 @@ if (isNaN(ENV_API_PORT)) throw new Error('Please set API_PORT');
 export const ENV_API_HOST = process.env['API_HOST'] ?? '';
 if (ENV_API_HOST === '') throw new Error('Please set API_HOST');
 
+const env_api_origins_whitelist = process.env['API_ORIGINS_WHITELIST'] ?? '';
+if (env_api_origins_whitelist === '')
+	throw new Error('Please set API_ORIGINS_WHITELIST');
+export const ENV_API_ORIGINS_WHITELIST = env_api_origins_whitelist
+	.split(',')
+	.map((x) => x.trim())
+	.filter((x) => Boolean(x));
+
 export const ENV_DATABASE_HOST = process.env['DATABASE_HOST'] ?? '';
 if (ENV_DATABASE_HOST === '') throw new Error('Please set DATABASE_HOST');
 

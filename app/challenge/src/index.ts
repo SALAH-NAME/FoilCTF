@@ -4,8 +4,9 @@ import { ENV_API_PORT, ENV_API_HOST } from './env.ts';
 import orm, { ormInitModels, ORM_CONNECTION_STRING } from './orm/index.ts';
 
 import {
-	middleware_error,
+	middleware_cors,
 	middleware_json,
+	middleware_error,
 	middleware_metric_reqs,
 	middleware_id_format,
 	middleware_attachment_exists,
@@ -31,6 +32,8 @@ import {
 } from './routes/attachments.ts';
 
 const web = express();
+
+web.use(middleware_cors);
 
 web.get('/metrics', route_metrics);
 web.use(middleware_metric_reqs);
