@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type contextKey string
@@ -15,6 +16,8 @@ const (
 	userIDKey   contextKey = "userID"
 	usernameKey contextKey = "username"
 	userRoleKey contextKey = "userRole"
+	// teamIDKey 		contextKey = "teamID"
+	// eventIDKey		contextKey = "eventID"
 )
 
 type Claims struct {
@@ -24,14 +27,14 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func (s *Server) VerifySigningMethod(token *jwt.Token) (interface{}, error) {
+func (h *Hub) VerifySigningMethod(token *jwt.Token) (interface{}, error) {
 	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 		return nil, fmt.Errorf("Unexpected signing method : %v", token.Header["alg"])
 	}
-	return s.Conf.JWTSecret, nil
+	return h.Conf.JWTSecret, nil
 }
 
-func (s *Server) IdentityMiddleware(next http.Handler) http.Handler {
+func (h *Hub) IdentityMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
@@ -40,7 +43,7 @@ func (s *Server) IdentityMiddleware(next http.Handler) http.Handler {
 		}
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		claims := Claims{}
-		token, err := jwt.ParseWithClaims(tokenString, &claims, s.VerifySigningMethod)
+		token, err := jwt.ParseWithClaims(tokenString, &claims, h.VerifySigningMethod)
 		if err != nil || !token.Valid {
 			log.Printf("Identity: Invalid or expired token (treating as guest): %v", err)
 			next.ServeHTTP(w, r)
@@ -53,16 +56,7 @@ func (s *Server) IdentityMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func GetUserInfo(r *http.Request) (string, string, error) {
-	userID, okID := r.Context().Value(userIDKey).(string)
-	userRole, okRole := r.Context().Value(userRoleKey).(string)
-	if !okID || !okRole || userID == "" || userRole == "" {
-		return "", "", fmt.Errorf("User identity missing from the context")
-	}
-	return userID, userRole, nil
-}
-
-func (s *Server) PlayerAuthMiddleware(next http.Handler) http.Handler {
+func (h *Hub) PlayerAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, userRole, err := GetUserInfo(r)
 		if err != nil {
@@ -75,11 +69,60 @@ func (s *Server) PlayerAuthMiddleware(next http.Handler) http.Handler {
 			JSONError(w, "Forbidden", http.StatusForbidden)
 			return
 		}
+		eventID, err := h.ReadIntParam(r, "id")
+		if err != nil {
+			log.Printf("Invalid eventID: %v", err)
+			JSONError(w, "Invalid eventID", http.StatusBadRequest)
+			return
+		}
+		event := Ctf{}
+		err = h.Db.Table("ctfs").Find(&event, eventID).Error
+		if err != nil {
+			log.Printf("event not found: %v", err)
+			JSONError(w, "Event Not Found", http.StatusBadRequest)
+			return
+		}
+		if event.Status != "active" {
+			JSONError(w, "Not allowed to access event", http.StatusForbidden)
+			return
+		}
 		next.ServeHTTP(w, r)
 	})
 }
 
-func (s *Server) OrganizerAuthMiddleware(next http.Handler) http.Handler {
+func (h *Hub) EnsureEventAccess(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userID, _, err := GetUserInfo(r)
+		if err != nil {
+			log.Printf("Unauthorized: Valid authentication required %v", err)
+			JSONError(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		eventID, err := h.ReadIntParam(r, "id")
+		if err != nil {
+			log.Printf("Invalid eventID: %v", err)
+			JSONError(w, "Invalid eventID", http.StatusBadRequest)
+			return
+		}
+		var part Participation
+		teamID, err := h.GetTeamIDByUserID(userID)
+		if err != nil {
+			log.Printf("Database Error: %v", err)
+			JSONError(w, "Team membership required", http.StatusForbidden)
+			return
+		}
+		err = h.Db.Where("ctf_id = ? AND team_id = ?", eventID, teamID).
+			First(&part).Error
+		if err != nil {
+			log.Printf("Database Error: %v", err)
+			JSONError(w, "Event Registration reqiired", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (h *Hub) OrganizerAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, userRole, err := GetUserInfo(r)
 		if err != nil {
@@ -88,7 +131,7 @@ func (s *Server) OrganizerAuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		if userRole != "organizer" && userRole != "admin" {
-			log.Printf("Forbidden: role %s is not authorized for admin routes.", userRole)
+			log.Printf("Forbidden: role %s is not authorized for admin routeh.", userRole)
 			JSONError(w, "Forbidden", http.StatusForbidden)
 			return
 		}
@@ -96,7 +139,7 @@ func (s *Server) OrganizerAuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) EnsureEventOwnership(next http.Handler) http.Handler {
+func (h *Hub) EnsureEventOwnership(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID, userRole, err := GetUserInfo(r)
 		if err != nil {
@@ -105,14 +148,14 @@ func (s *Server) EnsureEventOwnership(next http.Handler) http.Handler {
 			return
 		}
 		if userRole != "admin" {
-			eventID, err := s.ReadIntParam(r, "id")
+			eventID, err := h.ReadIntParam(r, "id")
 			if err != nil {
 				log.Printf("Bad request: Invalid eventID. for user: %s", userID)
 				JSONError(w, "Bad request: Invalid eventID.", http.StatusBadRequest)
 				return
 			}
 			var count int64
-			err = s.Db.Table("ctf_organizers").
+			err = h.Db.Table("ctf_organizers").
 				Where("ctf_id = ? AND organizer_id = ?", eventID, userID).
 				Count(&count).
 				Error

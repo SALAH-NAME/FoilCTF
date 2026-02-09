@@ -1,14 +1,12 @@
 package main
 
-import (
-	"os"
-)
+import "os"
 
 type Config struct {
 	JWTSecret []byte
 }
 
-func NewDefaultConfig() Config {
+func NewConfig() Config {
 	jwtKey := GetEnv("SECRET_KEY", "")
 	return Config{
 		JWTSecret: []byte(jwtKey),

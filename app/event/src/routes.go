@@ -1,57 +1,62 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"net/http"
 )
 
-func (s *Server) RegisterRoutes() http.Handler {
+func (h *Hub) RegisterRoutes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RealIP)
 
-	r.Use(s.IdentityMiddleware)
+	r.Use(h.IdentityMiddleware)
 	r.Route("/api", func(r chi.Router) {
-		r.Group(s.PublicRoutes)
-		r.Group(s.ProtectedRoutes)
-		r.Group(s.OrganizerRoutes)
+		r.Group(h.PublicRoutes)
+		r.Group(h.ProtectedRoutes)
+		r.Group(h.OrganizerRoutes)
 	})
 	return r
 }
 
-func (s *Server) PublicRoutes(r chi.Router) {
-	r.Get("/events", s.ListEvents)
-	r.Get("/events/{id}", s.GetEvent)
+func (h *Hub) PublicRoutes(r chi.Router) {
+	r.Get("/events", h.ListEvents)
+	r.Get("/events/{id}", h.GetEvent)
+	r.Get("/events/{id}/scoreboard", h.GetScoreboardGuest)
 }
 
-func (s *Server) ProtectedRoutes(r chi.Router) {
-	r.Use(s.PlayerAuthMiddleware)
+func (h *Hub) ProtectedRoutes(r chi.Router) {
 	r.Route("/events/{id}", func(r chi.Router) {
-		//ensure event active
-		r.Get("/scoreboard", s.GetScoreboard)
-		r.Get("/challenges", s.ListCtfChallenges)
-		r.Post("/challenges/{chall_id}/spawn", s.RequestSandbox)
-		r.Post("/challenges/{chall_id}/kill", s.KillSandbox)
-		r.Post("/challenges/{chall_id}/submit", s.SubmitFlag)
+		r.Use(h.PlayerAuthMiddleware)
+		r.Get("/join", h.JoinEvent)
+		r.Group(func(r chi.Router) {
+			r.Use(h.EnsureEventAccess)
+			r.Get("/scoreboard", h.GetScoreboardPlayer)
+			r.Get("/challenges", h.ListCtfChallenges)
+			r.Post("/challenges/{chall_id}/spawn", h.RequestSandbox)
+			r.Post("/challenges/{chall_id}/kill", h.KillSandbox)
+			r.Post("/challenges/{chall_id}/submit", h.SubmitFlag)
+		})
 	})
 }
 
-func (s *Server) OrganizerRoutes(r chi.Router) {
+func (h *Hub) OrganizerRoutes(r chi.Router) {
 	r.Route("/admin/events", func(r chi.Router) {
-		r.Use(s.OrganizerAuthMiddleware)
-		r.Get("/", s.ListAllEvents)
-		r.Post("/", s.CreateEvent)
+		r.Use(h.OrganizerAuthMiddleware)
+		r.Get("/", h.ListAllEvents)
+		r.Post("/", h.CreateEvent)
 
 		r.Route("/{id}", func(r chi.Router) {
-			r.Use(s.EnsureEventOwnership)
-			r.Put("/", s.UpdateEvent)
-			r.Delete("/", s.DeleteEvent)
-			r.Route("/challenges", func(r chi.Router) {
-				r.Post("/", s.LinkChallenge)
-				r.Delete("/{chall_id}", s.UnlinkChallenge)
-			})
+			r.Use(h.EnsureEventOwnership)
+			r.Put("/", h.UpdateEvent)
+			r.Delete("/", h.DeleteEvent)
+			r.Post("/start", h.StartEvent)
+			r.Post("/stop", h.StopEvent)
+			r.Post("/challenges", h.LinkChallenge)
+			r.Delete("/challenges/{chall_id}", h.UnlinkChallenge)
 		})
 
 	})
