@@ -7,7 +7,7 @@ IMAGE_NAME          := localhost/foilctf/database
 IMAGE_TAG           := latest
 
 # Runtime (podman / docker)
-ENGINE ?= docker
+ENGINE ?= podman
 
 # Network Configuration
 NETWORK_NAME        := foilctf_net
