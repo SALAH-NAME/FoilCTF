@@ -1,33 +1,15 @@
 # sandbox
-Tailor made REST API for manipulating podman
+REST API exposing Podman SDK's capabilities
 
 ## Dependencies
-- [Go](https://go.dev): Programming language designed for high performance web servers
-- [Fiber v3](https://github.com/gofiber/fiber): HTTP server for implementing a REST API
-- [Podman SDK](https://github.com/containers/podman/tree/main/libpod): Allows programmatical interaction with podman
-- [Dotenv](https://github.com/joho/godotenv): `.env` loader
+- Go
+- Chi
+- Podman SDK
+- godotenv
 
-## Usage
+## Getting started
 ```sh
-cp .env.example .env
-editor .env # fill with the appropriate values
+systemctl start --user podman.socket
+cp .env.example .env # Make sure to fill ".env" with the appropriate values
 go run .
 ```
-
-## Features
-- [x] OCI Images
-	- [x] Create
-	- [x] Inspect
-	- [x] Delete
-	- [x] Build
-- [x] OCI Containers
-	- [x] Create
-	- [x] Start
-	- [x] Inspect
-	- [x] Stop
-	- [x] Delete
-- [ ] Healthcheck
-- [ ] Logs monitoring
-	- [ ] Polling
-	- [ ] Streaming
-- [ ] `auth` service integration

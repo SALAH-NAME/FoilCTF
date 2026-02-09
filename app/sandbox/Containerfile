@@ -1,11 +1,24 @@
-FROM docker.io/library/golang:1.25
+FROM golang:1.25-alpine3.23 AS builder
 
-WORKDIR /usr/src/app
-COPY    go.mod go.sum .
-RUN     go mod download
+RUN apk add --no-cache \
+	gpgme-dev btrfs-progs-dev gcc musl-dev
 
-COPY    . .
-RUN     go build -v -o /usr/local/bin/app-sandbox .
+WORKDIR /app
+COPY go.mod go.sum app.go env.go main.go routes.go stream.go tar.go ./
 
-ENTRYPOINT [ "app-sandbox" ]
+RUN mkdir podman/
+COPY ./podman/go.mod ./podman/go.sum ./podman/podman.go ./podman/containers.go ./podman/images.go ./podman/
 
+RUN go mod tidy && go mod download
+RUN go build -o sandbox .
+
+FROM alpine:3.23 AS runner
+
+RUN apk add --no-cache \
+	gpgme btrfs-progs
+
+WORKDIR /app
+COPY --from=builder /app/sandbox .
+
+EXPOSE 3006
+ENTRYPOINT [ "./sandbox" ]
