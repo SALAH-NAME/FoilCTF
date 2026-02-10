@@ -30,6 +30,7 @@ import	{
 import	{
 		getPublicProfile,
 		authenticateTokenProfile,
+		updateUser,
 		updateProfile,
 		uploadAvatar,
 		upload,
@@ -110,12 +111,12 @@ const	login = async (req: Request, res: Response) => {
 
 const	refresh = async (req: Request, res: Response) => {
 	try {
-		const	token = req.cookies?.jwt ?? ""; // cookie
+		const	token = req.cookies?.jwt ?? ""; // cookie for refresh token
 		jwt.verify(token, RefreshTokenSecret) as JwtPayload;
 
 		const	[session] = await db.select()
 				.from(sessions).
-				where(eq(sessions.refreshtoken, token));
+				where(eq(sessions.refreshtoken, token)); // delete the expired ones? or even limit number of devices connected to at a time
 		if (session === undefined) {
 			res.sendStatus(403);
 			return ;
@@ -137,7 +138,7 @@ const	refresh = async (req: Request, res: Response) => {
 
 const	logout = async (req: Request, res: Response) => {
 	try {
-		const	token = req.cookies?.jwt; // cookie
+		const	token = req.cookies?.jwt; // cookie for refresh token
 		if (token) {
 			await db.delete(sessions).where(eq(sessions.refreshtoken, token));
 			console.log('user session got deleted');
@@ -176,6 +177,7 @@ app.post('/api/profiles/:username/avatar',
 app.put('/api/profiles/:username',
 	authenticateToken,
 	validate(updateProfileSchema),
+	updateUser,
 	updateProfile);
 
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
@@ -186,7 +188,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 		return res.status(400).send(err.message);
 	}
 	if (err.message === 'Invalid file type') {
-		return res.status(400).send('Only images are allowed');
+		return res.status(400).send('Only images of type png/jpeg are allowed');
 	}
 	if (err.message === 'Unauthorized') {
 		return res.status(401).send('Unauthorized');

@@ -3,7 +3,7 @@ import	jwt, {JwtPayload, TokenExpiredError}		from 'jsonwebtoken';
 import	{ AccessTokenSecret }				from './env';
 import	{ profiles, users }				from '../db/schema';
 import	{ db}						from './db';
-import	{ eq }						from 'drizzle-orm';
+import	{ eq, or}					from 'drizzle-orm';
 import	bcrypt						from 'bcrypt';
 import	path						from 'path';
 import	multer, {FileFilterCallback}			from 'multer';
@@ -37,7 +37,8 @@ export	const	authenticateTokenProfile = async (req: Request, res: Response, next
 
 		if (!profile)
 			return res.sendStatus(404);
-		return res.json(profile);
+		const	{avatar, id, ...data} = profile;
+		return res.json(data);
 	} catch (err) {
 		if (err instanceof TokenExpiredError)
 			return next();
@@ -58,7 +59,6 @@ export	const	getPublicProfile = async (req: Request, res: Response) => {
 			return res.sendStatus(404);
 		const	responseObject = {} as Profile;
 		responseObject.username			= profile.username;
-		responseObject.avatar			= profile.avatar;
 		responseObject.challengessolved		= profile.challengessolved;
 		responseObject.eventsparticipated	= profile.eventsparticipated;
 		responseObject.totalpoints		= profile.totalpoints;
@@ -99,6 +99,8 @@ export	const	upload = multer({
 				file:	Express.Multer.File,
 				cb:	FileFilterCallback
 				) => {
+					console.log('req user username: ', req.user?.username);
+					console.log('req params username: ', req.params?.username);
 					if (req.user?.username !== req.params?.username) { // ownership check before uploading the file
 						cb(new Error('Unauthorized'));
 					}
@@ -130,36 +132,44 @@ export	const	uploadAvatar = async (req: Request, res: Response) => {
 	}
 }
 
-export	const	updateProfile = async (req: Request, res: Response) => {
-	try {
-		if (!req.body || !res.locals.user || res.locals.user.id === undefined) {
-			return res.sendStatus(400);
-		}
-		const	authenticatedUsername	= res.locals.user?.username;
-		const	urlUsername		= req.params?.username;
-		if (!authenticatedUsername || authenticatedUsername !== urlUsername) { // ownership check
-			return res.sendStatus(403);
-		}
-		const	{email, password, ...profileData} = req.body;
-		if (profileData.username || password || email) {
-			const	userUpdate: any = {};
-			if (profileData.username)	userUpdate.username	= profileData.username;
-			if (email) 			userUpdate.email	= email;
-			if (password)			userUpdate.password	= await bcrypt.hash(password, 10);
-			await	db
-				.update(users)
-				.set(userUpdate)
-				.where(eq(users.id, res.locals.user.id));
-		}
-		if (profileData && !isEmpty(profileData)) {
-			await	db
-				.update(profiles)
-				.set(profileData)
-				.where(eq(profiles.id, res.locals.user.id)); // "isprivate": "" to set the profile to private
-		}
-		return	res.sendStatus(200);
-	} catch (err) {
-		console.log(err);
-		return res.sendStatus(500);
+export	const	updateUser = async(req: Request, res: Response, next: NextFunction) => {
+	if (!req.body || !res.locals.user) {
+		return res.sendStatus(400);
 	}
+	if (res.locals.user?.username !== req.params?.username) { // ownership check
+		return res.sendStatus(403);
+	}
+
+	let	{username, email, password, ...profileData} = req.body;
+	if (username || email || password) {
+		const   [existingUser] = await db.select()
+						.from(users)
+						.where(or(eq(users.username, username), eq(users.email, email)));
+		if (existingUser) {
+			return res.sendStatus(409);
+		}
+
+		if (password)
+			password = await bcrypt.hash(password, 10);
+		await	db
+			.update(users)
+			.set({
+				username: username,
+				email: email,
+				password: password,
+				})
+			.where(eq(users.id, res.locals.user.id));
+	}
+	next();
+}
+
+export	const	updateProfile = async (req: Request, res: Response, next: NextFunction) => {
+	const	{email, password, ...profileData} = req.body;
+	if (!isEmpty(profileData)) {
+		await	db
+			.update(profiles)
+			.set(profileData)
+			.where(eq(profiles.id, res.locals.user.id)); // "isprivate": "" to set the profile to private
+	}
+	return	res.sendStatus(200);
 }
