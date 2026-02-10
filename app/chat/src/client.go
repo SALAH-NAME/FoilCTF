@@ -37,7 +37,7 @@ func NewClient(conn *websocket.Conn, hub *Hub, userId string, userRole string, u
 		Hub:         hub,
 		Connection:  conn,
 		Send:        make(chan Message, hub.Conf.ClientBuffer),
-		RateLimiter: rate.NewLimiter(rate.Limit(hub.Conf.RateLimitRequest), hub.Conf.RateLimitBrust),
+		RateLimiter: rate.NewLimiter(rate.Limit(hub.Conf.RateLimitRequest), hub.Conf.RateLimitBurst),
 		closed:      0,
 	}
 }

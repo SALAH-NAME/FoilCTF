@@ -12,7 +12,7 @@ type Config struct {
 	ClientBuffer     int
 	RegisterBuffer   int
 	RateLimitRequest float64
-	RateLimitBrust   int
+	RateLimitBurst   int
 	EditLimit        time.Duration
 	BroadcastTimeout time.Duration
 	JWTSecret        []byte
@@ -29,7 +29,7 @@ func NewDefaultConfig() Config {
 		ClientBuffer:     200,
 		RegisterBuffer:   20,
 		RateLimitRequest: 3,
-		RateLimitBrust:   6,
+		RateLimitBurst:   6,
 		EditLimit:        1 * time.Minute,
 		BroadcastTimeout: 1 * time.Second,
 		JWTSecret:        []byte(jwtKey),
