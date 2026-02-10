@@ -82,9 +82,9 @@ export function NavLink({ item, isNested = false }: NavLinkProps) {
 				</div>
 
 				<div
-					className={`overflow-hidden transition-all duration-300 ease-in-out ${
-						showLabels && isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-					}`}
+					className={`transition-all duration-300 ease-in-out
+						 ${showLabels && isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 overflow-hidden '}
+						 `}
 				>
 					<div className="ml-4 mt-1 space-y-1">
 						{item.children?.map((child) => (
@@ -101,14 +101,17 @@ export function NavLink({ item, isNested = false }: NavLinkProps) {
 			to={item.to || '#'}
 			className={`
 				flex items-center px-3 py-2 rounded-md
-				transition-colors  w-full no-underline
+				transition-colors  w-full no-underline 
 				${isActive ? 'bg-primary hover:bg-accent/20 hover:text-dark text-white font-bold' : 'hover:bg-primary hover:text-white text-dark'}
 				${showLabels ? 'gap-3' : 'md:gap-0 gap-3'}
 				${isNested ? 'text-dark/80 text-sm' : ''}
 			`}
 			title={showLabels ? undefined : item.label}
 		>
-			<Icon name={item.icon} className="size-5 shrink-0" />
+			<Icon
+				name={item.icon}
+				className={`shrink-0 ${isNested ? 'size-4' : 'size-5'}`}
+			/>
 			<span
 				className={`whitespace-nowrap transition-opacity duration-300 ${
 					showLabels

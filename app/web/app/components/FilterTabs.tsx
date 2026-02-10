@@ -16,7 +16,7 @@ export default function FilterTabs({
 	onChange,
 }: FilterTabsProps) {
 	return (
-		<div className="flex flex-wrap gap-2 overflow-x-auto pb-2 scrollbar-hide">
+		<div className="flex flex-wrap gap-2 pb-2 scrollbar-hide">
 			{tabs.map((tab) => (
 				<button
 					key={tab.value}

@@ -36,7 +36,7 @@ export default function Sidebar() {
 
 	useEffect(() => {
 		closeMobile();
-	}, [location.pathname, location.search, closeMobile]);
+	}, [location.pathname, closeMobile]);
 
 	useEffect(() => {
 		if (isMobileOpen) {
