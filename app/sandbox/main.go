@@ -52,6 +52,7 @@ func main() {
 		AllowedMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodHead, http.MethodOptions},
 	}))
 
+	srv.Get("/health", RouteHealth)
 	srv.Get("/metrics", adapterRoute(&app, RoutePrometheus))
 	srv.Route("/api/sandbox", func (r chi.Router) {
 		r.Use(adapterMiddleware(&app, MiddlePrometheus))

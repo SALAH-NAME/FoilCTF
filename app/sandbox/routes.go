@@ -34,6 +34,12 @@ func adapterMiddleware(app *App, middleImpl func(*App, http.Handler) http.Handle
 
 // ---
 
+func RouteHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+// ---
+
 func MiddlePrometheus(app* App, next http.Handler) http.Handler {
 	optsRequestsTotal := prometheus.CounterOpts{ Name: "requests_total", Help: "Requests processed by the service" }
 	requestsTotal := promauto.With(app.Registry).NewCounterVec(optsRequestsTotal, []string{ "method", "code" })
