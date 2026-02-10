@@ -19,3 +19,4 @@ export	const	PORT:				number = Number(process.env.PORT ?? "6969");
 export	const	AccessTokenSecret:		string = requireEnvVar("ACCESS_TOKEN_SECRET");
 export	const	RefreshTokenSecret:		string = requireEnvVar("REFRESH_TOKEN_SECRET");
 export	const	AvatarsDir:			string = process.env.AVATARS_DIR ?? "avatars";
+export	const	MaxFileSize:			number = Number(process.env.MAX_FILE_SIZE ?? "2097152");

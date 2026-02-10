@@ -1,6 +1,6 @@
 import	'dotenv/config';
 import	bcrypt						from 'bcrypt';
-import	express, {Response, NextFunction}		from 'express';
+import	express, {Request, Response, NextFunction}	from 'express';
 import	jwt, {JwtPayload}				from 'jsonwebtoken';
 import	{ eq, or}					from 'drizzle-orm';
 import	{ users, sessions, profiles }			from './db/schema';
@@ -17,7 +17,6 @@ import	{ ZodError}					from 'zod';
 import	cookieParser					from 'cookie-parser';
 import	{	User,
 		Profile,
-		AuthRequest,
 		registerSchema,
 		loginSchema,
 		updateProfileSchema,
@@ -29,7 +28,7 @@ import	{
 		authenticateToken,
 	}						from './utils/utils';
 import	{
-		getProfile,
+		getPublicProfile,
 		authenticateTokenProfile,
 		updateProfile,
 		uploadAvatar,
@@ -41,7 +40,7 @@ const	app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-const	register = async (req: AuthRequest, res: Response) => {
+const	register = async (req: Request, res: Response) => {
 	try {
 		const	{username, email, password} = req.body;
 		const   [existingUser] = await db.select()
@@ -52,12 +51,11 @@ const	register = async (req: AuthRequest, res: Response) => {
 			return ;
 		}
 		const	hashedPassword	= await bcrypt.hash(password, 10);
-		const	newUser: User	= {
+		await db.insert(users).values({
 						username:	username,
 						email:		email,
 						password:	hashedPassword
-					  };
-		await db.insert(users).values(newUser);
+					});
 		await db.insert(profiles).values({ // user profile creation on registry
 							username:		username,
 							challengessolved:	0,
@@ -73,7 +71,7 @@ const	register = async (req: AuthRequest, res: Response) => {
 	}
 };
 
-const	login = async (req: AuthRequest, res: Response) => {
+const	login = async (req: Request, res: Response) => {
 	const	{username, password} = req.body;
 	try {
 		const	[user] = await db.select().from(users).where(eq(users.username, username));
@@ -110,12 +108,11 @@ const	login = async (req: AuthRequest, res: Response) => {
 	}
 };
 
-const	refresh = async (req: AuthRequest, res: Response) => {
+const	refresh = async (req: Request, res: Response) => {
 	try {
-		const	token = req.headers?.authorization?.split(' ')[1]; // already parsed and authenticated
-		if (!token) {
-			return res.sendStatus(401); // to make tsc STFU
-		}
+		const	token = req.cookies?.jwt ?? ""; // cookie
+		jwt.verify(token, RefreshTokenSecret) as JwtPayload;
+
 		const	[session] = await db.select()
 				.from(sessions).
 				where(eq(sessions.refreshtoken, token));
@@ -133,18 +130,18 @@ const	refresh = async (req: AuthRequest, res: Response) => {
 		const	newAccessToken = generateAccessToken(user.username as string, user.role, user.id);
 		res.json({ accessToken: newAccessToken });
 	} catch (err) {
-		return res.sendStatus(403);
+		console.error(err);
+		return res.sendStatus(500);
 	}
 };
 
-const	logout = async (req: AuthRequest, res: Response) => {
+const	logout = async (req: Request, res: Response) => {
 	try {
-		const	token = req.headers?.authorization?.split(' ')[1]; // already parsed and authenticated
-		if (!token) {
-			return res.sendStatus(401); // to make tsc STFU
+		const	token = req.cookies?.jwt; // cookie
+		if (token) {
+			await db.delete(sessions).where(eq(sessions.refreshtoken, token));
+			console.log('user session got deleted');
 		}
-		await db.delete(sessions).where(eq(sessions.refreshtoken, token));
-		console.log('user session got deleted');
 
 		res.clearCookie('jwt', {
 			httpOnly:	true,
@@ -165,15 +162,13 @@ app.post('/api/auth/login',
 	validate(loginSchema),
 	login);
 app.post('/api/auth/refresh',
-	authenticateToken,
 	refresh);
 app.delete('/api/auth/logout',
-	authenticateToken,
 	logout);
 
 app.get('/api/profiles/:username',
 	authenticateTokenProfile,
-	getProfile);
+	getPublicProfile);
 app.post('/api/profiles/:username/avatar',
 	authenticateToken,
 	upload.single('avatar'),
@@ -183,15 +178,18 @@ app.put('/api/profiles/:username',
 	validate(updateProfileSchema),
 	updateProfile);
 
-app.use((err: any, req: AuthRequest, res: Response, next: NextFunction) => {
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 	if (err instanceof ZodError) {
-		return res.status(400).send(`zod error`);
+		return res.sendStatus(400);
 	}
 	if (err instanceof multer.MulterError) {
-		return res.status(400).json({ code: err.code, message: err.message });
+		return res.status(400).send(err.message);
 	}
 	if (err.message === 'Invalid file type') {
-		return res.status(400).json({ error: 'Only images are allowed' });
+		return res.status(400).send('Only images are allowed');
+	}
+	if (err.message === 'Unauthorized') {
+		return res.status(401).send('Unauthorized');
 	}
 	console.error(err);
 	res.sendStatus(500);

@@ -18,7 +18,7 @@
     "@types/ms": "^2.1.0",
     "@types/multer": "^2.0.0",
     "@types/pg": "^8.16.0",
-    "drizzle-kit": "^0.31.8",
+    "drizzle-kit": "^0.18.1",
     "nodemon": "^3.1.11",
     "typescript": "^5.9.3"
   },

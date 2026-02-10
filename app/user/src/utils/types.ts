@@ -3,9 +3,9 @@ import	{Request}			from 'express';
 import	{ users, sessions, profiles}	from '../db/schema';
 import	{z}				from 'zod';
 
-export	type User	= typeof users.$inferInsert;
-export	type Session	= typeof sessions.$inferInsert;
-export	type Profile	= typeof profiles.$inferInsert;
+export	type User	= typeof users.$inferSelect;
+export	type Session	= typeof sessions.$inferSelect;
+export	type Profile	= typeof profiles.$inferSelect;
 
 export	interface Post {
 	username:	string,

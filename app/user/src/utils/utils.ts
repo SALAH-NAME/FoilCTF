@@ -1,7 +1,7 @@
 
 import	jwt, {VerifyErrors, VerifyCallback, JwtPayload}	from 'jsonwebtoken';
-import	{ Response, NextFunction }			from 'express';
-import	{ User, AuthRequest}			from './types';
+import	{ Request, Response, NextFunction }			from 'express';
+import	{ User, AuthRequest}					from './types';
 import	{ AccessTokenSecret, AccessTokenExpiry}		from './env';
 import	{ ZodObject }					from 'zod';
 
@@ -14,7 +14,7 @@ export	function generateAccessToken(username: string, role: string, id: number) 
 
 export	function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
 	const	authHeader = req.get('authorization');
-	if (authHeader === undefined) {
+	if (!authHeader) {
 		return res.sendStatus(400);
 	}
 	const	[bearer, token]	= authHeader.split(' ');
@@ -23,7 +23,8 @@ export	function authenticateToken(req: AuthRequest, res: Response, next: NextFun
 	}
 	try {
 		const	decoded = jwt.verify(token, AccessTokenSecret) as User;
-		req.user = decoded;
+		res.locals.user = decoded;
+		req.user = decoded; // multer expects the request not the ressponse
 		next();
 	} catch (err) {
 		return res.sendStatus(403);
@@ -31,16 +32,16 @@ export	function authenticateToken(req: AuthRequest, res: Response, next: NextFun
 }
 
 export	const	validate = (schema: ZodObject) =>
-	async (req: AuthRequest, res: Response, next: NextFunction) =>
+	async (req: Request, res: Response, next: NextFunction) =>
 	{
 		try {
-			const	parsed	= await schema.parseAsync({
-				body:		req.body,
-				});
-			req.body	= parsed.body;
+			const parsed = schema.parse({
+				body:	req.body
+			});
+			req.body = parsed.body
 			return next();
 		}
-		catch (error) {
+		catch (error) { // shcema not validated
 			next(error);
 		}
 	}
