@@ -14,6 +14,7 @@ import {
 	middleware_not_found,
 } from './middlewares.ts';
 
+import { route_health } from './routes/health.ts';
 import { route_metrics } from './routes/metrics.ts';
 
 import {
@@ -35,6 +36,7 @@ const web = express();
 
 web.use(middleware_cors);
 
+web.get('/health', route_health);
 web.get('/metrics', route_metrics);
 web.use(middleware_metric_reqs);
 
