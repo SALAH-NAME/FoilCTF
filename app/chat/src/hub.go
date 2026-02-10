@@ -108,3 +108,8 @@ func (h *Hub) TrackChannels() {
 		}
 	}
 }
+
+func (h *Hub) ServeHealth(w http.ResponseWriter, r *http.Request) {
+	_ = r
+	w.WriteHeader(http.StatusOK)
+}

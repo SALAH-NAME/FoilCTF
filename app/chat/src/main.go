@@ -8,10 +8,14 @@ import (
 
 func (hub *Hub) RegisterRoutes() http.Handler {
 	r := mux.NewRouter()
-	r.Use(hub.AuthMiddleware)
-	r.HandleFunc("/api/chat", hub.ServeChat).Methods("GET")
-	r.HandleFunc("/api/chat/users", hub.ServeGetUsers).Methods("GET")
-	r.HandleFunc("/api/chat/list", hub.ServeChatHistory).Methods("GET")
+	r.HandleFunc("/health", hub.ServeHealth).Methods(http.MethodGet)
+
+	rAuthProtected := r.NewRoute().Subrouter()
+	rAuthProtected.Use(hub.AuthMiddleware)
+	rAuthProtected.HandleFunc("/api/chat", hub.ServeChat).Methods(http.MethodGet)
+	rAuthProtected.HandleFunc("/api/chat/users", hub.ServeGetUsers).Methods(http.MethodGet)
+	rAuthProtected.HandleFunc("/api/chat/list", hub.ServeChatHistory).Methods(http.MethodGet)
+
 	return r
 }
 
