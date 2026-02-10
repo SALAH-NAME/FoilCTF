@@ -56,20 +56,20 @@ func GetUserInfo(r *http.Request) (string, string, string, error) {
 func (h *Hub) ServeChat(w http.ResponseWriter, r *http.Request) {
 	userID, userName, userRole, err := GetUserInfo(r)
 	if err != nil {
-		log.Printf("Error: user info required %v", err)
+		log.Printf("DEBUG: SERVER: user info required %v", err)
 		JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 	roomIDStr := r.URL.Query().Get("room")
 	roomID, err := strconv.Atoi(roomIDStr)
 	if err != nil {
-		log.Printf("ERROR: Valid RoomID is required")
+		log.Printf("DEBUG: SERVER: Valid RoomID is required")
 		JSONError(w, "Valid RoomID is required", http.StatusBadRequest)
 		return
 	}
 	conn, err := h.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("ERROR: Upgrading http connection failed : %v", err)
+		log.Printf("DEBUG: SERVER: Upgrading http connection failed : %v", err)
 		JSONError(w, "Could not open websocket connection", http.StatusBadRequest)
 		return
 	}
@@ -80,13 +80,12 @@ func (h *Hub) ServeChat(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Hub) TrackChannels() {
-
 	for {
 		select {
 		case eventMessage, ok := <-h.MessageChannel:
 			{
 				if !ok {
-					log.Print("Global Message channel closed")
+					log.Print("DEBUG: EVENTS: Global Message channel closed")
 					return
 				}
 				switch eventMessage.Event {
@@ -99,7 +98,7 @@ func (h *Hub) TrackChannels() {
 				case "delete":
 					HandleDeleteEvent(h, &eventMessage)
 				default:
-					log.Printf("ERROR: Unknown event type received %s", eventMessage.Event)
+					log.Printf("ERROR: EVENTS: Unknown event type received %q", eventMessage.Event)
 				}
 			}
 		case client := <-h.Register:

@@ -26,7 +26,7 @@ func NewServer(router http.Handler) (*http.Server, string) {
 func main() {
 	db, err := DbInit()
 	if err != nil {
-		log.Fatalf("Database Error: %v", err)
+		log.Fatalf("ERROR: DATABASE: %v", err)
 	}
 	conf := NewDefaultConfig()
 	hub := NewHub(db, &conf)
@@ -34,8 +34,8 @@ func main() {
 
 	router := hub.RegisterRoutes()
 	srv, port := NewServer(router)
-	log.Printf("Server starting at port %s !", port)
+	log.Printf("INFO: SERVER: Listener address %s", port)
 	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("SERVER ERROR: Failed to start the server: %v", err)
+		log.Fatalf("ERROR: SERVER: Could not listen and serve: %v", err)
 	}
 }

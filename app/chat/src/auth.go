@@ -33,11 +33,10 @@ func (hub *Hub) VerifySigningMethod(token *jwt.Token) (interface{}, error) {
 }
 
 func (hub *Hub) AuthMiddleware(next http.Handler) http.Handler {
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			log.Printf("Authorization header required")
+			log.Printf("DEBUG: SERVER: Authorization header required")
 			JSONError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -46,17 +45,17 @@ func (hub *Hub) AuthMiddleware(next http.Handler) http.Handler {
 		claims := &MyClaims{}
 		token, err := jwt.ParseWithClaims(tokenString, claims, hub.VerifySigningMethod)
 		if err != nil {
-			log.Printf("Failed to verify JWT token: %v", err)
+			log.Printf("ERROR: SERVER: Failed to verify JWT token: %v", err)
 			JSONError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 		if !token.Valid {
-			log.Printf("Invalid JWT token: %v", err)
+			log.Printf("DEBUG: SERVER: Invalid JWT token: %v", err)
 			JSONError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 		if claims.UserID == "" || claims.Username == "" {
-			log.Printf("Unauthorized: UserId or username or both required")
+			log.Printf("DEBUG: SERVER: Missing either UserID or Username")
 			JSONError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}

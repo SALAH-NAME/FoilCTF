@@ -21,7 +21,7 @@ type Config struct {
 func NewDefaultConfig() Config {
 	jwtKey := GetEnv("JWT_SECRET", "")
 	if jwtKey == "" {
-		log.Fatal("FATAL: JWT_SECRET environment variable is required")
+		log.Fatal("FATAL: ENVIRONMENT: JWT_SECRET is required")
 	}
 	return Config{
 		MaxContentLimit:  500,

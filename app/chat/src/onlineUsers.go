@@ -24,7 +24,7 @@ func (h *Hub) ServeGetUsers(w http.ResponseWriter, r *http.Request) {
 	RoomIDStr := r.URL.Query().Get("room")
 	RoomID, err := strconv.Atoi(RoomIDStr)
 	if err != nil {
-		log.Printf("ERROR: Failed to parse RoomID for online users request :%v", err)
+		log.Printf("ERROR: SERVER: Failed to parse RoomID for online users request: %v", err)
 		JSONError(w, "Valid RoomID required", http.StatusBadRequest)
 		return
 	}
