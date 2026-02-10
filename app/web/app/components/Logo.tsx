@@ -25,16 +25,17 @@ export default function Logo({
 		<div className={`flex items-center gap-2 ${className}`}>
 			<div
 				className={`${sizeClasses[size]} bg-primary rounded-md flex items-center justify-center text-white font-bold shrink-0`}
+				aria-hidden="true"
 			>
 				F
 			</div>
-			<h1
+			<div
 				className={`${textSizeClasses[size]} font-bold text-dark leading-none translate-y-[2px] transition-opacity duration-300 ${
 					showText ? 'opacity-100 delay-300' : 'opacity-0 w-0 overflow-hidden'
 				}`}
 			>
 				FoilCTF
-			</h1>
+			</div>
 		</div>
 	);
 }

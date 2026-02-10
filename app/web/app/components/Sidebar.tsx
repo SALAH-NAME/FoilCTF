@@ -34,6 +34,8 @@ export default function Sidebar() {
 		useSidebar();
 	const location = useLocation();
 
+	const isActive = location.pathname == '/profile';
+
 	useEffect(() => {
 		closeMobile();
 	}, [location.pathname, closeMobile]);
@@ -48,6 +50,19 @@ export default function Sidebar() {
 			document.body.style.overflow = 'unset';
 		};
 	}, [isMobileOpen]);
+
+	useEffect(() => {
+		const handleEscape = (e: KeyboardEvent) => {
+			if (e.key === 'Escape' && isMobileOpen) {
+				closeMobile();
+			}
+		};
+
+		document.addEventListener('keydown', handleEscape);
+		return () => {
+			document.removeEventListener('keydown', handleEscape);
+		};
+	}, [isMobileOpen, closeMobile]);
 
 	return (
 		<>
@@ -68,11 +83,14 @@ export default function Sidebar() {
                     ${isMobileOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0'}
                 `}
 			>
-				<div className="flex flex-col h-full">
+				<div
+					className={`flex flex-col h-full ${!isMobileOpen ? 'hidden md:flex' : ''}`}
+				>
 					<div className="flex-1">
 						<Link
 							to="/"
-							className="flex items-center p-4 border-b border-dark/10 transition-all duration-300 w-full no-underline"
+							aria-label="FoilCTF Home"
+							className="flex items-center p-4 border-b border-dark/10 transition-all duration-300 w-full no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
 							title="FoilCTF"
 						>
 							<Logo
@@ -82,38 +100,43 @@ export default function Sidebar() {
 							/>
 						</Link>
 
-						<div className="p-4">
+						<nav className="p-4" aria-label="Main navigation">
 							<NavGroup items={navItems} />
-						</div>
+						</nav>
 					</div>
 
 					<div className="border-t border-dark/10 p-4 space-y-2">
 						<Link
 							to="/profile"
-							className={`w-full flex items-center px-2 py-2 rounded-md transition-colors no-underline ${
-								location.pathname === '/profile'
-									? 'bg-primary hover:bg-accent/20  text-white'
-									: 'hover:bg-primary text-dark'
+							aria-label="User profile"
+							className={`w-full flex items-center px-2 py-2 rounded-md transition-colors no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-inset ${
+								isActive
+									? 'bg-primary hover:bg-accent/20 text-white focus-visible:ring-dark'
+									: 'hover:bg-primary text-dark focus-visible:ring-primary'
 							} ${isExpanded ? 'gap-3' : 'md:gap-0 gap-3'}`}
 							title={isExpanded ? undefined : 'Profile'}
 						>
-							<div className="w-8 h-8 my-1 bg-secondary rounded-full flex items-center justify-center shrink-0">
-								<Icon name="user" className="size-4 text-white" />
+							<div
+								className={`w-8 h-8 my-1  rounded-full flex items-center justify-center shrink-0 ${isActive ? 'bg-white' : 'bg-secondary'}`}
+							>
+								<Icon
+									name="user"
+									className={`size-4  ${isActive ? 'text-black' : 'text-white'}`}
+									aria-hidden={true}
+								/>
 							</div>
 							{(isExpanded || isMobileOpen) && (
 								<div
-									className={`flex-1 min-w-0 transition-opacity duration-300 ${
-										isExpanded
-											? 'opacity-100 delay-300'
-											: 'md:opacity-0 md:w-0 md:overflow-hidden opacity-100'
-									}`}
+									className={`flex-1 min-w-0 transition-opacity duration-300
+										 ${
+												isExpanded
+													? 'opacity-100 delay-300'
+													: 'md:opacity-0 md:w-0 md:overflow-hidden opacity-100'
+											}
+											${isActive ? 'text-white hover:text-dark' : ' text-dark'}`}
 								>
-									<p className="text-sm font-medium truncate text-dark">
-										John Doe
-									</p>
-									<p className="text-xs text-dark/60 truncate">
-										john@example.com
-									</p>
+									<p className="text-sm font-medium truncate">John Doe</p>
+									<p className="text-xs  truncate">john@example.com</p>
 								</div>
 							)}
 						</Link>
@@ -121,8 +144,9 @@ export default function Sidebar() {
 						<button
 							type="button"
 							onClick={toggleExpanded}
-							className={`hidden md:flex w-full items-center ${isExpanded ? 'px-3' : ''} py-2 rounded-md hover:bg-accent/20 text-white transition-colors gap-3`}
+							className={`hidden md:flex w-full items-center ${isExpanded ? 'px-3' : ''} py-2 rounded-md hover:bg-accent/20 text-white transition-colors gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-dark focus-visible:ring-inset`}
 							aria-label={isExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
+							aria-expanded={isExpanded}
 						>
 							<Icon
 								name={isExpanded ? 'chevronLeft' : 'chevronRight'}
@@ -144,10 +168,15 @@ export default function Sidebar() {
 						<button
 							type="button"
 							onClick={closeMobile}
-							className="md:hidden flex w-full items-center px-3 py-2 rounded-md hover:bg-accent/20 text-white transition-colors gap-3"
+							tabIndex={isMobileOpen ? 0 : -1}
+							className="md:hidden flex w-full items-center px-3 py-2 rounded-md hover:bg-accent/20 text-white transition-colors gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-dark focus-visible:ring-inset"
 							aria-label="Close menu"
 						>
-							<Icon name="close" className="size-5 shrink-0" />
+							<Icon
+								name="close"
+								className="size-5 shrink-0"
+								aria-hidden={true}
+							/>
 							<span className="whitespace-nowrap">Close Menu</span>
 						</button>
 					</div>

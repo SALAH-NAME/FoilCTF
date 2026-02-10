@@ -20,7 +20,7 @@ export default function Button({
 	...props
 }: ButtonProps) {
 	const baseStyles =
-		'font-semibold rounded-md transition-colors inline-flex items-center justify-center gap-2';
+		'font-semibold rounded-md transition-colors inline-flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2';
 
 	const variantStyles = {
 		primary: 'bg-primary text-white hover:bg-primary/80',

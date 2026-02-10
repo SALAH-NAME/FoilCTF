@@ -40,17 +40,27 @@ export default function Countdown({ targetDate }: CountdownProps) {
 	}, [targetDate]);
 
 	if (!timeLeft) {
-		return <p className="text-dark/60 font-medium">Event has started!</p>;
+		return (
+			<p className="text-dark/60 font-medium" role="status" aria-live="polite">
+				Event has started!
+			</p>
+		);
 	}
 
 	return (
-		<div className="flex gap-1 md:gap-4">
+		<div className="flex gap-1 md:gap-4" role="timer" aria-live="off">
 			{Object.entries(timeLeft).map(([unit, value]) => (
 				<div key={unit} className="flex flex-col items-center">
-					<div className="bg-primary text-white font-bold text-xl md:text-2xl lg:text-3xl px-2 py-2 md:px-4 md:py-3 rounded-md min-w-[50px] md:min-w-[70px] text-center">
+					<div
+						aria-label={`${value} ${unit}`}
+						className="bg-primary text-white font-bold text-xl md:text-2xl lg:text-3xl px-2 py-2 md:px-4 md:py-3 rounded-md min-w-[50px] md:min-w-[70px] text-center"
+					>
 						{value.toString().padStart(2, '0')}
 					</div>
-					<span className="text-xs md:text-sm text-dark/60 mt-1 md:mt-2 capitalize">
+					<span
+						className="text-xs md:text-sm text-dark/60 mt-1 md:mt-2 capitalize"
+						aria-hidden="true"
+					>
 						{unit}
 					</span>
 				</div>

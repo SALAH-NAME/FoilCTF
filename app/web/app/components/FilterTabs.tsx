@@ -16,12 +16,19 @@ export default function FilterTabs({
 	onChange,
 }: FilterTabsProps) {
 	return (
-		<div className="flex flex-wrap gap-2 pb-2 scrollbar-hide">
+		<div
+			role="tablist"
+			aria-label="Filter by category"
+			className="flex flex-wrap gap-2 pb-2 scrollbar-hide"
+		>
 			{tabs.map((tab) => (
 				<button
 					key={tab.value}
+					role="tab"
+					aria-selected={activeTab === tab.value}
+					aria-controls={`tabpanel-${tab.value}`}
 					onClick={() => onChange(tab.value)}
-					className={`px-4 py-2 rounded-md font-semibold text-sm whitespace-nowrap transition-colors w-fit ${
+					className={`px-4 py-2 rounded-md font-semibold text-sm whitespace-nowrap transition-colors w-fit focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
 						activeTab === tab.value
 							? 'bg-primary text-white'
 							: 'bg-white border border-dark/20 text-dark hover:border-primary'
@@ -30,6 +37,7 @@ export default function FilterTabs({
 					{tab.label}
 					{tab.count !== undefined && (
 						<span
+							aria-label={`${tab.count} items`}
 							className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
 								activeTab === tab.value ? 'bg-white/20' : 'bg-dark/10'
 							}`}

@@ -14,7 +14,7 @@ export default function PageHeader({
 	return (
 		<header className={`flex items-center justify-between p-4 ${className}`}>
 			<h1 className="text-5xl font-bold text-dark">{title}</h1>
-			{action}
+			{action && <div role="group">{action}</div>}
 		</header>
 	);
 }

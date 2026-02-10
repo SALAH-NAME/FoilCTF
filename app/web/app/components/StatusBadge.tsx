@@ -32,6 +32,8 @@ export default function StatusBadge({
 
 	return (
 		<span
+			role="status"
+			aria-label={`Event status: ${labels[status]}`}
 			className={`${styleClass} text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide border ${variant === 'outline' ? 'border' : ''}`}
 		>
 			{labels[status]}
