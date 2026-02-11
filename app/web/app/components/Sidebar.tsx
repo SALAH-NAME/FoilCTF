@@ -144,14 +144,14 @@ export default function Sidebar() {
 						<button
 							type="button"
 							onClick={toggleExpanded}
-							className={`hidden md:flex w-full items-center ${isExpanded ? 'px-3' : ''} py-2 rounded-md hover:bg-accent/20 text-white transition-colors gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-dark focus-visible:ring-inset`}
+							className={`hidden md:flex w-full items-center ${isExpanded ? 'px-3' : ''} py-2 rounded-md hover:bg-accent/20 hover:text-dark text-white transition-colors gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-dark focus-visible:ring-inset`}
 							aria-label={isExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
 							aria-expanded={isExpanded}
 						>
 							<Icon
 								name={isExpanded ? 'chevronLeft' : 'chevronRight'}
 								className={`size-5 shrink-0 transition-all duration-300 ${
-									isExpanded ? '' : 'delay-300'
+									isExpanded ? '' : ''
 								}`}
 							/>
 							<span

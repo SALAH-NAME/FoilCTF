@@ -185,6 +185,11 @@ export default function Events() {
 					onChange={handleFilterChange}
 				/>
 			</div>
+
+			<div aria-live="polite" aria-atomic="true" className="sr-only">
+				{filteredEvents.length} events found
+			</div>
+
 			{filteredEvents.length === 0 ? (
 				<div className="text-center py-12">
 					<p className="text-muted">No events found matching your criteria.</p>

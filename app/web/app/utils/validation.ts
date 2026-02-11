@@ -25,8 +25,38 @@ export const validationRules = {
 	},
 
 	confirmPassword: (value: string, formData?: any) => {
-		if (value !== formData?.password) {
+		const passwordField = formData?.newPassword || formData?.password;
+		if (value !== passwordField) {
 			return 'Passwords do not match';
+		}
+		return '';
+	},
+
+	bio: (value: string) => {
+		if (value.length > 300) {
+			return 'Bio must be 300 characters or less';
+		}
+		return '';
+	},
+
+	location: (value: string) => {
+		if (value.length > 32) {
+			return 'Location must be 32 characters or less';
+		}
+		return '';
+	},
+
+	link: (value: string) => {
+		if (!value) return '';
+		if (value.length > 128) {
+			return 'Link must be 128 characters or less';
+		}
+		return '';
+	},
+
+	deleteConfirmation: (value: string, formData?: any) => {
+		if (value !== formData?.expectedUsername) {
+			return 'Username does not match. Please type your exact username.';
 		}
 		return '';
 	},

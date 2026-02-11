@@ -33,7 +33,7 @@ export default function EventCard({
 			<Link
 				to={`/events/${slug}`}
 				aria-label={`View details for ${name} event`}
-				className="group bg-white/70 rounded-md p-6 border border-dark/10 hover:border-primary transition-all duration-200 hover:shadow-lg no-underline block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+				className="h-full group bg-white/70 rounded-md p-6 border border-dark/10 hover:border-primary transition-all duration-200 hover:shadow-lg no-underline block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 			>
 				<div className="flex flex-wrap gap-4 items-start justify-between mb-4">
 					<h3 className="text-xl font-bold text-dark group-hover:text-primary transition-colors flex-1">

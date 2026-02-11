@@ -41,7 +41,7 @@ export function NavLink({
 		: false;
 
 	const showLabels = isExpanded || isMobileOpen;
-	const isHidden = isParentCollapsed || !showLabels;
+	const isHidden = isParentCollapsed;
 
 	if (hasChildren) {
 		return (
@@ -54,9 +54,8 @@ export function NavLink({
 					<Link
 						to={item.to || '#'}
 						aria-current={isActive ? 'page' : undefined}
-						tabIndex={showLabels ? 0 : -1}
 						className={`
-					flex-1 flex items-center px-3 py-2 rounded-md
+					flex-1 flex items-center px-3.5 py-2 rounded-md
 					transition-colors gap-3  w-full no-underline
 					${isActive ? 'focus-visible:ring-dark' : 'focus-visible:ring-primary'}
 					focus:outline-none focus-visible:ring-2 focus:ring-inset
@@ -70,8 +69,8 @@ export function NavLink({
 							aria-hidden={true}
 						/>
 						<span
-							className={`text-left whitespace-nowrap transition-opacity duration-300 
-								${showLabels ? 'opacity-100 delay-300' : 'md:opacity-0 md:w-0 md:overflow-hidden opacity-100'}`}
+							className={`text-left whitespace-nowrap transition-opacity duration-300 opacity-100
+								${showLabels ? 'delay-300' : 'md:opacity-0 md:w-0 md:overflow-hidden'}`}
 						>
 							{item.label}
 						</span>
@@ -126,12 +125,11 @@ export function NavLink({
 			aria-current={isActive ? 'page' : undefined}
 			tabIndex={isHidden ? -1 : 0}
 			className={`
-				flex items-center px-3 py-2 rounded-md
-				transition-colors gap-3 w-full no-underline 
+				flex items-center px-3.5 py-2 rounded-md
+				transition-colors gap-3 w-full no-underline
 				${isActive ? 'focus-visible:ring-dark' : 'focus-visible:ring-primary'}
 				focus:outline-none focus-visible:ring-2 focus-visible:ring-inset
 				${isActive ? 'bg-primary hover:bg-accent/20 hover:text-dark text-white font-bold' : 'hover:bg-primary hover:text-white text-dark'}
-				${showLabels ? '' : 'md:gap-0'}
 				${isNested ? 'text-dark/80 text-sm' : ''}
 			`}
 			title={showLabels ? undefined : item.label}
