@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 import { AccessTokenSecret } from './env';
 import { profiles, users } from '../db/schema';
@@ -7,9 +7,18 @@ import { eq, or } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import path from 'path';
 import multer, { FileFilterCallback } from 'multer';
-import { User, Profile, AuthRequest } from './types';
-import { getRandomNumber, isEmpty } from './utils';
-import { AvatarsDir, MaxFileSize } from './env';
+import { Profile, AuthRequest } from './types';
+import {
+	 isEmpty,
+	 generateAccessToken,
+	 generateRefreshToken,
+} from './utils';
+import { AvatarsDir,
+	 MaxFileSize,
+	 RefreshTokenExpiry,
+} from './env';
+import ms, { StringValue } from 'ms';
+import { sessions} from '../db/schema';
 
 export const authenticateTokenProfile = async (
 	req: Request,
@@ -19,7 +28,7 @@ export const authenticateTokenProfile = async (
 	try {
 		const authHeader = req.get('authorization');
 		if (authHeader === undefined) return next();
-		const [bearer, ...tokens] = authHeader?.split(' ') ?? '';
+		const [bearer, ...tokens] = authHeader?.split(' ') ?? "";
 		if (bearer !== 'Bearer' || tokens.length != 1) return next();
 
 		const decoded = jwt.verify(
@@ -27,7 +36,7 @@ export const authenticateTokenProfile = async (
 			AccessTokenSecret
 		) as JwtPayload;
 		const requestedUsername = req.params?.username as string;
-		if (decoded.username !== requestedUsername) return next();
+		if (decoded.username !== requestedUsername) return next(); // ownership check
 		const [profile] = await db
 			.select()
 			.from(profiles)
@@ -88,26 +97,33 @@ const storage = multer.diskStorage({
 	},
 });
 
+function fileFilterAdapter(filter: (req: AuthRequest, file: Express.Multer.File) => boolean) {
+	return (req: AuthRequest, file: Express.Multer.File, callback: FileFilterCallback) => {
+        	try {
+			const value = filter(req, file);
+			callback(null, value);
+		} catch (err) {
+			if (err instanceof Error) return callback(err);
+				return callback(new Error(`${err}`));
+		}
+	}
+}
+
 export	const	upload = multer({
 	storage:	storage,
 	limits:		{fileSize:	MaxFileSize},
-	fileFilter:	(
-			req:	AuthRequest, // can't get the user otherwise
-			file:	Express.Multer.File,
-			cb:	FileFilterCallback
-				) => {
-					console.log('req user username: ', req.user?.username);
-					console.log('req params username: ', req.params?.username);
-					if (req.user?.username !== req.params?.username) { // ownership check before uploading the file
-						cb(new Error('Unauthorized'));
-					}
-					else if (file.mimetype !== 'image/jpeg' && file.mimetype !== 'image/png') {
-						cb(new Error('Invalid file type'));
-					} else {
-						cb(null, true);
-					}
-			}
-});
+	fileFilter:	fileFilterAdapter((req: AuthRequest, file: Express.Multer.File) => {
+				if (req.user?.username !== req.params?.username) { // ownership check before uploading the file
+					throw new Error('Unauthorized');
+				}
+
+				if (file.mimetype !== 'image/jpeg' && file.mimetype !== 'image/png') {
+					throw new Error('Invalid file type');
+				}
+
+				return true;
+			})
+		});
 
 export const uploadAvatar = async (req: Request, res: Response) => {
 	try {
@@ -120,10 +136,10 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 		if (!user || user.id === undefined) {
 			return res.sendStatus(400);
 		}
-		const filename = `/api/profiles/${user.username}/avatar/` + file.filename;
+		const dbFilename = `/api/profiles/${user.username}/avatar/` + file.filename;
 		await db
 			.update(profiles)
-			.set({ avatar: filename })
+			.set({ avatar: dbFilename })
 			.where(eq(profiles.id, user.id));
 		return res.sendStatus(201);
 	} catch (err) {
@@ -132,21 +148,43 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 	}
 };
 
+export const updateProfile = async (
+	req: Request,
+	res: Response,
+) => {
+	const profileData = req.body;
+	if (!profileData || !res.locals.user) {
+		return res.status(400).send();
+	}
+	if (res.locals.user?.username !== req.params?.username) {
+		// ownership check
+		return res.sendStatus(401);
+	}
+
+	if (!isEmpty(profileData)) {
+		await db
+			.update(profiles)
+			.set(profileData)
+			.where(eq(profiles.id, res.locals.user.id)); // "isprivate": "" to set the profile to private
+	}
+	res.status(200).send();
+};
+
 export const updateUser = async (
 	req: Request,
 	res: Response,
 	next: NextFunction
 ) => {
 	if (!req.body || !res.locals.user) {
-		return res.sendStatus(400);
+		return res.status(400).send();
 	}
 	if (res.locals.user?.username !== req.params?.username) {
 		// ownership check
 		return res.sendStatus(403);
 	}
 
-	let { username, email, password, ...profileData } = req.body;
-	if (username || email || password) {
+	let { username, email, password } = req.body;
+	if (username || email) {
 		const [existingUser] = await db
 			.select()
 			.from(users)
@@ -154,31 +192,56 @@ export const updateUser = async (
 		if (existingUser) {
 			return res.sendStatus(409);
 		}
+	}
+	if (password)
+		password = await bcrypt.hash(password, 10);
 
-		if (password) password = await bcrypt.hash(password, 10);
-		await db
-			.update(users)
-			.set({
-				username: username,
-				email: email,
-				password: password,
-			})
-			.where(eq(users.id, res.locals.user.id));
+	if (username || email || password) {
+	await db
+		.update(users)
+		.set({
+			username: username,
+			email: email,
+			password: password,
+		})
+		.where(eq(users.id, res.locals.user.id));
 	}
 	next();
 };
 
-export const updateProfile = async (
-	req: Request,
-	res: Response,
-	next: NextFunction
-) => {
-	const { email, password, ...profileData } = req.body;
-	if (!isEmpty(profileData)) {
-		await db
-			.update(profiles)
-			.set(profileData)
-			.where(eq(profiles.id, res.locals.user.id)); // "isprivate": "" to set the profile to private
-	}
-	return res.sendStatus(200);
-};
+export	const updateTokens = async (req: Request, res: Response, next: NextFunction) => {
+	res.clearCookie('jwt', {
+		httpOnly: true,
+		secure: true,
+		sameSite: 'strict',
+	});
+
+	const	user = res.locals?.user;
+	const accessToken = generateAccessToken(
+		user.username as any,
+		user.role,
+		user.id
+	);
+	const refreshToken = generateRefreshToken(
+		user.username as any,
+		user.id
+	);
+	const duration = ms(RefreshTokenExpiry as StringValue);
+	const expiryDate = new Date(Date.now() + duration);
+
+	await db
+		.update(sessions)
+		.set({
+			refreshtoken: refreshToken,
+			expiry: expiryDate.toISOString(),
+		})
+		.where(eq(sessions.userId, user.id));
+
+	res.cookie('jwt', refreshToken, {
+		httpOnly: true,
+		secure: true,
+		sameSite: 'strict',
+		maxAge: duration,
+	});
+	res.json({ accessToken: accessToken, refreshToken: refreshToken });
+}

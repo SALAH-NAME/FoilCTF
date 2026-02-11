@@ -42,7 +42,7 @@ export const loginSchema = z.object({
 	}),
 });
 
-const profileBody = z.object({
+const userBody = z.object({
 	username: z
 		.string()
 		.trim()
@@ -51,6 +51,13 @@ const profileBody = z.object({
 		.regex(/^[a-zA-Z0-9_-]+$/), // add '-', so yait-nas is valid
 	email: z.string().trim().email({ pattern: z.regexes.email }),
 	password: z.string().trim().min(12),
+});
+
+export const updateUserSchema = z.object({
+	body: userBody.partial(),
+})
+
+const profileBody = z.object({
 	bio: z.string().trim().max(500),
 	location: z.string().trim().max(50),
 	socialmedia: z.string().trim().url(),
