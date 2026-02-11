@@ -27,13 +27,13 @@ import {
 	uploadAvatar,
 	upload,
 	updateTokens,
-} from './utils/profile';
+} from './profile';
 import {
 	register,
 	login,
 	refresh,
 	logout
-} from './utils/userAuth';
+} from './userAuth';
 
 import multer from 'multer';
 

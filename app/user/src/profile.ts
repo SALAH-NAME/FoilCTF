@@ -1,24 +1,24 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload, TokenExpiredError } from 'jsonwebtoken';
-import { AccessTokenSecret } from './env';
-import { profiles, users } from '../db/schema';
-import { db } from './db';
+import { AccessTokenSecret } from './utils/env';
+import { profiles, users } from './db/schema';
+import { db } from './utils/db';
 import { eq, or } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import path from 'path';
 import multer, { FileFilterCallback } from 'multer';
-import { Profile, AuthRequest } from './types';
+import { Profile, AuthRequest } from './utils/types';
 import {
 	 isEmpty,
 	 generateAccessToken,
 	 generateRefreshToken,
-} from './utils';
+} from './utils/utils';
 import { AvatarsDir,
 	 MaxFileSize,
 	 RefreshTokenExpiry,
-} from './env';
+} from './utils/env';
 import ms, { StringValue } from 'ms';
-import { sessions} from '../db/schema';
+import { sessions} from './db/schema';
 
 export const authenticateTokenProfile = async (
 	req: Request,

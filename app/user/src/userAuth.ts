@@ -5,14 +5,14 @@ import {
 } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { eq, or } from 'drizzle-orm';
-import { users, sessions, profiles } from '../db/schema';
-import { db } from './db';
+import { users, sessions, profiles } from './db/schema';
+import { db } from './utils/db';
 import ms, { StringValue } from 'ms';
-import { RefreshTokenSecret, RefreshTokenExpiry } from './env';
+import { RefreshTokenSecret, RefreshTokenExpiry } from './utils/env';
 import {
 	generateAccessToken,
 	generateRefreshToken,
-} from './utils';
+} from './utils/utils';
 
 export const register = async (req: Request, res: Response) => {
 	try {
