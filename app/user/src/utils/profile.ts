@@ -96,8 +96,8 @@ export	const	upload = multer({
 	limits:		{fileSize:	MaxFileSize},
 	fileFilter:	(
 			req:	AuthRequest, // can't get the user otherwise
-				file:	Express.Multer.File,
-				cb:	FileFilterCallback
+			file:	Express.Multer.File,
+			cb:	FileFilterCallback
 				) => {
 					console.log('req user username: ', req.user?.username);
 					console.log('req params username: ', req.params?.username);

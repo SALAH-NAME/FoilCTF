@@ -24,7 +24,7 @@ export	function authenticateToken(req: AuthRequest, res: Response, next: NextFun
 	try {
 		const	decoded = jwt.verify(token, AccessTokenSecret) as User;
 		res.locals.user = decoded;
-		req.user = decoded; // multer expects the request not the ressponse
+		req.user = decoded; // multer expects the request not the ressponse (i.e. I can't use the res.locals)
 		next();
 	} catch (err) {
 		return res.sendStatus(403);
