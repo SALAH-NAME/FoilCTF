@@ -7,14 +7,14 @@ import (
 )
 
 type Client struct {
-	ID         string
+	ID         int
 	Role       string
 	Connection *websocket.Conn
 	Send       chan WsEvent
 	Hub        *Hub
 }
 
-func NewClient(id string, role string, conn *websocket.Conn, hub *Hub) *Client {
+func NewClient(id int, role string, conn *websocket.Conn, hub *Hub) *Client {
 	return &Client{
 		ID:         id,
 		Role:       role,
@@ -30,7 +30,7 @@ func (client *Client) WriteToConnectionTunnel() {
 	}()
 	for event := range client.Send {
 		if err := client.Connection.WriteJSON(event); err != nil {
-			log.Printf("ERROR: userID: %s failed to receive data due to: %v", client.ID, err)
+			log.Printf("ERROR: User#%03d failed to receive data due to: %v", client.ID, err)
 			return
 		}
 	}
@@ -43,7 +43,7 @@ func (client *Client) ReadFromConnectionTunnel() {
 	for {
 		var event WsEvent
 		if err := client.Connection.ReadJSON(&event); err != nil {
-			log.Printf("ERROR: Unexpected close for userID: %s: %v", client.ID, err)
+			log.Printf("ERROR: User#03d was unexpectedly terminated: %v", client.ID, err)
 			break
 		}
 		client.Hub.GlobalChan <- event

@@ -161,11 +161,27 @@ CREATE TABLE IF NOT EXISTS containers (
 );
 
 CREATE TABLE IF NOT EXISTS notifications (
-  id          SERIAL PRIMARY KEY,
+  id			SERIAL PRIMARY KEY,
 
-  contents    JSON NOT NULL,
-  created_at  TIMESTAMP DEFAULT now() NOT NULL
+  contents		JSON NOT NULL,
+  created_at	TIMESTAMP DEFAULT now() NOT NULL,
+
+  is_published	BOOLEAN DEFAULT false
 );
+
+CREATE FUNCTION function_notifications_on_publish() RETURNS TRIGGER AS $notifications_on_publish$
+	BEGIN
+		PERFORM pg_notify('inbox_notifications', NEW.id::text);
+		RETURN NULL;
+	END;
+$notifications_on_publish$ LANGUAGE plpgsql;
+	
+CREATE TRIGGER trigger_notifications_publish
+	AFTER UPDATE ON notifications
+	FOR EACH ROW
+	WHEN (OLD.is_published = FALSE AND NEW.is_published = TRUE)
+	EXECUTE FUNCTION function_notifications_on_publish();
+
 CREATE TABLE IF NOT EXISTS notification_users (
   notification_id  INTEGER NOT NULL,
   user_id          INTEGER NOT NULL,
@@ -173,8 +189,11 @@ CREATE TABLE IF NOT EXISTS notification_users (
 
   read_at          TIMESTAMP NULL,
 
-  CONSTRAINT constraint_user FOREIGN KEY (user_id) REFERENCES users,
-  CONSTRAINT constraint_notification  FOREIGN KEY (notification_id) REFERENCES notifications
+  is_dismissed     BOOLEAN DEFAULT FALSE NOT NULL,
+  is_read          BOOLEAN DEFAULT FALSE NOT NULL,
+
+  CONSTRAINT constraint_user FOREIGN KEY (user_id) REFERENCES users ON DELETE CASCADE,
+  CONSTRAINT constraint_notification  FOREIGN KEY (notification_id) REFERENCES notifications ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS messages (

@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-func GetNonReadRecords(tx *gorm.DB, userID string) ([]UserNotification, error) {
+func GetNonReadRecords(tx *gorm.DB, userID int) ([]UserNotification, error) {
 	var ids []int
 	err := tx.Table("notifications").
 		Joins("LEFT JOIN notification_users on notification_users.notification_id = notifications.id AND notification_users.notified_id = ?", userID).
@@ -32,24 +32,24 @@ func GetNonReadRecords(tx *gorm.DB, userID string) ([]UserNotification, error) {
 }
 
 func (hub *Hub) HandleReadAll(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(userIDKey).(string)
+	userID := r.Context().Value(userIDKey).(int)
 
 	err := hub.Db.Transaction(func(tx *gorm.DB) error {
 		newRecords, err := GetNonReadRecords(tx, userID)
-		// in case err == nil && newRecords == nil there are no records to insert I return nil
-		if err != nil || newRecords == nil {
+		if err != nil || newRecords == nil { // NOTE: in case err == nil && newRecords == nil there are no records to insert I return nil
 			return err
 		}
+
 		err = tx.Table("notification_users").
 			Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "notification_id"}, {Name: "notified_id"}},
 				DoUpdates: clause.Assignments(map[string]interface{}{"is_read": true}),
 			}).
 			Create(&newRecords).Error
-
 		if err != nil {
 			return err
 		}
+
 		return nil
 	})
 	if err != nil {
@@ -66,7 +66,7 @@ func (hub *Hub) HandleReadAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (hub *Hub) HandleReadSingle(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(userIDKey).(string)
+	userID := r.Context().Value(userIDKey).(int)
 
 	notifID, err := GetID(w, r)
 	if err != nil {

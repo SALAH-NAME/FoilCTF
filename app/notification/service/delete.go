@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-func GetNonDeletedRecords(tx *gorm.DB, userID string) ([]UserNotification, error) {
+func GetNonDeletedRecords(tx *gorm.DB, userID int) ([]UserNotification, error) {
 	var ids []int
 
 	err := tx.Table("notifications").
@@ -37,7 +37,7 @@ func GetNonDeletedRecords(tx *gorm.DB, userID string) ([]UserNotification, error
 }
 
 func (hub *Hub) HandleDeleteAll(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(userIDKey).(string)
+	userID := r.Context().Value(userIDKey).(int)
 
 	err := hub.Db.Transaction(func(tx *gorm.DB) error {
 
@@ -76,7 +76,7 @@ func (hub *Hub) HandleDeleteAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (hub *Hub) HandleDeleteSingle(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(userIDKey).(string)
+	userID := r.Context().Value(userIDKey).(int)
 
 	notifID, err := GetID(w, r)
 	if err != nil {
