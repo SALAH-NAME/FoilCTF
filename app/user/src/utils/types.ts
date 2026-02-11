@@ -50,7 +50,8 @@ const userBody = z.object({
 		.max(15)
 		.regex(/^[a-zA-Z0-9_-]+$/), // add '-', so yait-nas is valid
 	email: z.string().trim().email({ pattern: z.regexes.email }),
-	password: z.string().trim().min(12),
+	newPassword: z.string().trim().min(12),
+	oldPassword: z.string().trim().min(12),
 });
 
 export const updateUserSchema = z.object({

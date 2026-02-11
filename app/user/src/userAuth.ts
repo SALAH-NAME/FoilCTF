@@ -12,18 +12,16 @@ import { RefreshTokenSecret, RefreshTokenExpiry } from './utils/env';
 import {
 	generateAccessToken,
 	generateRefreshToken,
+	existingUserFunction,
+	validatePassword,
 } from './utils/utils';
 
 export const register = async (req: Request, res: Response) => {
 	try {
-		const { username, email, password } = req.body;
-		const [existingUser] = await db
-			.select()
-			.from(users)
-			.where(or(eq(users.username, username), eq(users.email, email)));
+		const { username, email, password } = req.body; // already validated by zod
+		const	existingUser = await existingUserFunction(username, email);
 		if (existingUser) {
-			res.sendStatus(409);
-			return;
+			return res.sendStatus(409);
 		}
 		const hashedPassword = await bcrypt.hash(password, 10);
 		await db.insert(users).values({

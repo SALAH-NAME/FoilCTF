@@ -8,8 +8,9 @@ import { AccessTokenSecret,
 	 } from './env';
 import { ZodObject } from 'zod';
 import { db } from './db';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import { users } from '../db/schema';
+import bcrypt from 'bcrypt';
 
 export function generateAccessToken(
 	username: string,
@@ -94,3 +95,32 @@ export const isEmpty = (obj: Record<string, unknown>) => {
 	}
 	return Object.keys(obj).length === 0;
 };
+
+export const	validatePassword = async (passwordToValidate: string, username: string) => {
+	if (passwordToValidate === undefined)
+		return false;
+	const [user] = await db
+		.select()
+		.from(users)
+		.where(eq(users.username, username));
+	const passwordIsValid = await bcrypt.compare(
+		passwordToValidate,
+		user?.password ?? '$2b$10$dummyhashplaceholder'
+	);
+	if (passwordIsValid === true)
+		return true;
+	return false;
+}
+
+export const	existingUserFunction = async (username: string, email: string) => {
+	if (username === undefined && email === undefined)
+		return false;
+	const [existingUser] = await db
+		.select()
+		.from(users)
+		.where(or(eq(users.username, username), eq(users.email, email)));
+	if (existingUser) {
+		return true;
+	}
+	return false;
+}

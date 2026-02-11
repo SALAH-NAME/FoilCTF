@@ -11,6 +11,8 @@ import { Profile, AuthRequest } from './utils/types';
 import {
 	 isEmpty,
 	 generateAccessToken,
+	 validatePassword,
+	 existingUserFunction,
 	 generateRefreshToken,
 } from './utils/utils';
 import { AvatarsDir,
@@ -183,28 +185,28 @@ export const updateUser = async (
 		return res.sendStatus(403);
 	}
 
-	let { username, email, password } = req.body;
-	if (username || email) {
-		const [existingUser] = await db
-			.select()
-			.from(users)
-			.where(or(eq(users.username, username), eq(users.email, email)));
-		if (existingUser) {
-			return res.sendStatus(409);
-		}
-	}
-	if (password)
-		password = await bcrypt.hash(password, 10);
+	let { username, email, oldPassword, newPassword } = req.body;
 
-	if (username || email || password) {
-	await db
-		.update(users)
-		.set({
-			username: username,
-			email: email,
-			password: password,
-		})
-		.where(eq(users.id, res.locals.user.id));
+	const	existingUser = await existingUserFunction(username, email);
+	if (existingUser) {
+		return res.sendStatus(409);
+	}
+	if (newPassword !== undefined) {
+		const	passwordIsValid = await validatePassword(oldPassword, res.locals.user.username);
+		if (!passwordIsValid)
+			return res.status(401).send('Invalid password');
+		newPassword = await bcrypt.hash(newPassword, 10);
+	}
+
+	if (username || email || newPassword) {
+		await db
+		      .update(users)
+		      .set({
+		            username: username,
+		            email: email,
+		            password: newPassword,
+		      })
+		      .where(eq(users.id, res.locals.user.id));
 	}
 	next();
 };
