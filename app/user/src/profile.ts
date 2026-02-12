@@ -19,6 +19,7 @@ import {
 } from './utils/utils';
 import { AvatarsDir, MaxFileSize, RefreshTokenExpiry } from './utils/env';
 import { sessions } from './db/schema';
+import { UploadError } from './error';
 
 export const authenticateTokenProfile = async (
 	req: Request,
@@ -81,13 +82,7 @@ export const getPublicProfile = async (req: Request, res: Response) => {
 };
 
 const storage = multer.diskStorage({
-	destination: (
-		_req: AuthRequest, // can't get the user otherwise
-		_file: Express.Multer.File,
-		cb: (error: Error | null, destination: string) => void
-	) => {
-		cb(null, AvatarsDir);
-	},
+	destination: AvatarsDir,
 	filename: (
 		req: AuthRequest,
 		file: Express.Multer.File,
@@ -122,11 +117,11 @@ export const upload = multer({
 		(req: AuthRequest, file: Express.Multer.File) => {
 			if (req.user?.username !== req.params?.username) {
 				// ownership check before uploading the file
-				throw new Error('Unauthorized');
+				throw new UploadError('unauthorized');
 			}
 
 			if (file.mimetype !== 'image/jpeg' && file.mimetype !== 'image/png') {
-				throw new Error('Invalid file type');
+				throw new UploadError('file-type-invalid');
 			}
 
 			return true;

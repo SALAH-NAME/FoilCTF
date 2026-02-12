@@ -1,23 +1,19 @@
-import express, {
-	json as middleware_json,
-	type Request,
-	type Response,
-	type NextFunction,
-} from 'express';
-import { PORT } from './utils/env';
-import { ZodError } from 'zod';
+import express, { json as middleware_json } from 'express';
 import middleware_cookies from 'cookie-parser';
+
+import { PORT } from './utils/env';
+import { middleware_error } from './error';
 import {
 	registerSchema,
 	loginSchema,
 	updateProfileSchema,
 	updateUserSchema,
 } from './utils/types';
-
 import {
 	validate,
 	authenticateToken,
 	parseNonExistingParam,
+	middleware_logger,
 } from './utils/utils';
 import {
 	getPublicProfile,
@@ -28,18 +24,22 @@ import {
 	upload,
 	updateTokens,
 } from './profile';
-import { register, login, refresh, logout } from './userAuth';
-
-import multer from 'multer';
+import {
+	route_auth_register,
+	route_auth_login,
+	route_auth_refresh,
+	route_auth_logout,
+} from './auth';
 
 const app = express();
+app.use(middleware_logger);
 app.use(middleware_json());
 app.use(middleware_cookies());
 
-app.post('/api/auth/register', validate(registerSchema), register);
-app.post('/api/auth/login', validate(loginSchema), login);
-app.post('/api/auth/refresh', refresh);
-app.delete('/api/auth/logout', logout);
+app.post('/api/auth/login', validate(loginSchema), route_auth_login);
+app.post('/api/auth/register', validate(registerSchema), route_auth_register);
+app.post('/api/auth/refresh', route_auth_refresh);
+app.delete('/api/auth/logout', route_auth_logout);
 
 app.get(
 	'/api/profiles/:username',
@@ -47,7 +47,6 @@ app.get(
 	authenticateTokenProfile,
 	getPublicProfile
 );
-
 app.post(
 	'/api/profiles/:username/avatar',
 	parseNonExistingParam,
@@ -55,7 +54,6 @@ app.post(
 	upload.single('avatar'),
 	uploadAvatar
 );
-
 app.put(
 	'/api/profiles/:username',
 	parseNonExistingParam,
@@ -63,7 +61,6 @@ app.put(
 	authenticateToken,
 	updateProfile
 );
-
 app.put(
 	'/api/users/:username',
 	parseNonExistingParam,
@@ -73,26 +70,7 @@ app.put(
 	updateTokens
 );
 
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-	if (err instanceof ZodError) {
-		return res.status(400).send(err.message);
-	}
-	if (err instanceof multer.MulterError) {
-		return res.status(400).send(err.message);
-	}
-	if (err instanceof SyntaxError) {
-		return res.status(400).send(err.message);
-	}
-	if (err.message === 'Invalid file type') {
-		return res.status(400).send('Only images of type png/jpeg are allowed');
-	}
-	if (err.message === 'Unauthorized') {
-		return res.status(401).send('Unauthorized');
-	}
-	console.error(err);
-	res.sendStatus(500);
-});
-
+app.use(middleware_error);
 app.listen(PORT, () => {
 	console.log(`app listening on port ${PORT}`);
 });

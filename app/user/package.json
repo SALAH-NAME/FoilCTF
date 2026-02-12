@@ -1,5 +1,5 @@
 {
-	"name": "user_auth",
+	"name": "@foilctf/user",
 	"version": "1.0.0",
 	"description": "",
 	"main": "dist/index.js",

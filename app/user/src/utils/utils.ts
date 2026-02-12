@@ -123,3 +123,30 @@ export const existingUserFunction = async (username: string, email: string) => {
 	}
 	return false;
 };
+
+const DateTimeFormatter = new Intl.DateTimeFormat();
+
+// TODO(xenobas): Metrics
+export function middleware_logger(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	const time_start = Date.now();
+	res.on('finish', () => {
+		const time_end = Date.now();
+		const latency = time_end - time_start;
+
+		const datetime = DateTimeFormatter.format(new Date(time_end));
+		console.log(
+			'%s - %s - %s - %d - %dms',
+			datetime,
+			req.path,
+			req.method,
+			res.statusCode,
+			latency
+		);
+	});
+
+	next();
+}

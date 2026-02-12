@@ -1,19 +1,22 @@
+import orm from 'drizzle-orm';
 import bcrypt from 'bcrypt';
-import { type Request, type Response } from 'express';
-import jwt, { JwtPayload } from 'jsonwebtoken';
-import { eq, or } from 'drizzle-orm';
-import { users, sessions, profiles } from './db/schema';
-import { db } from './utils/db';
 import ms, { StringValue } from 'ms';
+import jwt, { type JwtPayload } from 'jsonwebtoken';
+import { type Request, type Response } from 'express';
+
+import { db } from './utils/db';
+import { users, sessions, profiles } from './db/schema';
 import { RefreshTokenSecret, RefreshTokenExpiry } from './utils/env';
 import {
 	generateAccessToken,
 	generateRefreshToken,
 	existingUserFunction,
-	validatePassword,
 } from './utils/utils';
 
-export const register = async (req: Request, res: Response) => {
+export const route_auth_register = async (
+	req: Request<any, any, { username: string; email: string; password: string }>,
+	res: Response
+) => {
 	try {
 		const { username, email, password } = req.body; // already validated by zod
 		const existingUser = await existingUserFunction(username, email);
@@ -41,13 +44,16 @@ export const register = async (req: Request, res: Response) => {
 	}
 };
 
-export const login = async (req: Request, res: Response) => {
+export const route_auth_login = async (
+	req: Request<any, any, { username: string; password: string }>,
+	res: Response
+) => {
 	const { username, password } = req.body;
 	try {
 		const [user] = await db
 			.select()
 			.from(users)
-			.where(eq(users.username, username));
+			.where(orm.eq(users.username, username));
 		const passwordIsValid = await bcrypt.compare(
 			password,
 			user?.password ?? '$2b$10$dummyhashplaceholder'
@@ -83,7 +89,7 @@ export const login = async (req: Request, res: Response) => {
 	}
 };
 
-export const refresh = async (req: Request, res: Response) => {
+export const route_auth_refresh = async (req: Request, res: Response) => {
 	try {
 		const token = req.cookies?.jwt ?? ''; // cookie for refresh token
 		jwt.verify(token, RefreshTokenSecret) as JwtPayload;
@@ -91,7 +97,7 @@ export const refresh = async (req: Request, res: Response) => {
 		const [session] = await db
 			.select()
 			.from(sessions)
-			.where(eq(sessions.refreshtoken, token)); // delete the expired ones? or even limit number of devices connected to at a time
+			.where(orm.eq(sessions.refreshtoken, token)); // delete the expired ones? or even limit number of devices connected to at a time
 		if (session === undefined) {
 			res.sendStatus(403);
 			return;
@@ -99,7 +105,7 @@ export const refresh = async (req: Request, res: Response) => {
 		const [user] = await db
 			.select()
 			.from(users)
-			.where(eq(users.id, session.userId));
+			.where(orm.eq(users.id, session.userId));
 		if (user === undefined) {
 			res.status(400).send();
 			return;
@@ -116,11 +122,11 @@ export const refresh = async (req: Request, res: Response) => {
 	}
 };
 
-export const logout = async (req: Request, res: Response) => {
+export const route_auth_logout = async (req: Request, res: Response) => {
 	try {
 		const token = req.cookies?.jwt; // cookie for refresh token
 		if (token) {
-			await db.delete(sessions).where(eq(sessions.refreshtoken, token));
+			await db.delete(sessions).where(orm.eq(sessions.refreshtoken, token));
 			console.log('user session got deleted');
 		}
 
