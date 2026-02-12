@@ -1,8 +1,5 @@
 import bcrypt from 'bcrypt';
-import {
-	type Request,
-	type Response,
-} from 'express';
+import { type Request, type Response } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { eq, or } from 'drizzle-orm';
 import { users, sessions, profiles } from './db/schema';
@@ -19,7 +16,7 @@ import {
 export const register = async (req: Request, res: Response) => {
 	try {
 		const { username, email, password } = req.body; // already validated by zod
-		const	existingUser = await existingUserFunction(username, email);
+		const existingUser = await existingUserFunction(username, email);
 		if (existingUser) {
 			return res.sendStatus(409);
 		}
@@ -65,10 +62,7 @@ export const login = async (req: Request, res: Response) => {
 			user.role,
 			user.id
 		);
-		const refreshToken = generateRefreshToken(
-			user.username as any,
-			user.id
-		);
+		const refreshToken = generateRefreshToken(user.username as any, user.id);
 		const duration = ms(RefreshTokenExpiry as StringValue);
 		const expiryDate = new Date(Date.now() + duration);
 		await db.insert(sessions).values({

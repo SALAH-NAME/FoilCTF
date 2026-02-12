@@ -11,13 +11,13 @@ import {
 	registerSchema,
 	loginSchema,
 	updateProfileSchema,
-	updateUserSchema
+	updateUserSchema,
 } from './utils/types';
 
 import {
 	validate,
 	authenticateToken,
-	parseNonExistingParam
+	parseNonExistingParam,
 } from './utils/utils';
 import {
 	getPublicProfile,
@@ -28,12 +28,7 @@ import {
 	upload,
 	updateTokens,
 } from './profile';
-import {
-	register,
-	login,
-	refresh,
-	logout
-} from './userAuth';
+import { register, login, refresh, logout } from './userAuth';
 
 import multer from 'multer';
 
@@ -50,7 +45,8 @@ app.get(
 	'/api/profiles/:username',
 	parseNonExistingParam,
 	authenticateTokenProfile,
-	getPublicProfile);
+	getPublicProfile
+);
 
 app.post(
 	'/api/profiles/:username/avatar',
@@ -65,7 +61,7 @@ app.put(
 	parseNonExistingParam,
 	validate(updateProfileSchema),
 	authenticateToken,
-	updateProfile,
+	updateProfile
 );
 
 app.put(
@@ -74,8 +70,8 @@ app.put(
 	validate(updateUserSchema),
 	authenticateToken,
 	updateUser,
-	updateTokens,
-)
+	updateTokens
+);
 
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 	if (err instanceof ZodError) {

@@ -1,26 +1,24 @@
+import path from 'node:path';
+import bcrypt from 'bcrypt';
+import orm from 'drizzle-orm';
+import ms, { StringValue } from 'ms';
+import multer, { FileFilterCallback } from 'multer';
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload, TokenExpiredError } from 'jsonwebtoken';
+
 import { AccessTokenSecret } from './utils/env';
 import { profiles, users } from './db/schema';
 import { db } from './utils/db';
-import { eq, or } from 'drizzle-orm';
-import bcrypt from 'bcrypt';
-import path from 'path';
-import multer, { FileFilterCallback } from 'multer';
 import { Profile, AuthRequest } from './utils/types';
 import {
-	 isEmpty,
-	 generateAccessToken,
-	 validatePassword,
-	 existingUserFunction,
-	 generateRefreshToken,
+	isEmpty,
+	generateAccessToken,
+	validatePassword,
+	existingUserFunction,
+	generateRefreshToken,
 } from './utils/utils';
-import { AvatarsDir,
-	 MaxFileSize,
-	 RefreshTokenExpiry,
-} from './utils/env';
-import ms, { StringValue } from 'ms';
-import { sessions} from './db/schema';
+import { AvatarsDir, MaxFileSize, RefreshTokenExpiry } from './utils/env';
+import { sessions } from './db/schema';
 
 export const authenticateTokenProfile = async (
 	req: Request,
@@ -30,7 +28,7 @@ export const authenticateTokenProfile = async (
 	try {
 		const authHeader = req.get('authorization');
 		if (authHeader === undefined) return next();
-		const [bearer, ...tokens] = authHeader?.split(' ') ?? "";
+		const [bearer, ...tokens] = authHeader?.split(' ') ?? '';
 		if (bearer !== 'Bearer' || tokens.length != 1) return next();
 
 		const decoded = jwt.verify(
@@ -42,7 +40,7 @@ export const authenticateTokenProfile = async (
 		const [profile] = await db
 			.select()
 			.from(profiles)
-			.where(eq(profiles.username, requestedUsername));
+			.where(orm.eq(profiles.username, requestedUsername));
 
 		if (!profile) return res.sendStatus(404);
 		const { avatar, id, ...data } = profile;
@@ -61,7 +59,7 @@ export const getPublicProfile = async (req: Request, res: Response) => {
 		const [profile] = await db
 			.select()
 			.from(profiles)
-			.where(eq(profiles.username, requestedUsername));
+			.where(orm.eq(profiles.username, requestedUsername));
 
 		if (!profile) return res.sendStatus(404);
 		const responseObject = {} as Profile;
@@ -84,8 +82,8 @@ export const getPublicProfile = async (req: Request, res: Response) => {
 
 const storage = multer.diskStorage({
 	destination: (
-		req: AuthRequest, // can't get the user otherwise
-		file: Express.Multer.File,
+		_req: AuthRequest, // can't get the user otherwise
+		_file: Express.Multer.File,
 		cb: (error: Error | null, destination: string) => void
 	) => {
 		cb(null, AvatarsDir);
@@ -99,33 +97,42 @@ const storage = multer.diskStorage({
 	},
 });
 
-function fileFilterAdapter(filter: (req: AuthRequest, file: Express.Multer.File) => boolean) {
-	return (req: AuthRequest, file: Express.Multer.File, callback: FileFilterCallback) => {
-        	try {
+function fileFilterAdapter(
+	filter: (req: AuthRequest, file: Express.Multer.File) => boolean
+) {
+	return (
+		req: AuthRequest,
+		file: Express.Multer.File,
+		callback: FileFilterCallback
+	) => {
+		try {
 			const value = filter(req, file);
 			callback(null, value);
 		} catch (err) {
 			if (err instanceof Error) return callback(err);
-				return callback(new Error(`${err}`));
+			return callback(new Error(`${err}`));
 		}
-	}
+	};
 }
 
-export	const	upload = multer({
-	storage:	storage,
-	limits:		{fileSize:	MaxFileSize},
-	fileFilter:	fileFilterAdapter((req: AuthRequest, file: Express.Multer.File) => {
-				if (req.user?.username !== req.params?.username) { // ownership check before uploading the file
-					throw new Error('Unauthorized');
-				}
+export const upload = multer({
+	storage: storage,
+	limits: { fileSize: MaxFileSize },
+	fileFilter: fileFilterAdapter(
+		(req: AuthRequest, file: Express.Multer.File) => {
+			if (req.user?.username !== req.params?.username) {
+				// ownership check before uploading the file
+				throw new Error('Unauthorized');
+			}
 
-				if (file.mimetype !== 'image/jpeg' && file.mimetype !== 'image/png') {
-					throw new Error('Invalid file type');
-				}
+			if (file.mimetype !== 'image/jpeg' && file.mimetype !== 'image/png') {
+				throw new Error('Invalid file type');
+			}
 
-				return true;
-			})
-		});
+			return true;
+		}
+	),
+});
 
 export const uploadAvatar = async (req: Request, res: Response) => {
 	try {
@@ -142,7 +149,7 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 		await db
 			.update(profiles)
 			.set({ avatar: dbFilename })
-			.where(eq(profiles.id, user.id));
+			.where(orm.eq(profiles.id, user.id));
 		return res.sendStatus(201);
 	} catch (err) {
 		console.error(err);
@@ -150,10 +157,7 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 	}
 };
 
-export const updateProfile = async (
-	req: Request,
-	res: Response,
-) => {
+export const updateProfile = async (req: Request, res: Response) => {
 	const profileData = req.body;
 	if (!profileData || !res.locals.user) {
 		return res.status(400).send();
@@ -167,7 +171,7 @@ export const updateProfile = async (
 		await db
 			.update(profiles)
 			.set(profileData)
-			.where(eq(profiles.id, res.locals.user.id)); // "isprivate": "" to set the profile to private
+			.where(orm.eq(profiles.id, res.locals.user.id)); // "isprivate": "" to set the profile to private
 	}
 	res.status(200).send();
 };
@@ -187,47 +191,50 @@ export const updateUser = async (
 
 	let { username, email, oldPassword, newPassword } = req.body;
 
-	const	existingUser = await existingUserFunction(username, email);
+	const existingUser = await existingUserFunction(username, email);
 	if (existingUser) {
 		return res.sendStatus(409);
 	}
 	if (newPassword !== undefined) {
-		const	passwordIsValid = await validatePassword(oldPassword, res.locals.user.username);
-		if (!passwordIsValid)
-			return res.status(401).send('Invalid password');
+		const passwordIsValid = await validatePassword(
+			oldPassword,
+			res.locals.user.username
+		);
+		if (!passwordIsValid) return res.status(401).send('Invalid password');
 		newPassword = await bcrypt.hash(newPassword, 10);
 	}
 
 	if (username || email || newPassword) {
 		await db
-		      .update(users)
-		      .set({
-		            username: username,
-		            email: email,
-		            password: newPassword,
-		      })
-		      .where(eq(users.id, res.locals.user.id));
+			.update(users)
+			.set({
+				username: username,
+				email: email,
+				password: newPassword,
+			})
+			.where(orm.eq(users.id, res.locals.user.id));
 	}
 	next();
 };
 
-export	const updateTokens = async (req: Request, res: Response, next: NextFunction) => {
+export const updateTokens = async (
+	_req: Request,
+	res: Response,
+	next: NextFunction
+) => {
 	res.clearCookie('jwt', {
 		httpOnly: true,
 		secure: true,
 		sameSite: 'strict',
 	});
 
-	const	user = res.locals?.user;
+	const user = res.locals?.user;
 	const accessToken = generateAccessToken(
 		user.username as any,
 		user.role,
 		user.id
 	);
-	const refreshToken = generateRefreshToken(
-		user.username as any,
-		user.id
-	);
+	const refreshToken = generateRefreshToken(user.username as any, user.id);
 	const duration = ms(RefreshTokenExpiry as StringValue);
 	const expiryDate = new Date(Date.now() + duration);
 
@@ -237,7 +244,7 @@ export	const updateTokens = async (req: Request, res: Response, next: NextFuncti
 			refreshtoken: refreshToken,
 			expiry: expiryDate.toISOString(),
 		})
-		.where(eq(sessions.userId, user.id));
+		.where(orm.eq(sessions.userId, user.id));
 
 	res.cookie('jwt', refreshToken, {
 		httpOnly: true,
@@ -246,4 +253,6 @@ export	const updateTokens = async (req: Request, res: Response, next: NextFuncti
 		maxAge: duration,
 	});
 	res.json({ accessToken: accessToken, refreshToken: refreshToken });
-}
+
+	next();
+};

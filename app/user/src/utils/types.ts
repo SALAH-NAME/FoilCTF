@@ -56,7 +56,7 @@ const userBody = z.object({
 
 export const updateUserSchema = z.object({
 	body: userBody.partial(),
-})
+});
 
 const profileBody = z.object({
 	bio: z.string().trim().max(500),

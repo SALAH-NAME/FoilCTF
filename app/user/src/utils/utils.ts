@@ -1,11 +1,12 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import { User, AuthRequest } from './types';
-import { AccessTokenSecret,
-	 AccessTokenExpiry,
-	 RefreshTokenSecret,
-	 RefreshTokenExpiry,
-	 } from './env';
+import {
+	AccessTokenSecret,
+	AccessTokenExpiry,
+	RefreshTokenSecret,
+	RefreshTokenExpiry,
+} from './env';
 import { ZodObject } from 'zod';
 import { db } from './db';
 import { eq, or } from 'drizzle-orm';
@@ -24,19 +25,18 @@ export function generateAccessToken(
 	);
 }
 
-export function generateRefreshToken(
-	username: string,
-	id: number
-): string {
-	return jwt.sign(
-		{ username: username, id: id },
-		RefreshTokenSecret,
-		{ expiresIn: RefreshTokenExpiry as any }
-	);
+export function generateRefreshToken(username: string, id: number): string {
+	return jwt.sign({ username: username, id: id }, RefreshTokenSecret, {
+		expiresIn: RefreshTokenExpiry as any,
+	});
 }
 
-export const	parseNonExistingParam = async(req: Request, res: Response, next: NextFunction) => {
-	const	username = req.params?.username as string;
+export const parseNonExistingParam = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+) => {
+	const username = req.params?.username as string;
 	if (!username) {
 		return res.status(400).send();
 	}
@@ -48,7 +48,7 @@ export const	parseNonExistingParam = async(req: Request, res: Response, next: Ne
 		return res.sendStatus(404);
 	}
 	next();
-}
+};
 
 export function authenticateToken(
 	req: AuthRequest,
@@ -64,7 +64,7 @@ export function authenticateToken(
 		return res.sendStatus(401);
 	}
 	try {
-		const decoded = jwt.verify(tokens[0] ?? " ", AccessTokenSecret) as User;
+		const decoded = jwt.verify(tokens[0] ?? ' ', AccessTokenSecret) as User;
 		res.locals.user = decoded;
 		req.user = decoded; // multer expects the request not the ressponse (meaning I can't use the res.locals)
 		next();
@@ -88,7 +88,6 @@ export const validate =
 		}
 	};
 
-
 export const isEmpty = (obj: Record<string, unknown>) => {
 	if (obj == null || typeof obj !== 'object') {
 		return false;
@@ -96,9 +95,11 @@ export const isEmpty = (obj: Record<string, unknown>) => {
 	return Object.keys(obj).length === 0;
 };
 
-export const	validatePassword = async (passwordToValidate: string, username: string) => {
-	if (passwordToValidate === undefined)
-		return false;
+export const validatePassword = async (
+	passwordToValidate: string,
+	username: string
+) => {
+	if (passwordToValidate === undefined) return false;
 	const [user] = await db
 		.select()
 		.from(users)
@@ -107,14 +108,12 @@ export const	validatePassword = async (passwordToValidate: string, username: str
 		passwordToValidate,
 		user?.password ?? '$2b$10$dummyhashplaceholder'
 	);
-	if (passwordIsValid === true)
-		return true;
+	if (passwordIsValid === true) return true;
 	return false;
-}
+};
 
-export const	existingUserFunction = async (username: string, email: string) => {
-	if (username === undefined && email === undefined)
-		return false;
+export const existingUserFunction = async (username: string, email: string) => {
+	if (username === undefined && email === undefined) return false;
 	const [existingUser] = await db
 		.select()
 		.from(users)
@@ -123,4 +122,4 @@ export const	existingUserFunction = async (username: string, email: string) => {
 		return true;
 	}
 	return false;
-}
+};
