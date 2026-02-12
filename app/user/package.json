@@ -7,8 +7,8 @@
 		"build": "tsc",
 		"check": "tsc --noEmit",
 		"clean": "rm -rf dist/",
-		"fmt": "prettier --write src/",
-		"dev": "nodemon",
+		"fmt": "prettier --write src/ drizzle.config.ts",
+		"dev": "nodemon --enable-source-maps",
 		"start": "nodemon ./dist/index.js"
 	},
 	"keywords": [],
@@ -29,9 +29,11 @@
 		"typescript": "^5.9.3"
 	},
 	"dependencies": {
+		"@types/cors": "^2.8.19",
 		"@types/node": "^25.2.3",
 		"bcrypt": "^6.0.0",
 		"cookie-parser": "^1.4.7",
+		"cors": "^2.8.6",
 		"dotenv": "^17.2.3",
 		"drizzle-orm": "^0.45.1",
 		"express": "^5.2.1",

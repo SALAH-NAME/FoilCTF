@@ -43,6 +43,7 @@ export const users = pgTable(
 		username: text().notNull(),
 		role: varchar({ length: 64 }).default('user').notNull(),
 		profileId: integer('profile_id'),
+		oauth42_login: text('oauth42_login'),
 	},
 	(table) => [
 		foreignKey({
@@ -52,6 +53,7 @@ export const users = pgTable(
 		}),
 		unique('users_email_key').on(table.email),
 		unique('users_username_key').on(table.username),
+		unique('users_oauth42_login_key').on(table.oauth42_login),
 	]
 );
 

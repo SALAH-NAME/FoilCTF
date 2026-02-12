@@ -21,6 +21,35 @@ export function authenticateToken(
 	res: Response,
 	next: NextFunction
 ) {
+	const header_value = req.get('authorization');
+	const query_value = req.query.token;
+	if (!header_value && !query_value)
+		return res.sendStatus(400);
+
+	let token = "";
+	if (header_value) {
+		if (!header_value.startsWith("Bearer "))
+			return res.sendStatus(401);
+		token = header_value.slice(("Bearer ").length);
+	} else if (typeof query_value === "string") {
+		token = query_value;
+	}
+
+	try {
+		req.user = jwt.verify(token, AccessTokenSecret) as User;
+		res.locals.user = req.user!
+	} catch (err) {
+		return res.sendStatus(403);
+	}
+
+	return next();
+}
+
+export function authenticateToken2(
+	req: AuthRequest,
+	res: Response,
+	next: NextFunction
+) {
 	const authHeader = req.get('authorization');
 	if (!authHeader) {
 		return res.sendStatus(400);
@@ -29,6 +58,7 @@ export function authenticateToken(
 	if (bearer !== 'Bearer' || !token) {
 		return res.sendStatus(401);
 	}
+
 	try {
 		const decoded = jwt.verify(token, AccessTokenSecret) as User;
 		res.locals.user = decoded;

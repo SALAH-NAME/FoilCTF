@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 
+import middleware_cors from 'cors';
 import express, {
 	json as middleware_json,
 	type Request,
@@ -35,8 +36,14 @@ import {
 } from './utils/profile';
 
 import multer from 'multer';
+import {
+	route_oauth_42_connect,
+	route_oauth_42_link,
+	route_oauth_42_verify,
+} from './routes/oauth';
 
 const app = express();
+app.use(middleware_cors());
 app.use(middleware_json());
 app.use(middleware_cookies());
 
@@ -191,7 +198,13 @@ app.put(
 	updateProfile
 );
 
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+app.get('/api/oauth/42/connect', route_oauth_42_connect);
+app.get('/api/oauth/42/connect/verify', route_oauth_42_verify('connect'));
+
+app.get('/api/oauth/42/link', authenticateToken, route_oauth_42_link);
+app.get('/api/oauth/42/link/verify', route_oauth_42_verify('link'));
+
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 	if (err instanceof ZodError) {
 		return res.sendStatus(400);
 	}
@@ -204,6 +217,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 	if (err.message === 'Unauthorized') {
 		return res.status(401).send('Unauthorized');
 	}
+
 	console.error(err);
 	res.sendStatus(500);
 });
