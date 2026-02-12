@@ -31,10 +31,11 @@ export function middleware_error(
 	res: Response,
 	_next: NextFunction
 ) {
-	if (err instanceof ZodError || err instanceof SyntaxError) {
-		return res.status(400).send(err.message);
-	}
-	if (err instanceof MulterError) {
+	if (
+		err instanceof ZodError ||
+		err instanceof SyntaxError ||
+		err instanceof MulterError
+	) {
 		return res.status(400).send(err.message);
 	}
 	if (err instanceof UploadError) {

@@ -18,16 +18,14 @@ export interface AuthRequest extends Request {
 const PASSWORD_MIN_CHARACTERS = 8;
 
 export const registerSchema = z.object({
-	// trim spaces
 	body: z.object({
 		username: z
 			.string()
-			.trim()
 			.min(3)
 			.max(15)
 			.regex(/^[a-zA-Z0-9_-]+$/), // add '-', so yait-nas is valid
 		email: z.email(),
-		password: z.string().trim().min(PASSWORD_MIN_CHARACTERS),
+		password: z.string().min(PASSWORD_MIN_CHARACTERS),
 	}),
 });
 
@@ -36,24 +34,22 @@ export const loginSchema = z.object({
 	body: z.object({
 		username: z
 			.string()
-			.trim()
 			.min(3)
 			.max(15)
 			.regex(/^[a-zA-Z0-9_-]+$/), // same here
-		password: z.string().trim(),
+		password: z.string(),
 	}),
 });
 
 const userBody = z.object({
 	username: z
 		.string()
-		.trim()
 		.min(3)
 		.max(15)
 		.regex(/^[a-zA-Z0-9_-]+$/), // add '-', so yait-nas is valid
 	email: z.email(),
-	newPassword: z.string().trim().min(PASSWORD_MIN_CHARACTERS),
-	oldPassword: z.string().trim(),
+	newPassword: z.string().min(PASSWORD_MIN_CHARACTERS),
+	oldPassword: z.string(),
 });
 
 export const updateUserSchema = z.object({

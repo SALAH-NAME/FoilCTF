@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import { User, AuthRequest } from './types';
@@ -36,17 +37,15 @@ export const parseNonExistingParam = async (
 	res: Response,
 	next: NextFunction
 ) => {
-	const username = req.params?.username as string;
-	if (!username) {
-		return res.status(400).send();
-	}
-	const [existingUser] = await db
-		.select()
+	const username = req.params?.username as string | undefined;
+	if (!username) return res.status(400).send();
+
+	const [user] = await db
+		.select({ id: users.id })
 		.from(users)
 		.where(eq(users.username, username));
-	if (!existingUser) {
-		return res.sendStatus(404);
-	}
+	if (!user) return res.sendStatus(404);
+
 	next();
 };
 
@@ -89,7 +88,10 @@ export const isEmpty = (obj: unknown) => {
 	return Object.keys(obj).length === 0;
 };
 
-export async function password_validate(password: string, username: string): Promise<boolean> {
+export async function password_validate(
+	password: string,
+	username: string
+): Promise<boolean> {
 	const PASSWORD_DUMMY = '$2b$10$dummyhashplaceholder';
 
 	const [user] = await db
@@ -97,24 +99,48 @@ export async function password_validate(password: string, username: string): Pro
 		.from(users)
 		.where(eq(users.username, username));
 
-	const is_valid = await bcrypt.compare(password, user?.password ?? PASSWORD_DUMMY);
-	return (is_valid);
-};
+	const is_valid = await bcrypt.compare(
+		password,
+		user?.password ?? PASSWORD_DUMMY
+	);
+	return is_valid;
+}
 
-export async function user_exists(username: string, email?: string): Promise<boolean>;
-export async function user_exists(username: string | undefined, email: string): Promise<boolean>;
-export async function user_exists(username?: string, email?: string): Promise<boolean> {
-	if (!username)
-		return false;
-	if (!email)
-		return false;
+export async function user_exists(
+	username: string,
+	email?: string
+): Promise<boolean>;
+export async function user_exists(
+	username: string | undefined,
+	email: string
+): Promise<boolean>;
+export async function user_exists(
+	username?: string,
+	email?: string
+): Promise<boolean> {
+	if (!username) return false;
+	if (!email) return false;
 
 	const [existingUser] = await db
 		.select()
 		.from(users)
 		.where(or(eq(users.username, username), eq(users.email, email)));
-	return (Boolean(existingUser));
-};
+	return Boolean(existingUser);
+}
+
+export function folder_exists(folder_path: string): boolean {
+	const stats = fs.statSync(folder_path, { throwIfNoEntry: false });
+
+	if (!stats) return false;
+	if (!stats.isDirectory()) return false;
+
+	try {
+		fs.accessSync(folder_path, fs.constants.R_OK | fs.constants.W_OK);
+		return true;
+	} catch {
+		return false;
+	}
+}
 
 // TODO(xenobas): Metrics
 export function middleware_logger(

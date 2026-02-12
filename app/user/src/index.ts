@@ -1,7 +1,7 @@
 import express, { json as middleware_json } from 'express';
 import middleware_cookies from 'cookie-parser';
 
-import { PORT } from './utils/env';
+import { AvatarsDir, PORT } from './utils/env';
 import { middleware_error } from './error';
 import {
 	registerSchema,
@@ -14,6 +14,7 @@ import {
 	parseNonExistingParam,
 	middleware_logger,
 	middleware_schema_validate,
+	folder_exists,
 } from './utils/utils';
 import {
 	getPublicProfile,
@@ -37,8 +38,16 @@ app.use(middleware_json());
 app.use(middleware_cookies());
 
 // SECTION: Authentication
-app.post('/api/auth/login', middleware_schema_validate(loginSchema), route_auth_login);
-app.post('/api/auth/register', middleware_schema_validate(registerSchema), route_auth_register);
+app.post(
+	'/api/auth/login',
+	middleware_schema_validate(loginSchema),
+	route_auth_login
+);
+app.post(
+	'/api/auth/register',
+	middleware_schema_validate(registerSchema),
+	route_auth_register
+);
 app.post('/api/auth/refresh', route_auth_refresh);
 app.delete('/api/auth/logout', route_auth_logout);
 
@@ -76,10 +85,15 @@ app.put(
 
 app.use(middleware_error);
 
+if (!folder_exists(AvatarsDir))
+	throw new Error(
+		`Environment variable AVATARS_DIR="${AvatarsDir}" is not a valid path (doesn't exist, no permission, ...etc)"`
+	);
+
 app.listen(PORT, (err?: Error) => {
 	if (!err) {
 		console.log(`INFO :: SERVER :: Listening at ${PORT}`);
-		return ;
+		return;
 	}
 
 	console.error(`ERROR :: SERVER :: An error has occurred during listen:`);

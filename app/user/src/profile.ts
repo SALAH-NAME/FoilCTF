@@ -111,7 +111,8 @@ function fileFilterAdapter(
 }
 
 export const upload = multer({
-	storage: storage,
+	storage,
+
 	limits: { fileSize: MaxFileSize },
 	fileFilter: fileFilterAdapter(
 		(req: AuthRequest, file: Express.Multer.File) => {
@@ -123,7 +124,6 @@ export const upload = multer({
 			if (file.mimetype !== 'image/jpeg' && file.mimetype !== 'image/png') {
 				throw new UploadError('file-type-invalid');
 			}
-
 			return true;
 		}
 	),
