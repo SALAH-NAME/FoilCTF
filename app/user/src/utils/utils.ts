@@ -74,7 +74,6 @@ export function authenticateToken(
 	} catch (err) {
 		return res.sendStatus(403);
 	}
-
 	return next();
 }
 

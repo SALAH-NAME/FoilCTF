@@ -1,9 +1,9 @@
 import middleware_cors from 'cors';
-import express, { json as middleware_json, } from 'express';
-import { AvatarsDir, PORT } from './utils/env';
 import middleware_cookies from 'cookie-parser';
+import express, { json as middleware_json, } from 'express';
 
 import { middleware_error } from './error';
+import { AvatarsDir, PORT } from './utils/env';
 import {
 	registerSchema,
 	loginSchema,
@@ -82,11 +82,11 @@ app.put(
 	updateProfile
 );
 
-app.get('/api/oauth/42/connect', route_oauth_42_connect);
-app.get('/api/oauth/42/connect/verify', route_oauth_42_verify('connect'));
-
+// SECTION: OAuth
 app.get('/api/oauth/42/link', authenticateToken, route_oauth_42_link);
 app.get('/api/oauth/42/link/verify', route_oauth_42_verify('link'));
+app.get('/api/oauth/42/connect', route_oauth_42_connect);
+app.get('/api/oauth/42/connect/verify', route_oauth_42_verify('connect'));
 
 // SECTION: Users
 app.put(
