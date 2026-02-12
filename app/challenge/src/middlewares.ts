@@ -12,17 +12,20 @@ import {
 
 // TODO(xenobas): Authorization middleware
 
+const DateTimeFormatter = new Intl.DateTimeFormat();
+
 export const middleware_cors = cors({
 	origin: ENV_API_ORIGINS_WHITELIST,
 });
 export function middleware_error(
-	err: Error,
+	err: any,
 	_req: Request,
 	res: Response,
 	_next: NextFunction
 ) {
-	console.error(err);
-	respondStatus(res, 500);
+	if (!(err instanceof SyntaxError))
+		console.error(err);
+	respondStatus(res, err.statusCode ?? 500);
 }
 export function middleware_not_found(
 	req: Request,
@@ -54,11 +57,15 @@ export function middleware_metric_reqs(
 	next: NextFunction
 ) {
 	const lat_end = metric_lats.startTimer();
-	next();
-	lat_end();
-	metric_reqs.inc({ status_code: res.statusCode });
+	res.on('finish', () => {
+		lat_end();
+		metric_reqs.inc({ status_code: res.statusCode });
 
-	console.log('%s :: %d', req.method, res.statusCode);
+		const datetime = DateTimeFormatter.format(new Date());
+		console.log('%s - %s - %s - %d', datetime, req.path, req.method, res.statusCode);
+	});
+
+	next();
 }
 export async function middleware_challenge_exists(
 	req: Request,
@@ -68,9 +75,8 @@ export async function middleware_challenge_exists(
 	const id = req.params['challenge_id'];
 
 	const challenge = await Challenges.findByPk(Number(id));
-	if (challenge === null) {
+	if (challenge === null)
 		return respondStatus(res, 404);
-	}
 
 	res.locals.challenge = challenge;
 	next();

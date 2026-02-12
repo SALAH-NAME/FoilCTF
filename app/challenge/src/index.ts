@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { request as app_req } from 'express';
 
 import { ENV_API_PORT, ENV_API_HOST } from './env.ts';
 import orm, { ormInitModels, ORM_CONNECTION_STRING } from './orm/index.ts';
@@ -38,6 +38,7 @@ web.use(middleware_cors);
 
 web.get('/health', route_health);
 web.get('/metrics', route_metrics);
+
 web.use(middleware_metric_reqs);
 
 // SECTION: Bulk actions
