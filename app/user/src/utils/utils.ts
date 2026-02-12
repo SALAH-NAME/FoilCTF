@@ -73,9 +73,11 @@ export function authenticateToken(
 	}
 }
 
-export function middleware_schema_validate(schema: ZodType) {
+export function middleware_schema_validate(schema: ZodObject) {
 	return async (req: Request, _res: Response, next: NextFunction) => {
-		req.body = schema.parse(req.body);
+		const { body } = schema.parse({ body: req.body });
+		req.body = body;
+
 		next();
 	};
 }

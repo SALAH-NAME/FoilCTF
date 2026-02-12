@@ -1,5 +1,6 @@
-import orm from 'drizzle-orm';
+import zod from 'zod';
 import bcrypt from 'bcrypt';
+import { eq } from 'drizzle-orm';
 import ms, { StringValue } from 'ms';
 import jwt, { type JwtPayload } from 'jsonwebtoken';
 import { type Request, type Response } from 'express';
@@ -12,9 +13,10 @@ import {
 	generateRefreshToken,
 	user_exists,
 } from './utils/utils';
+import { loginSchema, registerSchema } from './utils/types';
 
 export const route_auth_register = async (
-	req: Request<any, any, { username: string; email: string; password: string }>,
+	req: Request<any, any, zod.infer<typeof registerSchema>['body']>,
 	res: Response
 ) => {
 	try {
@@ -46,7 +48,7 @@ export const route_auth_register = async (
 };
 
 export const route_auth_login = async (
-	req: Request<any, any, { username: string; password: string }>,
+	req: Request<any, any, zod.infer<typeof loginSchema>['body']>,
 	res: Response
 ) => {
 	const { username, password } = req.body;
@@ -54,7 +56,7 @@ export const route_auth_login = async (
 		const [user] = await db
 			.select()
 			.from(users)
-			.where(orm.eq(users.username, username));
+			.where(eq(users.username, username));
 		const passwordIsValid = await bcrypt.compare(
 			password,
 			user?.password ?? '$2b$10$dummyhashplaceholder'
@@ -98,15 +100,16 @@ export const route_auth_refresh = async (req: Request, res: Response) => {
 		const [session] = await db
 			.select()
 			.from(sessions)
-			.where(orm.eq(sessions.refreshtoken, token)); // delete the expired ones? or even limit number of devices connected to at a time
+			.where(eq(sessions.refreshtoken, token)); // delete the expired ones? or even limit number of devices connected to at a time
 		if (session === undefined) {
 			res.sendStatus(403);
 			return;
 		}
+
 		const [user] = await db
 			.select()
 			.from(users)
-			.where(orm.eq(users.id, session.userId));
+			.where(eq(users.id, session.userId));
 		if (user === undefined) {
 			res.status(400).send();
 			return;
@@ -127,7 +130,7 @@ export const route_auth_logout = async (req: Request, res: Response) => {
 	try {
 		const token = req.cookies?.jwt; // cookie for refresh token
 		if (token) {
-			await db.delete(sessions).where(orm.eq(sessions.refreshtoken, token));
+			await db.delete(sessions).where(eq(sessions.refreshtoken, token));
 			console.log('user session got deleted');
 		}
 

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import bcrypt from 'bcrypt';
-import orm from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import ms, { StringValue } from 'ms';
 import multer, { FileFilterCallback } from 'multer';
 import { Request, Response, NextFunction } from 'express';
@@ -41,7 +41,7 @@ export const authenticateTokenProfile = async (
 		const [profile] = await db
 			.select()
 			.from(profiles)
-			.where(orm.eq(profiles.username, requestedUsername));
+			.where(eq(profiles.username, requestedUsername));
 
 		if (!profile) return res.sendStatus(404);
 		const { avatar, id, ...data } = profile;
@@ -60,7 +60,7 @@ export const getPublicProfile = async (req: Request, res: Response) => {
 		const [profile] = await db
 			.select()
 			.from(profiles)
-			.where(orm.eq(profiles.username, requestedUsername));
+			.where(eq(profiles.username, requestedUsername));
 
 		if (!profile) return res.sendStatus(404);
 		const responseObject = {} as Profile;
@@ -144,7 +144,7 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 		await db
 			.update(profiles)
 			.set({ avatar: dbFilename })
-			.where(orm.eq(profiles.id, user.id));
+			.where(eq(profiles.id, user.id));
 		return res.sendStatus(201);
 	} catch (err) {
 		console.error(err);
@@ -166,7 +166,7 @@ export const updateProfile = async (req: Request, res: Response) => {
 		await db
 			.update(profiles)
 			.set(profileData)
-			.where(orm.eq(profiles.id, res.locals.user.id)); // "isprivate": "" to set the profile to private
+			.where(eq(profiles.id, res.locals.user.id)); // "isprivate": "" to set the profile to private
 	}
 	res.status(200).send();
 };
@@ -208,7 +208,7 @@ export const updateUser = async (
 				email: email,
 				password: newPassword,
 			})
-			.where(orm.eq(users.id, res.locals.user.id));
+			.where(eq(users.id, res.locals.user.id));
 	}
 	next();
 };
@@ -240,7 +240,7 @@ export const updateTokens = async (
 			refreshtoken: refreshToken,
 			expiry: expiryDate.toISOString(),
 		})
-		.where(orm.eq(sessions.userId, user.id));
+		.where(eq(sessions.userId, user.id));
 
 	res.cookie('jwt', refreshToken, {
 		httpOnly: true,

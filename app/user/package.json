@@ -8,8 +8,8 @@
 		"check": "tsc --noEmit",
 		"clean": "rm -rf dist/",
 		"fmt": "prettier --write src/",
-		"dev": "nodemon",
-		"start": "nodemon ./dist/index.js"
+		"dev": "nodemon --enable-source-maps",
+		"start": "nodemon --enable-source-maps ./dist/index.js"
 	},
 	"keywords": [],
 	"author": "",
