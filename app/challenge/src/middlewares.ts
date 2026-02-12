@@ -44,8 +44,8 @@ export function middleware_id_format(
 			if (typeof id !== 'string' || !re.test(id)) {
 				return respondStatus(res, 404);
 			}
-			next();
 		}
+		next();
 	};
 }
 export function middleware_metric_reqs(
