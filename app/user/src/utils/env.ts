@@ -1,6 +1,5 @@
 import dotenv from 'dotenv';
-
-dotenv.config();
+dotenv.config({ quiet: true });
 
 function requireEnvVar(name: string): string {
 	const value = process.env[name];

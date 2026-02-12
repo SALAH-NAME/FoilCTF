@@ -10,10 +10,10 @@ import {
 	updateUserSchema,
 } from './utils/types';
 import {
-	validate,
 	authenticateToken,
 	parseNonExistingParam,
 	middleware_logger,
+	middleware_schema_validate,
 } from './utils/utils';
 import {
 	getPublicProfile,
@@ -36,11 +36,13 @@ app.use(middleware_logger);
 app.use(middleware_json());
 app.use(middleware_cookies());
 
-app.post('/api/auth/login', validate(loginSchema), route_auth_login);
-app.post('/api/auth/register', validate(registerSchema), route_auth_register);
+// SECTION: Authentication
+app.post('/api/auth/login', middleware_schema_validate(loginSchema), route_auth_login);
+app.post('/api/auth/register', middleware_schema_validate(registerSchema), route_auth_register);
 app.post('/api/auth/refresh', route_auth_refresh);
 app.delete('/api/auth/logout', route_auth_logout);
 
+// SECTION: Profiles
 app.get(
 	'/api/profiles/:username',
 	parseNonExistingParam,
@@ -57,20 +59,29 @@ app.post(
 app.put(
 	'/api/profiles/:username',
 	parseNonExistingParam,
-	validate(updateProfileSchema),
+	middleware_schema_validate(updateProfileSchema),
 	authenticateToken,
 	updateProfile
 );
+
+// SECTION: Users
 app.put(
 	'/api/users/:username',
 	parseNonExistingParam,
-	validate(updateUserSchema),
+	middleware_schema_validate(updateUserSchema),
 	authenticateToken,
 	updateUser,
 	updateTokens
 );
 
 app.use(middleware_error);
-app.listen(PORT, () => {
-	console.log(`app listening on port ${PORT}`);
+
+app.listen(PORT, (err?: Error) => {
+	if (!err) {
+		console.log(`INFO :: SERVER :: Listening at ${PORT}`);
+		return ;
+	}
+
+	console.error(`ERROR :: SERVER :: An error has occurred during listen:`);
+	console.error(err);
 });

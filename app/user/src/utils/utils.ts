@@ -7,7 +7,7 @@ import {
 	RefreshTokenSecret,
 	RefreshTokenExpiry,
 } from './env';
-import { ZodObject } from 'zod';
+import { ZodObject, ZodType } from 'zod';
 import { db } from './db';
 import { eq, or } from 'drizzle-orm';
 import { users } from '../db/schema';
@@ -73,58 +73,46 @@ export function authenticateToken(
 	}
 }
 
-export const validate =
-	(schema: ZodObject) =>
-	async (req: Request, res: Response, next: NextFunction) => {
-		try {
-			const parsed = schema.parse({
-				body: req.body,
-			});
-			req.body = parsed.body;
-			return next();
-		} catch (error) {
-			// shcema not validated
-			next(error);
-		}
+export function middleware_schema_validate(schema: ZodType) {
+	return async (req: Request, _res: Response, next: NextFunction) => {
+		req.body = schema.parse(req.body);
+		next();
 	};
+}
 
-export const isEmpty = (obj: Record<string, unknown>) => {
+export const isEmpty = (obj: unknown) => {
 	if (obj == null || typeof obj !== 'object') {
 		return false;
 	}
 	return Object.keys(obj).length === 0;
 };
 
-export const validatePassword = async (
-	passwordToValidate: string,
-	username: string
-) => {
-	if (passwordToValidate === undefined) return false;
+export async function password_validate(password: string, username: string): Promise<boolean> {
+	const PASSWORD_DUMMY = '$2b$10$dummyhashplaceholder';
+
 	const [user] = await db
 		.select()
 		.from(users)
 		.where(eq(users.username, username));
-	const passwordIsValid = await bcrypt.compare(
-		passwordToValidate,
-		user?.password ?? '$2b$10$dummyhashplaceholder'
-	);
-	if (passwordIsValid === true) return true;
-	return false;
+
+	const is_valid = await bcrypt.compare(password, user?.password ?? PASSWORD_DUMMY);
+	return (is_valid);
 };
 
-export const existingUserFunction = async (username: string, email: string) => {
-	if (username === undefined && email === undefined) return false;
+export async function user_exists(username: string, email?: string): Promise<boolean>;
+export async function user_exists(username: string | undefined, email: string): Promise<boolean>;
+export async function user_exists(username?: string, email?: string): Promise<boolean> {
+	if (!username)
+		return false;
+	if (!email)
+		return false;
+
 	const [existingUser] = await db
 		.select()
 		.from(users)
 		.where(or(eq(users.username, username), eq(users.email, email)));
-	if (existingUser) {
-		return true;
-	}
-	return false;
+	return (Boolean(existingUser));
 };
-
-const DateTimeFormatter = new Intl.DateTimeFormat();
 
 // TODO(xenobas): Metrics
 export function middleware_logger(
@@ -133,6 +121,7 @@ export function middleware_logger(
 	next: NextFunction
 ) {
 	const time_start = Date.now();
+	const DateTimeFormatter = new Intl.DateTimeFormat(); // NOTE(xenobas): Useless instantiation on each request!
 	res.on('finish', () => {
 		const time_end = Date.now();
 		const latency = time_end - time_start;

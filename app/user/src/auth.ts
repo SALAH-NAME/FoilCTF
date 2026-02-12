@@ -10,7 +10,7 @@ import { RefreshTokenSecret, RefreshTokenExpiry } from './utils/env';
 import {
 	generateAccessToken,
 	generateRefreshToken,
-	existingUserFunction,
+	user_exists,
 } from './utils/utils';
 
 export const route_auth_register = async (
@@ -19,10 +19,11 @@ export const route_auth_register = async (
 ) => {
 	try {
 		const { username, email, password } = req.body; // already validated by zod
-		const existingUser = await existingUserFunction(username, email);
+		const existingUser = await user_exists(username, email);
 		if (existingUser) {
 			return res.sendStatus(409);
 		}
+
 		const hashedPassword = await bcrypt.hash(password, 10);
 		await db.insert(users).values({
 			username: username,

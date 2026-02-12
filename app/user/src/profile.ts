@@ -13,8 +13,8 @@ import { Profile, AuthRequest } from './utils/types';
 import {
 	isEmpty,
 	generateAccessToken,
-	validatePassword,
-	existingUserFunction,
+	password_validate,
+	user_exists,
 	generateRefreshToken,
 } from './utils/utils';
 import { AvatarsDir, MaxFileSize, RefreshTokenExpiry } from './utils/env';
@@ -186,12 +186,13 @@ export const updateUser = async (
 
 	let { username, email, oldPassword, newPassword } = req.body;
 
-	const existingUser = await existingUserFunction(username, email);
+	const existingUser = await user_exists(username, email);
 	if (existingUser) {
 		return res.sendStatus(409);
 	}
+
 	if (newPassword !== undefined) {
-		const passwordIsValid = await validatePassword(
+		const passwordIsValid = await password_validate(
 			oldPassword,
 			res.locals.user.username
 		);
