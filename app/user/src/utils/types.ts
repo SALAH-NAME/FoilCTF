@@ -15,17 +15,17 @@ export interface AuthRequest extends Request {
 	user?: User;
 }
 
+const PASSWORD_MIN_CHARACTERS = 8;
+
 export const registerSchema = z.object({
-	// trim spaces
 	body: z.object({
 		username: z
 			.string()
-			.trim()
 			.min(3)
 			.max(15)
 			.regex(/^[a-zA-Z0-9_-]+$/), // add '-', so yait-nas is valid
-		email: z.string().trim().email({ pattern: z.regexes.email }),
-		password: z.string().trim().min(12),
+		email: z.email(),
+		password: z.string().min(PASSWORD_MIN_CHARACTERS),
 	}),
 });
 
@@ -34,26 +34,32 @@ export const loginSchema = z.object({
 	body: z.object({
 		username: z
 			.string()
-			.trim()
 			.min(3)
 			.max(15)
 			.regex(/^[a-zA-Z0-9_-]+$/), // same here
-		password: z.string().trim().min(12),
+		password: z.string(),
 	}),
 });
 
-const profileBody = z.object({
+const userBody = z.object({
 	username: z
 		.string()
-		.trim()
 		.min(3)
 		.max(15)
 		.regex(/^[a-zA-Z0-9_-]+$/), // add '-', so yait-nas is valid
-	email: z.string().trim().email({ pattern: z.regexes.email }),
-	password: z.string().trim().min(12),
+	email: z.email(),
+	newPassword: z.string().min(PASSWORD_MIN_CHARACTERS),
+	oldPassword: z.string(),
+});
+
+export const updateUserSchema = z.object({
+	body: userBody.partial(),
+});
+
+const profileBody = z.object({
 	bio: z.string().trim().max(500),
 	location: z.string().trim().max(50),
-	socialmedia: z.string().trim().url(),
+	socialmedia: z.url(),
 	isprivate: z.coerce.boolean(),
 });
 

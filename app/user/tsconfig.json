@@ -10,7 +10,6 @@
 
     // For nodejs:
     "lib": ["esnext"],
-    "types": ["node", "express"],
 
     // Other Outputs
     "sourceMap": true,
