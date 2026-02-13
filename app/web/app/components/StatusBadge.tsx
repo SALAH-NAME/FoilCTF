@@ -2,7 +2,7 @@ type EventStatus = 'upcoming' | 'active' | 'ended';
 
 interface StatusBadgeProps {
 	status: EventStatus;
-	variant?: 'solid' | 'outline';
+	variant?: 'solid' | 'outline' | 'white';
 }
 
 export default function StatusBadge({
@@ -21,6 +21,12 @@ export default function StatusBadge({
 		ended: 'bg-muted/10 text-muted border-muted/20',
 	};
 
+	const whiteStyles = {
+		upcoming: 'bg-white text-amber-500 border-amber-500',
+		active: 'bg-white text-green-600 border-green-600',
+		ended: 'bg-white text-gray-500 border-gray-400',
+	};
+
 	const labels = {
 		upcoming: 'Upcoming',
 		active: 'Active',
@@ -28,13 +34,17 @@ export default function StatusBadge({
 	};
 
 	const styleClass =
-		variant === 'solid' ? solidStyles[status] : outlineStyles[status];
+		variant === 'solid'
+			? solidStyles[status]
+			: variant === 'outline'
+				? outlineStyles[status]
+				: whiteStyles[status];
 
 	return (
 		<span
 			role="status"
 			aria-label={`Event status: ${labels[status]}`}
-			className={`${styleClass} text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide border ${variant === 'outline' ? 'border' : ''}`}
+			className={`${styleClass} text-xs font-semibold px-4 py-2 w-fit rounded-full uppercase tracking-wide border ${variant === 'outline' ? 'border' : ''}`}
 		>
 			{labels[status]}
 		</span>
