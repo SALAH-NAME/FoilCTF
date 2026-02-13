@@ -1,27 +1,38 @@
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS profiles (
-  id       SERIAL PRIMARY KEY,
+  id       	SERIAL PRIMARY KEY,
 
-  name     TEXT NOT NULL,
-  image    TEXT DEFAULT NULL
+  avatar		TEXT DEFAULT NULL,
+  challengesSolved	INTEGER DEFAULT NULL,
+  eventsParticipated	INTEGER DEFAULT NULL,
+  totalPoints		INTEGER DEFAULT NULL,
+
+  bio			TEXT DEFAULT NULL,
+  location		TEXT DEFAULT NULL,
+  socialMediaLinks	TEXT DEFAULT NULL,
+  isprivate		BOOLEAN DEFAULT FALSE,
+
+  username		TEXT NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS users (
   id                  SERIAL PRIMARY KEY,
-  password            VARCHAR(64) NOT NULL,
+  password            VARCHAR(256) NOT NULL,
 
   created_at          TIMESTAMP DEFAULT now() NOT NULL,
   banned_until        TIMESTAMP DEFAULT NULL,
 
   email		      TEXT DEFAULT NULL UNIQUE,
   username	      TEXT NOT NULL UNIQUE,
-  avatar	      TEXT DEFAULT NULL,
   role		      VARCHAR(64) NOT NULL DEFAULT 'user',
 
-  profile_id          INTEGER DEFAULT NULL,
-  CONSTRAINT profile  FOREIGN KEY (profile_id) REFERENCES profiles
+  profile_id          INTEGER DEFAULT NULL
+  -- CONSTRAINT profile  FOREIGN KEY (profile_id) REFERENCES profiles -- is this necessary??
 );
+
+ALTER TABLE profiles 
+  ADD CONSTRAINT fk_username FOREIGN KEY (username) REFERENCES users (username) ON UPDATE CASCADE; -- update username on user's username update
 
 CREATE TABLE IF NOT EXISTS sessions (
   id               SERIAL PRIMARY KEY,

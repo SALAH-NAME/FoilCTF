@@ -20,6 +20,45 @@ services:
       - "3000:3000" # For development access
     restart: unless-stopped
 
+  user:
+    container_name: foilctf_user
+    build:
+      tags:
+        - "foilctf/user:latest"
+      context: ./app/user/
+      dockerfile: Containerfile
+    environment:
+      - PORT=${USER_PORT:-3001}
+      - DATABASE_URL=postgresql://${DATABASE_DEVELOPER_USER}:${DATABASE_DEVELOPER_PASS}@database:5432/${DATABASE_NAME:-foilctf}
+      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET:?ACCESS_TOKEN_SECRET must be set}
+      - REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET:?REFRESH_TOKEN_SECRET must be set}
+      - ACCESS_TOKEN_EXPIRY=${ACCESS_TOKEN_EXPIRY:-15m}
+      - REFRESH_TOKEN_EXPIRY=${REFRESH_TOKEN_EXPIRY:-7d}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-2097152}
+      - AVATARS_DIR=${AVATARS_DIR:-uploads/avatars}
+    volumes:
+      - user-avatars:/app/uploads/avatars
+    networks:
+      - foilctf_net
+    ports:
+      - "3001:3001" # For development access
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
+        ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
   # PostgreSQL Database Service
   # REFERENCE: https://github.com/docker-library/docs/blob/master/postgres/README.md
   database:
@@ -51,9 +90,13 @@ services:
     networks:
       - foilctf_net
     ports:
-      - "5432:5432"  # For development access
+      - "5432:5432" # For development access
     healthcheck:
-      test: ["CMD-SHELL", 'pg_isready -d "$POSTGRES_DB" -U "$POSTGRES_USER" && psql -d "$POSTGRES_DB" -U "$POSTGRES_USER" -tAc "SELECT 1 FROM users LIMIT 1" > /dev/null 2>&1']
+      test:
+        [
+          "CMD-SHELL",
+          'pg_isready -d "$POSTGRES_DB" -U "$POSTGRES_USER" && psql -d "$POSTGRES_DB" -U "$POSTGRES_USER" -tAc "SELECT 1 FROM users LIMIT 1" > /dev/null 2>&1',
+        ]
       interval: "10s"
       timeout: "5s"
       retries: 5
@@ -63,13 +106,13 @@ services:
   prometheus:
     image: docker.io/prom/prometheus:latest
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-      - '--web.enable-lifecycle'
-      - '--web.external-url=http://localhost:3000/monitoring/prometheus'
-      - '--web.route-prefix=/monitoring/prometheus'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+      - "--web.external-url=http://localhost:3000/monitoring/prometheus"
+      - "--web.route-prefix=/monitoring/prometheus"
     volumes:
       - ./monitoring/promethues/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
@@ -112,6 +155,7 @@ volumes:
       o: "bind"
       type: "none"
       device: "${DATABASE_VOLUME_MIGRATIONS_DIR?}"
+  user-avatars:
   sandbox-images:
   prometheus-data:
   grafana-data:
