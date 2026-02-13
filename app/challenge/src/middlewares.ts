@@ -1,58 +1,102 @@
-import { ENV_API_PORT, ENV_API_HOST } from './env.ts';
+import cors from 'cors';
+import type { Request, Response, NextFunction } from 'express';
 
-import { challenges as Challenges } from './orm/entities/init-models.ts';
-import { challengesCreationAttributes as ChallengesCreatePayload } from './orm/entities/init-models.ts';
+import { respondStatus } from './web.ts';
+import { ENV_API_ORIGINS_WHITELIST } from './env.ts';
+import { metric_lats, metric_reqs } from './prometheus.ts';
 
-import express, { json as middleware_json } from 'express';
-import { type Request, type Response, type NextFunction } from 'express';
+import {
+	challenges as Challenges,
+	challenges_attachments as ChallengesAttachments,
+} from './orm/entities/init-models.ts';
 
 // TODO(xenobas): Authorization middleware
 
-export function middleware_error(
-	err: Error,
-	req: Request,
-	res: Response,
-	next: NextFunction
-) {
-	console.error(err);
-	res.sendStatus(500);
-}
-export async function middleware_id_format(
-	req: Request,
-	res: Response,
-	next: NextFunction
-) {
-	const { id } = req.params;
-	if (typeof id !== 'string') {
-		res.sendStatus(400);
-		return;
-	}
+const DateTimeFormatter = new Intl.DateTimeFormat();
 
-	const re = new RegExp(/^[1-9][0-9]*$/);
-	if (!re.test(id)) {
-		res.sendStatus(404);
-		return;
+export const middleware_cors = cors({
+	origin: ENV_API_ORIGINS_WHITELIST,
+});
+export function middleware_error(
+	err: any,
+	_req: Request,
+	res: Response,
+	_next: NextFunction
+) {
+	if (!(err instanceof SyntaxError))
+		console.error(err);
+	respondStatus(res, err.statusCode ?? 500);
+}
+export function middleware_not_found(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	if (!req.route) {
+		return respondStatus(res, 404);
 	}
+	next();
+}
+export function middleware_id_format(
+	...param_keys: string[]
+): (req: Request, res: Response, next: NextFunction) => Promise<void> {
+	const re = new RegExp(/^[1-9][0-9]*$/);
+	return async function (req: Request, res: Response, next: NextFunction) {
+		for (const key of param_keys) {
+			const id = req.params[key];
+			if (typeof id !== 'string' || !re.test(id)) {
+				return respondStatus(res, 404);
+			}
+		}
+		next();
+	};
+}
+export function middleware_metric_reqs(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	const lat_end = metric_lats.startTimer();
+	res.on('finish', () => {
+		lat_end();
+		metric_reqs.inc({ status_code: res.statusCode });
+
+		const datetime = DateTimeFormatter.format(new Date());
+		console.log('%s - %s - %s - %d', datetime, req.path, req.method, res.statusCode);
+	});
 
 	next();
 }
-export async function middleware_id_exists(
+export async function middleware_challenge_exists(
 	req: Request,
 	res: Response,
 	next: NextFunction
 ) {
-	const { id } = req.params;
+	const id = req.params['challenge_id'];
 
-	const challenge = await Challenges.findOne({ where: { id: Number(id) } });
-	if (challenge === null) {
-		res.sendStatus(404);
-		res.end();
-
-		return;
-	}
+	const challenge = await Challenges.findByPk(Number(id));
+	if (challenge === null)
+		return respondStatus(res, 404);
 
 	res.locals.challenge = challenge;
 	next();
 }
+export async function middleware_attachment_exists(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	const challenge_id = Number(req.params['challenge_id']);
+	const attachment_id = Number(req.params['attachment_id']);
 
-export { middleware_json };
+	const challenge_attachment = await ChallengesAttachments.findOne({
+		where: { challenge_id, attachment_id },
+	});
+	if (challenge_attachment === null) {
+		return respondStatus(res, 404);
+	}
+
+	res.locals.challenge_attachment = challenge_attachment;
+	next();
+}
+export { json as middleware_json } from 'express';
