@@ -16,6 +16,7 @@ export interface AuthRequest extends Request {
 }
 
 const PASSWORD_MIN_CHARACTERS = 8;
+const PASSWORD_MAX_CHARACTERS = 64;
 
 export const registerSchema = z.object({
 	body: z.object({
@@ -25,7 +26,7 @@ export const registerSchema = z.object({
 			.max(15)
 			.regex(/^[a-zA-Z0-9_-]+$/), // add '-', so yait-nas is valid
 		email: z.email(),
-		password: z.string().min(PASSWORD_MIN_CHARACTERS),
+		password: z.string().min(PASSWORD_MIN_CHARACTERS).max(PASSWORD_MAX_CHARACTERS),
 	}),
 });
 
@@ -48,7 +49,7 @@ const userBody = z.object({
 		.max(15)
 		.regex(/^[a-zA-Z0-9_-]+$/), // add '-', so yait-nas is valid
 	email: z.email(),
-	newPassword: z.string().min(PASSWORD_MIN_CHARACTERS),
+	newPassword: z.string().min(PASSWORD_MIN_CHARACTERS).max(PASSWORD_MAX_CHARACTERS),
 	oldPassword: z.string(),
 });
 

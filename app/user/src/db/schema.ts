@@ -18,7 +18,7 @@ export const users = pgTable(
 	'users',
 	{
 		id: serial().primaryKey().notNull(),
-		password: varchar({ length: 64 }).notNull(),
+		password: varchar({ length: 256 }).notNull(),
 		createdAt: timestamp('created_at', { mode: 'string' })
 			.defaultNow()
 			.notNull(),

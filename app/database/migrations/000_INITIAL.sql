@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 CREATE TABLE IF NOT EXISTS users (
   id                  SERIAL PRIMARY KEY,
-  password            VARCHAR(64) NOT NULL,
+  password            VARCHAR(256) NOT NULL,
 
   created_at          TIMESTAMP DEFAULT now() NOT NULL,
   banned_until        TIMESTAMP DEFAULT NULL,
