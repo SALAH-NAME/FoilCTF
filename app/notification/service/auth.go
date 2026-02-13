@@ -13,12 +13,12 @@ import (
 type contextKey string
 
 const (
-	userIDKey   contextKey = "userID"
-	userRoleKey contextKey = "userRole"
+	userIDKey   contextKey = "contextKeyUserId"
+	userRoleKey contextKey = "contextKeyUserRole"
 )
 
-type MyClaims struct {
-	UserID   string `json:"userid"`
+type FoilClaims struct {
+	UserID   *int `json:"userid"`
 	UserRole string `json:"role"`
 	jwt.RegisteredClaims
 }
@@ -31,7 +31,6 @@ func (hub *Hub) VerifySigningMethod(token *jwt.Token) (interface{}, error) {
 }
 
 func (hub *Hub) AuthMiddleware(next http.Handler) http.Handler {
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
@@ -41,24 +40,25 @@ func (hub *Hub) AuthMiddleware(next http.Handler) http.Handler {
 		}
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
-		claims := &MyClaims{}
+		claims := &FoilClaims{}
 		token, err := jwt.ParseWithClaims(tokenString, claims, hub.VerifySigningMethod)
 		if err != nil {
 			log.Printf("Failed to verify JWT token: %v", err)
 			JSONError(w, "Unauthorized", http.StatusUnauthorized)
 			return
-		}
-		if !token.Valid {
+		} else if !token.Valid {
 			log.Printf("Invalid JWT token: %v", err)
 			JSONError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		if claims.UserID == "" {
+
+		if claims.UserID == nil {
 			log.Printf("Unauthorized: UserId required")
 			JSONError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		ctx := context.WithValue(r.Context(), userIDKey, claims.UserID)
+
+		ctx := context.WithValue(r.Context(), userIDKey, *claims.UserID)
 		ctx = context.WithValue(ctx, userRoleKey, claims.UserRole)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

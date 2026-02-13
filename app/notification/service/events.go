@@ -12,7 +12,7 @@ func HandleJoin(hub *Hub, client *Client) {
 		hub.Clients[client.ID] = make(map[*Client]bool)
 	}
 	hub.Clients[client.ID][client] = true
-	log.Printf("INFO: userID: %s has joined the server", client.ID)
+	log.Printf("INFO: WEBSOCKET: User #%03d has joined the server", client.ID)
 }
 
 func HandleUnjoin(hub *Hub, client *Client) {
