@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS users (
   username	      TEXT NOT NULL UNIQUE,
   role		      VARCHAR(64) NOT NULL DEFAULT 'user',
 
-  profile_id          INTEGER DEFAULT NULL
+  profile_id          INTEGER DEFAULT NULL,
+  team_id             INTEGER DEFAULT NULL
   -- CONSTRAINT profile  FOREIGN KEY (profile_id) REFERENCES profiles -- is this necessary??
 );
 
@@ -65,9 +66,13 @@ CREATE TABLE IF NOT EXISTS ctf_organizers (
 
 CREATE TABLE IF NOT EXISTS teams (
   id              SERIAL PRIMARY KEY,
+  name            TEXT NOT NULL UNIQUE,
 
-  profile_id      INTEGER,
-  CONSTRAINT constraint_profile FOREIGN KEY (profile_id) REFERENCES profiles
+  captain_name    TEXT NOT NULL UNIQUE,
+  invite_code     VARCHAR(256) NOT NULL,
+
+  -- profile_id      INTEGER,
+  -- CONSTRAINT constraint_profile FOREIGN KEY (profile_id) REFERENCES profiles
 );
 CREATE TABLE IF NOT EXISTS team_members (
   team_id    INTEGER NOT NULL,

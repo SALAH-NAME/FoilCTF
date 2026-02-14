@@ -9,6 +9,7 @@ import {
 	loginSchema,
 	updateProfileSchema,
 	updateUserSchema,
+	teamCreationSchema,
 } from './utils/types';
 import {
 	authenticateToken,
@@ -32,6 +33,14 @@ import {
 	route_auth_refresh,
 	route_auth_logout,
 } from './auth';
+import {
+	createTeam,
+	getTeamDetails,
+	getTeamMembers,
+	joinTeam,
+	leaveTeam,
+	kickTeammate,
+} from './team';
 
 const app = express();
 app.use(middleware_logger);
@@ -97,6 +106,37 @@ app.put(
 app.get('/health', (_req, res) => {
 	res.status(200).send('OK');
 });
+
+// SECTION: Teams
+app.post(
+	'/api/teams/',
+	authenticateToken,
+	middleware_schema_validate(teamCreationSchema),
+	createTeam,
+);
+app.get(
+	'/api/teams/:teamName',
+	getTeamDetails, // public data
+);
+app.get(
+	'/api/teams/:teamName/members',
+	getTeamMembers, // public data
+);
+app.post(
+	'/api/teams/:teamName/members',
+	authenticateToken,
+	joinTeam,
+);
+app.delete(
+	'/api/teams/:teamName/members/',
+	authenticateToken,
+	leaveTeam,
+);
+app.delete(
+	'/api/teams/:teamName/members/:username',
+	authenticateToken,
+	kickTeammate,
+);
 
 app.use(middleware_error);
 
