@@ -1,27 +1,38 @@
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS profiles (
-  id       SERIAL PRIMARY KEY,
+  id       	SERIAL PRIMARY KEY,
 
-  name     TEXT NOT NULL,
-  image    TEXT DEFAULT NULL
+  avatar		TEXT DEFAULT NULL,
+  challengesSolved	INTEGER DEFAULT NULL,
+  eventsParticipated	INTEGER DEFAULT NULL,
+  totalPoints		INTEGER DEFAULT NULL,
+
+  bio			TEXT DEFAULT NULL,
+  location		TEXT DEFAULT NULL,
+  socialMediaLinks	TEXT DEFAULT NULL,
+  isprivate		BOOLEAN DEFAULT FALSE,
+
+  username		TEXT NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS users (
   id                  SERIAL PRIMARY KEY,
-  password            VARCHAR(64) NOT NULL,
+  password            VARCHAR(256) NOT NULL,
 
   created_at          TIMESTAMP DEFAULT now() NOT NULL,
   banned_until        TIMESTAMP DEFAULT NULL,
 
   email		      TEXT DEFAULT NULL UNIQUE,
   username	      TEXT NOT NULL UNIQUE,
-  avatar	      TEXT DEFAULT NULL,
   role		      VARCHAR(64) NOT NULL DEFAULT 'user',
 
-  profile_id          INTEGER DEFAULT NULL,
-  CONSTRAINT profile  FOREIGN KEY (profile_id) REFERENCES profiles
+  profile_id          INTEGER DEFAULT NULL
+  -- CONSTRAINT profile  FOREIGN KEY (profile_id) REFERENCES profiles -- is this necessary??
 );
+
+ALTER TABLE profiles 
+  ADD CONSTRAINT fk_username FOREIGN KEY (username) REFERENCES users (username) ON UPDATE CASCADE; -- update username on user's username update
 
 CREATE TABLE IF NOT EXISTS sessions (
   id               SERIAL PRIMARY KEY,
@@ -100,8 +111,12 @@ CREATE TABLE IF NOT EXISTS challenges_attachments (
 
   name           TEXT NOT NULL,
 
-  CONSTRAINT constraint_challenge FOREIGN KEY (challenge_id) REFERENCES challenges,
-  CONSTRAINT constraint_attachment FOREIGN KEY (attachment_id) REFERENCES attachments
+  CONSTRAINT constraint_challenge
+		FOREIGN KEY (challenge_id) REFERENCES challenges
+		ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT constraint_attachment
+		FOREIGN KEY (attachment_id) REFERENCES attachments
+		ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS hints (
@@ -161,11 +176,27 @@ CREATE TABLE IF NOT EXISTS containers (
 );
 
 CREATE TABLE IF NOT EXISTS notifications (
-  id          SERIAL PRIMARY KEY,
+  id			SERIAL PRIMARY KEY,
 
-  contents    JSON NOT NULL,
-  created_at  TIMESTAMP DEFAULT now() NOT NULL
+  contents		JSON NOT NULL,
+  created_at	TIMESTAMP DEFAULT now() NOT NULL,
+
+  is_published	BOOLEAN DEFAULT false
 );
+
+CREATE FUNCTION function_notifications_on_publish() RETURNS TRIGGER AS $notifications_on_publish$
+	BEGIN
+		PERFORM pg_notify('inbox_notifications', NEW.id::text);
+		RETURN NULL;
+	END;
+$notifications_on_publish$ LANGUAGE plpgsql;
+	
+CREATE TRIGGER trigger_notifications_publish
+	AFTER UPDATE ON notifications
+	FOR EACH ROW
+	WHEN (OLD.is_published = FALSE AND NEW.is_published = TRUE)
+	EXECUTE FUNCTION function_notifications_on_publish();
+
 CREATE TABLE IF NOT EXISTS notification_users (
   notification_id  INTEGER NOT NULL,
   user_id          INTEGER NOT NULL,
@@ -173,8 +204,11 @@ CREATE TABLE IF NOT EXISTS notification_users (
 
   read_at          TIMESTAMP NULL,
 
-  CONSTRAINT constraint_user FOREIGN KEY (user_id) REFERENCES users,
-  CONSTRAINT constraint_notification  FOREIGN KEY (notification_id) REFERENCES notifications
+  is_dismissed     BOOLEAN DEFAULT FALSE NOT NULL,
+  is_read          BOOLEAN DEFAULT FALSE NOT NULL,
+
+  CONSTRAINT constraint_user FOREIGN KEY (user_id) REFERENCES users ON DELETE CASCADE,
+  CONSTRAINT constraint_notification  FOREIGN KEY (notification_id) REFERENCES notifications ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS messages (

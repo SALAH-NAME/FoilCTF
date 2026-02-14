@@ -13,15 +13,15 @@ type NotificationResponse struct {
 }
 
 type UserNotification struct {
-	NotificationID int    `gorm:"column:notification_id;primaryKey"`
-	NotifiedID     string `gorm:"column:notified_id;primaryKey"`
-	IsDismissed    bool   `gorm:"column:is_dismissed"`
-	IsRead         bool   `gorm:"column:is_read"`
+	NotificationID int  `gorm:"column:notification_id;primaryKey"`
+	NotifiedID     int  `gorm:"column:notified_id;primaryKey"`
+	IsDismissed    bool `gorm:"column:is_dismissed"`
+	IsRead         bool `gorm:"column:is_read"`
 }
 
 type WsEvent struct {
 	Event    string      `json:"event"`
-	TargetID string      `json:"target_id"`
+	TargetID int         `json:"target_id"`
 	Payload  interface{} `json:"metadata"`
 }
 

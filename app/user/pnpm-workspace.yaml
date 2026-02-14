@@ -1,0 +1,4 @@
+onlyBuiltDependencies:
+  - bcrypt
+  - es5-ext
+  - esbuild

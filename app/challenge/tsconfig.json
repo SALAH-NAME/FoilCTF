@@ -1,17 +1,19 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
 
-	"target": "esnext",
-	"module": "nodenext",
-	"moduleResolution": "nodenext",
-	"rewriteRelativeImportExtensions": true,
+		"strict": true,
 
-	"emitDecoratorMetadata": true,
-	"experimentalDecorators": true,
-	"strictPropertyInitialization": false
+		"target": "esnext",
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"rewriteRelativeImportExtensions": true,
+
+		"sourceMap": true,
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		"strictPropertyInitialization": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

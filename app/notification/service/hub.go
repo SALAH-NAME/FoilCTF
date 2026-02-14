@@ -12,7 +12,7 @@ import (
 
 type Hub struct {
 	Db             *gorm.DB
-	Clients        map[string]map[*Client]bool
+	Clients        map[int]map[*Client]bool
 	GlobalChan     chan WsEvent
 	Conf           *config.Config
 	RegisterChan   chan *Client
@@ -24,7 +24,7 @@ type Hub struct {
 func NewHub(db *gorm.DB, conf *config.Config) *Hub {
 	return &Hub{
 		Db:             db,
-		Clients:        make(map[string]map[*Client]bool),
+		Clients:        make(map[int]map[*Client]bool),
 		Conf:           conf,
 		GlobalChan:     make(chan WsEvent, conf.GlobalBuffer),
 		RegisterChan:   make(chan *Client, conf.RegisterBuffer),
