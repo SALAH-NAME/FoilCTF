@@ -1,0 +1,32 @@
+FROM node:24.12-alpine3.23 AS builder
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
+
+RUN pnpm install --frozen-lockfile
+
+COPY tsconfig.json vite.config.ts react-router.config.ts ./
+COPY app ./app
+COPY public ./public
+
+RUN pnpm run build
+
+# Production stage
+FROM node:24.12-alpine3.23
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
+
+RUN pnpm install --prod --frozen-lockfile
+
+COPY --from=builder /app/build ./build
+
+EXPOSE 3000
+
+CMD ["pnpm", "run", "start"]
