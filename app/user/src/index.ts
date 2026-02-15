@@ -44,6 +44,7 @@ import {
 	cancelJoinRequest,
 	acceptJoinRequest,
 	declineJoinRequest,
+	getSentRequests,
 } from './team';
 
 const app = express();
@@ -161,6 +162,11 @@ app.delete(
 	authenticateToken,
 	declineJoinRequest,
 );
+app.get(
+	'/api/teams/:username/requests',
+	authenticateToken,
+	getSentRequests,
+)
 
 app.use(middleware_error);
 
