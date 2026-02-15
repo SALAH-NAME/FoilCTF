@@ -5,7 +5,6 @@ import (
 	"net/http"
 )
 
-
 func NewServer(router http.Handler) (*http.Server, string) {
 	port := GetEnv("PORT", "3009")
 
@@ -22,6 +21,7 @@ func main() {
 	}
 	conf := NewConfig()
 	hub := GetHub(db, conf)
+	go hub.ChannelsMonitoring()
 	router := hub.RegisterRoutes()
 	srv, port := NewServer(router)
 	log.Printf("Event Service Started On Port: %s !", port)

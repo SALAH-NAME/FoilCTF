@@ -16,12 +16,12 @@ const (
 	userIDKey   contextKey = "userID"
 	usernameKey contextKey = "username"
 	userRoleKey contextKey = "userRole"
-	// teamIDKey 		contextKey = "teamID"
-	// eventIDKey		contextKey = "eventID"
+	eventKey    contextKey = "event"
+	teamIDKey   contextKey = "teamID"
 )
 
 type Claims struct {
-	UserID   string `json:"userid"`
+	UserID   *int   `json:"userid"`
 	Username string `json:"username"`
 	UserRole string `json:"role"`
 	jwt.RegisteredClaims
@@ -37,7 +37,7 @@ func (h *Hub) VerifySigningMethod(token *jwt.Token) (interface{}, error) {
 func (h *Hub) IdentityMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -56,9 +56,31 @@ func (h *Hub) IdentityMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func (h *Hub) EnsureEventExists(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		eventID, err := h.ReadIntParam(r, "id")
+
+		if err != nil {
+			log.Printf("Invalid eventID: %v", err)
+			JSONError(w, "Invalid eventID", http.StatusBadRequest)
+			return
+		}
+		var event Ctf
+		err = h.Db.Table("ctfs").
+			Find(&event, eventID).Error
+		if err != nil {
+			log.Printf("Error: %v", err)
+			JSONError(w, "event not found", http.StatusInternalServerError)
+			return
+		}
+		ctx := context.WithValue(r.Context(), eventKey, event)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 func (h *Hub) PlayerAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, userRole, err := GetUserInfo(r)
+		userID, userRole, err := GetUserInfo(r)
 		if err != nil {
 			log.Printf("Unauthorized: Valid authentication required %v", err)
 			JSONError(w, "Unauthorized", http.StatusUnauthorized)
@@ -86,7 +108,16 @@ func (h *Hub) PlayerAuthMiddleware(next http.Handler) http.Handler {
 			JSONError(w, "Not allowed to access event", http.StatusForbidden)
 			return
 		}
-		next.ServeHTTP(w, r)
+		// todo(a): c pttr mieux de déplacer
+		teamID, err := h.GetTeamIDByUserID(*userID)
+		if err != nil {
+			log.Printf("Error: %v", err)
+			JSONError(w, "Team membership required", http.StatusForbidden)
+			return
+		}
+		ctx := context.WithValue(r.Context(), eventKey, event)
+		ctx = context.WithValue(r.Context(), teamIDKey, teamID)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -104,18 +135,18 @@ func (h *Hub) EnsureEventAccess(next http.Handler) http.Handler {
 			JSONError(w, "Invalid eventID", http.StatusBadRequest)
 			return
 		}
-		var part Participation
-		teamID, err := h.GetTeamIDByUserID(userID)
-		if err != nil {
-			log.Printf("Database Error: %v", err)
-			JSONError(w, "Team membership required", http.StatusForbidden)
+		teamID, ok := r.Context().Value(teamIDKey).(int)
+		if !ok {
+			log.Printf("Could not get teamID form context for user %s", userID)
+			JSONError(w, "Team not found", http.StatusInternalServerError)
 			return
 		}
+		var part Participation
 		err = h.Db.Where("ctf_id = ? AND team_id = ?", eventID, teamID).
 			First(&part).Error
 		if err != nil {
 			log.Printf("Database Error: %v", err)
-			JSONError(w, "Event Registration reqiired", http.StatusForbidden)
+			JSONError(w, "Event Registration required", http.StatusForbidden)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -147,11 +178,18 @@ func (h *Hub) EnsureEventOwnership(next http.Handler) http.Handler {
 			JSONError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
+		event := Ctf{}
 		if userRole != "admin" {
 			eventID, err := h.ReadIntParam(r, "id")
 			if err != nil {
 				log.Printf("Bad request: Invalid eventID. for user: %s", userID)
 				JSONError(w, "Bad request: Invalid eventID.", http.StatusBadRequest)
+				return
+			}
+			err = h.Db.Table("ctfs").Find(&event, eventID).Error
+			if err != nil {
+				log.Printf("event not found: %v", err)
+				JSONError(w, "Event Not Found", http.StatusBadRequest)
 				return
 			}
 			var count int64
@@ -165,6 +203,7 @@ func (h *Hub) EnsureEventOwnership(next http.Handler) http.Handler {
 				return
 			}
 		}
-		next.ServeHTTP(w, r)
+		ctx := context.WithValue(r.Context(), eventKey, event)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
