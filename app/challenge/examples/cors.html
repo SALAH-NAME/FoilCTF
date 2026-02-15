@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title></title>
+</head>
+<body>
+	<script type="module">
+		try {
+			const res = await fetch('http://localhost:3002/api/challenges');
+			if (!res.ok) throw new Error(res.statusCode);
+			const data = await res.json();
+			console.log(data);
+			alert('ok');
+		} catch (err) {
+			console.error(err);
+			alert('fail');
+		}
+	</script>
+</body>
+</html>
+
+<!--
+	HOWTO:
+	- Serve via a static file server with an origin that matches the .env API_ORIGINS_WHITELIST and make sure it works.
+	- If the selected server origin isn't in the whitelist it should fail.
+-->

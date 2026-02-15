@@ -21,16 +21,11 @@ type OnlineUsersResponse struct {
 }
 
 func (h *Hub) ServeGetUsers(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		log.Printf("HTTP ERROR: Method not allowed")
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 	RoomIDStr := r.URL.Query().Get("room")
 	RoomID, err := strconv.Atoi(RoomIDStr)
 	if err != nil {
-		log.Printf("ERROR: Failed to parse RoomID for online users request :%v", err)
-		http.Error(w, "Valid RoomID required", http.StatusBadRequest)
+		log.Printf("ERROR: SERVER: Failed to parse RoomID for online users request: %v", err)
+		JSONError(w, "Valid RoomID required", http.StatusBadRequest)
 		return
 	}
 	users := h.HandleOnlineUsers(RoomID)
@@ -46,14 +41,25 @@ func (h *Hub) HandleOnlineUsers(RoomID int) []UserResponse {
 	h.Mutex.Lock()
 	defer h.Mutex.Unlock()
 	onlineUsers := []UserResponse{}
-	for user := range h.Clients {
-		if user.RoomID == RoomID {
-			onlineUsers = append(onlineUsers, UserResponse{
-				Id:       user.ID,
-				Name:     user.Name,
-				Role:     user.Role,
-				LastSeen: user.LastSeen,
-			})
+	seenUsers := make(map[string]bool)
+
+	for userID, connections := range h.Clients {
+		if seenUsers[userID] {
+			continue
+		}
+
+		for user := range connections {
+			if user.RoomID == RoomID {
+				resp := UserResponse{
+					Id:       user.ID,
+					Name:     user.Name,
+					Role:     user.Role,
+					LastSeen: user.LastSeen,
+				}
+				onlineUsers = append(onlineUsers, resp)
+				seenUsers[userID] = true
+				break
+			}
 		}
 	}
 	return onlineUsers

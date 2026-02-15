@@ -1,7 +1,6 @@
 package main
 
 import (
-	"slices"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,9 +11,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"kodaic.ma/sandbox/podman"
 )
 
@@ -28,6 +29,31 @@ func adapterMiddleware(app *App, middleImpl func(*App, http.Handler) http.Handle
 		return middleImpl(app, next)
 	})
 }
+
+// ---
+
+func RouteHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+// ---
+
+func MiddlePrometheus(app *App, next http.Handler) http.Handler {
+	instrument := promhttp.InstrumentHandlerCounter(
+		app.requestsTotal,
+		promhttp.InstrumentHandlerDuration(
+			app.requestDuration,
+			next,
+		),
+	)
+	return instrument
+}
+func RoutePrometheus(app *App, w http.ResponseWriter, r *http.Request) {
+	handler := promhttp.HandlerFor(app.Registry, promhttp.HandlerOpts{})
+	handler.ServeHTTP(w, r)
+}
+
+// ---
 
 func routeImageList(app *App, w http.ResponseWriter, r *http.Request) {
 	images, err := podman.ImageList(app.ConnPodman)

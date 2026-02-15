@@ -1,0 +1,17 @@
+node_modules
+.pnpm-store
+
+dist
+
+.git
+.gitignore
+*.md
+README.md
+
+.vscode
+
+*.log
+logs
+
+.env
+.env.*

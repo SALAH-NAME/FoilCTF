@@ -1,6 +1,7 @@
 import middleware_cors from 'cors';
 import middleware_cookies from 'cookie-parser';
 import express, { json as middleware_json, } from 'express';
+import path from 'node:path';
 
 import { middleware_error } from './error';
 import { AvatarsDir, PORT } from './utils/env';
@@ -74,6 +75,16 @@ app.post(
 	upload.single('avatar'),
 	uploadAvatar
 );
+
+app.use(
+	'/api/profiles/:username/avatar',
+	express.static(path.resolve(AvatarsDir), {
+		dotfiles: 'deny',
+		index: false,
+		redirect: false,
+	})
+);
+
 app.put(
 	'/api/profiles/:username',
 	parseNonExistingParam,
@@ -97,6 +108,10 @@ app.put(
 	updateUser,
 	updateTokens
 );
+
+app.get('/health', (_req, res) => {
+	res.status(200).send('OK');
+});
 
 app.use(middleware_error);
 

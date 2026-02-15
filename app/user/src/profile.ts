@@ -159,7 +159,7 @@ export const updateProfile = async (req: Request, res: Response) => {
 	}
 	if (res.locals.user?.username !== req.params?.username) {
 		// ownership check
-		return res.sendStatus(401);
+		return res.sendStatus(403);
 	}
 
 	if (!isEmpty(profileData)) {

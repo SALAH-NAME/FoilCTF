@@ -2,10 +2,9 @@ package main
 
 import (
 	"fmt"
-	"log"
-
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"log"
 )
 
 func DbInit() (*gorm.DB, error) {
@@ -20,13 +19,15 @@ func DbInit() (*gorm.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect to database: %v", err)
 	}
+
 	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get the generic database object: %v", err)
+		return nil, fmt.Errorf("failed to get the generic database object: %v", err)
 	}
 	if err := sqlDB.Ping(); err != nil {
 		return nil, fmt.Errorf("Database is not reachable: %v", err)
 	}
-	log.Println("Successfully connected to PostgreSQL!")
+
+	log.Println("INFO: DATABASE: Connection established")
 	return db, nil
 }
