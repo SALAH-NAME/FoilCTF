@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 interface CountdownProps {
 	targetDate: string;
+	className?: string;
 }
 
 interface TimeLeft {
@@ -11,7 +12,7 @@ interface TimeLeft {
 	seconds: number;
 }
 
-export default function Countdown({ targetDate }: CountdownProps) {
+export default function Countdown({ targetDate, className = '' }: CountdownProps) {
 	const calculateTimeLeft = (): TimeLeft | null => {
 		const difference = +new Date(targetDate) - +new Date();
 
@@ -48,12 +49,12 @@ export default function Countdown({ targetDate }: CountdownProps) {
 	}
 
 	return (
-		<div className="flex gap-1 md:gap-4" role="timer" aria-live="off">
+		<div className={`flex gap-1 md:gap-4 ${className}`} role="timer" aria-live="off">
 			{Object.entries(timeLeft).map(([unit, value]) => (
 				<div key={unit} className="flex flex-col items-center">
 					<div
 						aria-label={`${value} ${unit}`}
-						className="bg-primary text-white font-bold text-xl md:text-2xl lg:text-3xl px-2 py-2 md:px-4 md:py-3 rounded-md min-w-[50px] md:min-w-[70px] text-center"
+						className="bg-primary text-white font-bold text-xl md:text-2xl lg:text-3xl px-2 py-2 md:px-4 md:py-3 rounded-md min-w-12 text-center"
 					>
 						{value.toString().padStart(2, '0')}
 					</div>

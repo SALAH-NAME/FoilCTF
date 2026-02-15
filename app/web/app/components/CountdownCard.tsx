@@ -25,7 +25,7 @@ export default function CountdownCard({
 
 	return (
 		<div
-			className={`col-span-full bg-gradient-to-r ${variantStyles[variant]} border rounded-lg p-4 md:p-6`}
+			className={`col-span-full bg-linear-to-r ${variantStyles[variant]} border rounded-md p-4 md:p-6`}
 		>
 			<div className="flex flex-col items-center gap-3 md:gap-4">
 				<h2 className="text-lg md:text-xl font-semibold text-foreground">

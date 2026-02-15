@@ -11,7 +11,7 @@ export default function PageSection({
 }: PageSectionProps) {
 	return (
 		<div
-			className={`bg-surface border border-neutral-300 rounded-lg p-4 md:p-6 ${className}`}
+			className={`bg-surface border border-neutral-300 rounded-md p-4 md:p-6 ${className}`}
 		>
 			{children}
 		</div>

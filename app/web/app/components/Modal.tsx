@@ -104,7 +104,7 @@ export default function Modal({
 		>
 			<div
 				ref={modalRef}
-				className={`bg-white rounded-md w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto shadow-xl`}
+				className={`bg-white rounded-md w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto shadow-xl  [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-thumb]:rounded-full`}
 			>
 				<div className="sticky top-0 bg-white border-b border-dark/10 px-6 py-4 flex items-center justify-between">
 					<h2 id="modal-title" className="text-xl font-bold text-dark">

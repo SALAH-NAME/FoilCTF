@@ -1,5 +1,4 @@
-import type { ReactNode, ButtonHTMLAttributes } from 'react';
-import Icon from './Icon';
+import { type ReactNode, type ButtonHTMLAttributes, forwardRef } from 'react';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'oauth';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -11,14 +10,17 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 	children: ReactNode;
 }
 
-export default function Button({
-	variant = 'primary',
-	size = 'md',
-	icon,
-	children,
-	className = '',
-	...props
-}: ButtonProps) {
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+	{
+		variant = 'primary',
+		size = 'md',
+		icon,
+		children,
+		className = '',
+		...props
+	},
+	ref
+) {
 	const baseStyles =
 		'font-semibold rounded-md transition-colors inline-flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2';
 
@@ -41,6 +43,7 @@ export default function Button({
 
 	return (
 		<button
+			ref={ref}
 			className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
 			{...props}
 		>
@@ -48,4 +51,6 @@ export default function Button({
 			{icon}
 		</button>
 	);
-}
+});
+
+export default Button;

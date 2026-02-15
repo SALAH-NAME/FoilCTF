@@ -109,7 +109,7 @@ export default function EventLeaderboard({ params }: RouteParams) {
 				</InfoText>
 			</div>
 
-			<div className="bg-surface border border-border rounded-lg overflow-hidden">
+			<div className="bg-surface border border-border rounded-md overflow-hidden">
 				<div className="overflow-x-auto">
 					<table className="w-full">
 						<thead className="bg-dark/5 border-b border-border">

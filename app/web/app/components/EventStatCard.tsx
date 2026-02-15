@@ -14,7 +14,7 @@ export default function EventStatCard({
 	value,
 }: EventStatCardProps) {
 	return (
-		<div className="bg-surface border border-neutral-300 rounded-lg p-4 md:p-6">
+		<div className="bg-surface border border-neutral-300 rounded-md p-4 md:p-6">
 			<div className="flex items-center gap-3 mb-2">
 				<Icon name={icon} className="w-5 h-5 text-primary" />
 				<h3 className="text-sm font-medium text-muted">{label}</h3>

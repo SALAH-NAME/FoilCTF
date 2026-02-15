@@ -91,8 +91,8 @@ export default function EventDetail({ params }: RouteParams) {
 			<BackLink to="/events">Back to Events</BackLink>
 
 			<section aria-labelledby="event-title">
-				<div className="bg-surface border border-neutral-300 rounded-lg overflow-hidden">
-					<div className="bg-gradient-to-r from-primary to-secondary p-6 md:p-8">
+				<div className="bg-surface border border-neutral-300 rounded-md overflow-hidden">
+					<div className="bg-linear-to-r from-primary to-secondary gap-4 p-6 md:p-8 flex flex-col sm:flex-row items-center justify-between">
 						<div className="max-w-4xl">
 							<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
 								<h1
@@ -113,12 +113,21 @@ export default function EventDetail({ params }: RouteParams) {
 								</InfoText>
 							</div>
 						</div>
+
+						{true == true && (
+							<Link
+								to="play"
+								className="flex items-center no-underline text-xl text-dark bg-white hover:bg-white/80 rounded-md p-4 px-8 h-fit font-bold transition-colors w-fit"
+							>
+								Play
+							</Link>
+						)}
 					</div>
 
 					<div className="p-6 md:p-8">
 						{event.registrationOpen && event.status !== 'ended' && (
 							<div
-								className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg"
+								className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-md"
 								role="status"
 								aria-live="polite"
 							>
@@ -176,7 +185,7 @@ export default function EventDetail({ params }: RouteParams) {
 						{event.status === 'ended' && (
 							<div className="mb-6">
 								<div
-									className={`col-span-full bg-gradient-to-r from-gray-600/10 to-gray-600/5 border-neutral-300 border rounded-lg p-4 md:p-6`}
+									className={`col-span-full bg-linear-to-r from-gray-600/10 to-gray-600/5 border-neutral-300 border rounded-md p-4 md:p-6`}
 								>
 									<div className="flex flex-col items-center gap-3 md:gap-4">
 										<h2 className="text-lg md:text-xl font-semibold text-foreground">
@@ -298,7 +307,7 @@ export default function EventDetail({ params }: RouteParams) {
 						</div>
 						<Link
 							to={`/events/${params.id}/leaderboard`}
-							className="focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-lg inline-block"
+							className="focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md inline-block"
 							aria-label="View event leaderboard"
 						>
 							<Button variant="primary">
@@ -342,7 +351,7 @@ export default function EventDetail({ params }: RouteParams) {
 						<strong className="font-semibold">{event.name}</strong>?
 					</p>
 					<div
-						className="bg-amber-50 border border-amber-200 rounded-lg p-4"
+						className="bg-amber-50 border border-amber-200 rounded-md p-4"
 						role="alert"
 					>
 						<div className="flex gap-3">

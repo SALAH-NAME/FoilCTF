@@ -195,7 +195,7 @@ export default function Page() {
 		<div className="h-full bg-background p-4">
 			<div className="max-w-4xl mx-auto space-y-6">
 				<div className="bg-white rounded-md border border-dark/10">
-					<div className="md:block flex h-32 md:h-40 px-6 justify-center bg-gradient-to-r from-primary to-secondary rounded-t-sm">
+					<div className="md:block flex h-32 md:h-40 px-6 justify-center bg-linear-to-r from-primary to-secondary rounded-t-sm">
 						<div className="absolute ring-4 ring-white rounded-full translate-y-1/2">
 							<AvatarUpload
 								username={profileData.username}

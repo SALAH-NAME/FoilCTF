@@ -1,5 +1,58 @@
 @import 'tailwindcss';
 
+/* Gold */
+/* @theme {
+	--color-primary: #f9ba32;
+	--color-secondary: #426e86;
+	--color-background: #f8f1e5;
+	--color-dark: #2f3131;
+	--color-accent: #f0810f;
+} */
+/* --color-secondary: #5D90B0; */
+
+/* Red */
+@theme {
+	--color-primary: #ef4444;
+	--color-secondary: #a3a3a3;
+	--color-background: #efefef;
+	--color-accent: #bd5b5b;
+	--color-dark: #272727;
+
+	--color-primary-light: #f87171;
+	--color-primary-dark: #991b1b;
+	--color-secondary-subtle: #d4d4d4;
+
+	--color-surface: #ffffff;
+	--color-overlay: #171717cc;
+
+	--color-primary-hover: #dc2626;
+	--color-primary-active: #b91c1c;
+	--color-surface: #ffffff;
+	--color-muted: #737373;
+
+	--color-error: #ef4444;
+	--color-warning: #f59e0b;
+	--color-success: #10b981;
+	--color-info: #3b82f6;
+
+	--color-hover-state: #e5e5e5;
+	--color-active-state: #d4d4d4;
+	--color-border: #e5e5e5;
+	--color-ring: #ef444466;
+
+	--color-triad-blue: #43adf0;
+	--color-triad-yellow: #f0ed43;
+	--color-triad-green: #43f074;
+
+	--color-square-blue: #4352f0;
+	--color-square-gree: #43f074;
+	--color-square-yellow: #f0cb43;
+	--color-square-purple: #dd43f0;
+
+	/* --font-sans: ui-sans-serif, system-ui, sans-serif; */
+	/* --font-mono: "JetBrains Mono", ui-monospace, monospace; */
+}
+
 @layer base {
 	html {
 		box-sizing: border-box;
@@ -34,25 +87,6 @@
 		clip: auto;
 		white-space: normal;
 	}
-}
-
-/* Gold */
-/* @theme {
-	--color-primary: #f9ba32;
-	--color-secondary: #426e86;
-	--color-background: #f8f1e5;
-	--color-dark: #2f3131;
-	--color-accent: #f0810f;
-} */
-/* --color-secondary: #5D90B0; */
-
-/* Red */
-@theme {
-	--color-primary: #ef4444;
-	--color-secondary: #a3a3a3;
-	--color-background: #efefef;
-	--color-dark: #272727;
-	--color-accent: #bd5b5b;
 }
 
 @layer components {

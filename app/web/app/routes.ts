@@ -11,6 +11,7 @@ const routes = [
 		route('events', 'routes/events.tsx'),
 		route('events/:id', 'routes/events.$id.tsx'),
 		route('events/:id/leaderboard', 'routes/events.$id.leaderboard.tsx'),
+		route('events/:id/play', 'routes/events.$id.play.tsx'),
 		route('dashboard', 'routes/dashboard.tsx'),
 		route('instances', 'routes/instances.tsx'),
 		route('challenges', 'routes/challenges.tsx'),
