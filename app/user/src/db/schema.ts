@@ -12,7 +12,7 @@ export const users = pgTable("users", {
 	username: text().notNull(),
 	role: varchar({ length: 64 }).default('user').notNull(),
 	profileId: integer("profile_id"),
-	teamId: integer("team_id"),
+	teamName: text("team_name"),
 }, (table) => [
 	unique("users_email_key").on(table.email),
 	unique("users_username_key").on(table.username),
@@ -82,16 +82,41 @@ export const teams = pgTable("teams", {
 	id: serial().primaryKey().notNull(),
 	name: text().notNull(),
 	captainName: text("captain_name").notNull(),
-	inviteCode: varchar("invite_code", { length: 256 }).notNull(),
-	profileId: integer("profile_id"),
+	membersCount: integer("members_count").default(1).notNull(),
+}, (table) => [
+	unique("teams_name_key").on(table.name),
+]);
+
+export const teamMembers = pgTable("team_members", {
+	teamName: text("team_name").notNull(),
+	memberName: text("member_name").notNull(),
 }, (table) => [
 	foreignKey({
-			columns: [table.profileId],
-			foreignColumns: [profiles.id],
-			name: "constraint_profile"
-		}),
-	unique("teams_name_key").on(table.name),
-	unique("teams_captain_name_key").on(table.captainName),
+			columns: [table.teamName],
+			foreignColumns: [teams.name],
+			name: "constraint_team"
+		}).onUpdate("cascade"),
+	foreignKey({
+			columns: [table.memberName],
+			foreignColumns: [users.username],
+			name: "constraint_member"
+		}).onUpdate("cascade"),
+]);
+
+export const teamJoinRequests = pgTable("team_join_requests", {
+	teamName: text("team_name").notNull(),
+	username: text().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.teamName],
+			foreignColumns: [teams.name],
+			name: "constraint_team"
+		}).onUpdate("cascade"),
+	foreignKey({
+			columns: [table.username],
+			foreignColumns: [users.username],
+			name: "constraint_member"
+		}).onUpdate("cascade"),
 ]);
 
 export const challenges = pgTable("challenges", {
@@ -190,23 +215,6 @@ export const reports = pgTable("reports", {
 			foreignColumns: [users.id],
 			name: "constraint_issuer"
 		}),
-]);
-
-export const teamMembers = pgTable("team_members", {
-	teamId: integer("team_id").notNull(),
-	memberId: integer("member_id").notNull(),
-}, (table) => [
-	foreignKey({
-			columns: [table.teamId],
-			foreignColumns: [teams.id],
-			name: "constraint_team"
-		}),
-	foreignKey({
-			columns: [table.memberId],
-			foreignColumns: [users.id],
-			name: "constraint_member"
-		}),
-	primaryKey({ columns: [table.teamId, table.memberId], name: "team_members_pkey"}),
 ]);
 
 export const challengesAttachments = pgTable("challenges_attachments", {

@@ -37,9 +37,13 @@ import {
 	createTeam,
 	getTeamDetails,
 	getTeamMembers,
-	joinTeam,
 	leaveTeam,
-	kickTeammate,
+	deleteMember,
+	handOverLeadership,
+	sendJoinRequest,
+	cancelJoinRequest,
+	acceptJoinRequest,
+	declineJoinRequest,
 } from './team';
 
 const app = express();
@@ -122,11 +126,6 @@ app.get(
 	'/api/teams/:teamName/members',
 	getTeamMembers, // public data
 );
-app.post(
-	'/api/teams/:teamName/members',
-	authenticateToken,
-	joinTeam,
-);
 app.delete(
 	'/api/teams/:teamName/members/',
 	authenticateToken,
@@ -135,7 +134,32 @@ app.delete(
 app.delete(
 	'/api/teams/:teamName/members/:username',
 	authenticateToken,
-	kickTeammate,
+	deleteMember,
+);
+app.put(
+	'/api/teams/:username/members',
+	authenticateToken,
+	handOverLeadership,
+);
+app.post(
+	'/api/teams/:teamName',
+	authenticateToken,
+	sendJoinRequest,
+);
+app.delete(
+	'/api/teams/:teamName',
+	authenticateToken,
+	cancelJoinRequest,
+);
+app.put(
+	'/api/teams/:username/request',
+	authenticateToken,
+	acceptJoinRequest,
+);
+app.delete(
+	'/api/teams/:username/request',
+	authenticateToken,
+	declineJoinRequest,
 );
 
 app.use(middleware_error);

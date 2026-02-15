@@ -1,27 +1,35 @@
 import { Request, Response, NextFunction } from 'express';
 import { db } from './utils/db';
-import { eq } from 'drizzle-orm';
-import { users, teams, teamMembers } from './db/schema';
+import { eq, and } from 'drizzle-orm';
+import { users, teams, teamMembers, teamJoinRequests } from './db/schema';
 
 export const createTeam = async(req: Request, res: Response, next: NextFunction) => {
 	const decodedUser = res.locals.user;
 
-	const [dbUser] = await db
-			.select()
-			.from(users)
-			.where(eq(users.id, decodedUser.id));
-	if (!dbUser)
+	const [existingUser] = await db
+				.select()
+				.from(users)
+				.where(eq(users.id, decodedUser.id));
+	if (!existingUser)
 		return res.status(403).send();
 
-	if (dbUser.teamId)
-		return res.status(403).send('You already have a team');
+	if (existingUser.teamName)
+		return res.status(403).send();
 
-	await db.insert(teams).values({
-		name: req.body.title,
-		captainName: dbUser.username,
-		inviteCode: "12345", // generate random password and hash it before storing it in db maybe?
-	})
-	//add in team_members as the only team member
+	const [teamInserted] = await db.insert(teams)
+				.values({
+				name: req.body.name,
+				captainName: decodedUser.username,
+				})
+				.returning();
+	if (!teamInserted)
+		throw new Error('Internal Server Error');
+
+	await db.insert(teamMembers).values({
+		teamName: teamInserted.name,
+		memberName: decodedUser.username,
+	});
+	await db.update(users).set({ teamName: teamInserted.name }).where(eq(users.id, decodedUser.id));
 	return res.status(201).send();
 }
 
@@ -34,10 +42,14 @@ export const getTeamDetails = async(req: Request, res: Response, next: NextFunct
 				.select()
 				.from(teams)
 				.where(eq(teams.name, requestedTeamName));
-
 	if (!team)
 		return res.status(404).send();
-	return res.json(team);
+	
+	const {name, captainName, ...privateInfos} = team;
+	return res.json({
+			name: name,
+			captainName: captainName,
+			});
 }
 
 export const getTeamMembers = async(req: Request, res: Response, next: NextFunction) => {
@@ -45,65 +57,160 @@ export const getTeamMembers = async(req: Request, res: Response, next: NextFunct
 	if (!requestedTeamName)
 		return res.status(400).send();
 
-	const	[team] = await db
-				.select()
-				.from(teams)
-				.where(eq(teams.name, requestedTeamName));
-	if (!team)
-		return res.status(404).send();
-
-	const	[members] = await db
+	const	members = await db
 				.select()
 				.from(teamMembers)
-				.where(eq(teamMembers.teamId, team.id));
-	if (!teamMembers)
+				.where(eq(teamMembers.teamName, requestedTeamName));
+	if (!members || members.length === 0)
 		return res.status(404).send();
-	return res.json(teamMembers); // might need to change the team_member from id to username
-}
-
-export const joinTeam = async(req: Request, res: Response, next: NextFunction) => {
-	const	requestedTeamName = req.params?.teamName as string;
-	if (!requestedTeamName)
-		return res.status(400).send();
-
-	const decodedUser = res.locals.user;
-	const	[requestedUser] = await db
-				.select()
-				.from(users)
-				.where(eq(users.id, decodedUser.id));
-	if (!requestedUser)
-		return res.status(403).send();
-	if (requestedUser.teamId)
-		return res.status(403).send('You already belong to a team');
-
-	const	[team] = await db
-				.select()
-				.from(teams)
-				.where(eq(teams.name, requestedTeamName));
-	if (!team)
-		return res.status(404).send();
-	if (team.inviteCode !== req.body?.inviteCode) // compare using bcrypt?
-		return res.status(403).send();
-
-	await db.insert(teamMembers).values({
-					memberId: decodedUser.id,
-					teamId: team.id,
-					});
-	requestedUser.teamId = team.id; // database ??
-	return res.status(201).send();
+	
+	const	membersNames = members.map( ({ memberName }) => memberName ); // more infos maybe? e.g user avatar?
+	return res.json(membersNames);
 }
 
 export const leaveTeam = async(req: Request, res: Response, next: NextFunction) => {
 	const	requestedTeamName = req.params?.teamName as string;
-	if (!requestedTeamName)
-		return res.status(400).send();
+	//if (!requestedTeamName)
+	//	return res.status(400).send();
 
 	const	decodedUser = res.locals.user;
-	const	[requestedUser] = await db
+	//const	[existingUser] = await db
+	//			.select()
+	//			.from(users)
+	//			.where(eq(users.id, decodedUser.id));
+	//if (!existingUser || !(existingUser.teamName))
+	//	return res.status(403).send();
+
+	const	[team] = await db
+				.select()
+				.from(teams)
+				.where(eq(teams.name, requestedTeamName));
+	if (!team)
+		return res.status(404).send();
+	//if (team.name !== existingUser.teamName)
+	//	return res.status(403).send("You can't leave a team you don't belong to");
+
+	if (team.captainName === decodedUser.username && team.membersCount != 1)
+		return res.status(403).send();
+
+	await db.delete(teamMembers).where(eq(teamMembers.memberName, decodedUser.username));
+	if (team.membersCount === 1) // last member of the team
+		await db.delete(teams).where(eq(teams.id, team.id));
+	await db.update(users).set({ teamName: null }).where(eq(users.username, decodedUser.username));
+	return res.status(204).send();
+}
+
+export const deleteMember = async(req: Request, res: Response, next: NextFunction) => {
+	const	requestedUsername = req.params?.username as string;
+	const	requestedTeamName = req.params?.teamName as string;
+	//if (!requestedTeamName || !requestedUsername)
+	//	return res.status(400).send();
+
+	const	[existingUser] = await db
+				.select()
+				.from(users)
+				.where(eq(users.username, requestedUsername));
+	if (!existingUser || !(existingUser.teamName)) // user does not exist or does not belong to any team
+		return res.status(404).send();
+
+	const	[team] = await db
+				.select()
+				.from(teams)
+				.where(eq(teams.captainName, requestedTeamName));
+	if (!team)
+		return res.status(403).send();
+
+	const	decodedUser = res.locals.user;
+	if (team.captainName !== decodedUser.username) // captain check
+		return res.status(403).send();
+
+	if (requestedUsername === decodedUser.username)
+		return res.status(400).send();
+
+	await db.delete(teamMembers).where(eq(teamMembers.memberName, requestedUsername));
+	await db.update(teams).set({ membersCount: team.membersCount - 1 }).where(eq(teams.name, team.name));
+	await db.update(users).set({ teamName: null }).where(eq(users.username, requestedUsername));
+	return res.status(204).send();
+}
+
+export const handOverLeadership = async(req: Request, res: Response, next: NextFunction) => {
+	const	requestedUsername = req.params?.username as string;
+	//if (!requestedUsername)
+	//	return res.status(400).send();
+
+	const decodedUser = res.locals.user;
+	//const	[existingUser] = await db
+	//			.select()
+	//			.from(users)
+	//			.where(eq(users.id, decodedUser.id));
+	//if (!existingUser.teamName)
+	//	return res.status(403).send();
+
+	const	[team] = await db
+				.select()
+				.from(teams)
+				.where(eq(teams.captainName, decodedUser.username));
+	if (!team)
+		return res.status(403).send();
+
+	
+	const [member] = await db
+				.select()
+				.from(teamMembers)
+				.where(and(
+					eq(teamMembers.memberName, requestedUsername),
+					eq(teamMembers.teamName, team.name),
+					));
+	if (!member)
+		return res.status(403).send();
+	await db.update(teams).set({ captainName: requestedUsername }).where(eq(teams.name, team.name));
+	return res.status(200).send();
+}
+
+//export const joinTeam = async(req: Request, res: Response, next: NextFunction) => {
+//	const	requestedTeamName = req.params?.teamName as string;
+//	if (!requestedTeamName)
+//		return res.status(400).send();
+//
+//	const decodedUser = res.locals.user;
+//	const	[existingUser] = await db
+//				.select()
+//				.from(users)
+//				.where(eq(users.id, decodedUser.id));
+//	if (!existingUser)
+//		return res.status(403).send();
+//	if (existingUser.teamName)
+//		return res.status(403).send('You already belong to a team');
+//
+//	const	[team] = await db
+//				.select()
+//				.from(teams)
+//				.where(eq(teams.name, requestedTeamName));
+//	if (!team)
+//		return res.status(404).send();
+//
+//	await db.insert(teamMembers).values({
+//					memberName: decodedUser.username,
+//					teamName: team.name,
+//					});
+//	await db.update(teams).set({ membersCount: team.membersCount + 1 }).where(eq(teams.name, team.name));
+//	await db.update(users).set({ teamName: team.name }).where(eq(users.id, decodedUser.id));
+//	return res.status(201).send();
+//}
+
+export const sendJoinRequest = async(req: Request, res: Response, next: NextFunction) => {
+	const	requestedTeamName = req.params?.teamName as string;
+	//if (!requestedTeamName)
+	//	return res.status(400).send();
+
+	const decodedUser = res.locals.user;
+	const [existingUser] = await db
 				.select()
 				.from(users)
 				.where(eq(users.id, decodedUser.id));
-	if (!requestedUser || !(requestedUser.teamId))
+	if (!existingUser)
+		return res.status(403).send();
+	if (existingUser.teamName)
 		return res.status(403).send();
 
 	const	[team] = await db
@@ -112,44 +219,115 @@ export const leaveTeam = async(req: Request, res: Response, next: NextFunction) 
 				.where(eq(teams.name, requestedTeamName));
 	if (!team)
 		return res.status(404).send();
-	if (team.id !== requestedUser.teamId)
-		return res.status(403).send("You can't leave a team you don't belong to");
 
-	if (team.captainName === requestedUser.username)
-		return res.status(403).send("You can't leave the team: you are the captain");
+	await db
+		.insert(teamJoinRequests)
+		.values({
+			teamName: team.name,
+			username: decodedUser.username
+			});
+	return res.status(201).send();
+}
 
-	await db.delete(teamMembers).where(eq(teamMembers.memberId, decodedUser.id));
-	requestedUser.teamId = null; // database ??
+export const cancelJoinRequest = async(req: Request, res: Response, next: NextFunction) => {
+	const	requestedTeamName = req.params?.teamName as string;
+	//if (!requestedTeamName)
+	//	return res.status(400).send();
+
+	const decodedUser = res.locals.user;
+	//const	[existingUser] = await db
+	//			.select()
+	//			.from(users)
+	//			.where(eq(users.id, decodedUser.id));
+	//if (!existingUser || existingUser.teamName)
+	//	return res.status(403).send();
+
+	//const	[request] = await db
+	//			.select()
+	//			.from(teamJoinRequest)
+	//			.where(and(
+	//				eq(teamJoinRequest.username, decoded.username),
+	//				eq(teamJoinRequest.teamName, requestedTeamName)
+	//				));
+	//if (!request)
+	//	return res.status(404).send();
+	await db
+		.delete(teamJoinRequests)
+		.where(eq(teamJoinRequests.username, decodedUser.username));
 	return res.status(204).send();
 }
 
-export const kickTeammate = async(req: Request, res: Response, next: NextFunction) => {
-	const	requestedUsername = req.params?.username as string;
-	const	requestedTeamName = req.params?.teamName as string;
-	if (!requestedTeamName || requestedUsername)
-		return res.status(400).send();
+export const acceptJoinRequest = async(req: Request, res: Response, next: NextFunction) => {
+	const	requestedUsername = req.params.username as string;
+	//if (!requestedUsername)
+	//	return res.status(400).send();
 
-	const	[requestedUser] = await db
+	const decodedUser = res.locals.user;
+	const [existingUser] = await db
 				.select()
 				.from(users)
-				.where(eq(users.username, requestedUsername));
-	if (!requestedUser || !(requestedUser.teamId)) // user does not exist or does not belong to any team
-		return res.status(404).send();
+				.where(eq(users.id, decodedUser.id));
+	if (!existingUser || !existingUser.teamName)
+		return res.status(403).send();
 
 	const	[team] = await db
 				.select()
 				.from(teams)
-				.where(eq(teams.name, requestedTeamName));
-	if (!team || team.id !== requestedUser.teamId) // team does not exist or user does not belong to that specific team
+				.where(eq(teams.name, existingUser.teamName));
+	if (!team || team.captainName !== decodedUser.username) // captain check
+		return res.status(403).send();
+
+	const [teamJoinRequest] = await db
+				.select()
+				.from(teamJoinRequests)
+				.where(and(
+					eq(teamJoinRequests.username, requestedUsername),
+					eq(teamJoinRequests.teamName, team.name),
+					));
+	if (!teamJoinRequests)
 		return res.status(404).send();
 
-	const	decodedUser = res.locals.user;
-	if (team.captainName !== decodedUser.username) // captain check
-		return res.status(403).send("Only the captain is allowed to kick a member out");
+	await db.delete(teamJoinRequests).where(eq(teamJoinRequests.teamName, team.name));
+	await db.insert(teamMembers).values({
+					memberName: requestedUsername,
+					teamName: team.name,
+					});
+	await db.update(teams).set({ membersCount: team.membersCount + 1 }).where(eq(teams.name, team.name));
+	await db.update(users).set({ teamName: team.name }).where(eq(users.username, requestedUsername));
+	return res.status(201).send();
+}
 
-	await db.delete(teamMembers).where(eq(teamMembers.memberId, requestedUser.id));
-	requestedUser.teamId = null; // database ??
+export const declineJoinRequest = async(req: Request, res: Response, next: NextFunction) => {
+	const requestedUsername = req.params?.username;
+	//if (!requestedUsername)
+	//	return res.status(400).send();
+
+	const decodedUser = res.locals.user;
+	const [existingUser] = await db
+				.select()
+				.from(users)
+				.where(eq(users.id, decodedUser.id));
+	if (!existingUser || !existingUser.teamName)
+		return res.status(403).send();
+
+	const [team] = await db
+				.select()
+				.from(teams)
+				.where(eq(teams.name, existingUser.teamName));
+	if (!team || team.captainName !== decodedUser.username)
+		return res.status(403).send();
+
+	//const [teamJoinRequest] = await db
+	//			.select()
+	//			.from(teamJoinRequests)
+	//			.where(and(
+	//				eq(teamJoinRequests.username, requestedUsername),
+	//				eq(teamJoinRequests.teamName, team.name),
+	//				));
+	//if (!teamJoinRequests)
+	//	return res.status(404).send();
+	await db.delete(teamJoinRequests).where(eq(teamJoinRequests.teamName, team.name));
 	return res.status(204).send();
 }
 
-// export const handOverLeadership = async() ...
+

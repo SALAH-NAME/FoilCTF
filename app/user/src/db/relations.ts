@@ -1,21 +1,21 @@
 import { relations } from "drizzle-orm/relations";
-import { users, profiles, sessions, ctfs, ctfOrganizers, teams, challenges, hints, participations, containers, ctfsChallenges, reports, teamMembers, challengesAttachments, attachments, notificationUsers, notifications, messages } from "./schema";
+import { users, profiles, sessions, ctfs, ctfOrganizers, teams, teamMembers, teamJoinRequests, challenges, hints, participations, containers, ctfsChallenges, reports, challengesAttachments, attachments, notificationUsers, notifications, messages } from "./schema";
 
-export const profilesRelations = relations(profiles, ({one, many}) => ({
+export const profilesRelations = relations(profiles, ({one}) => ({
 	user: one(users, {
 		fields: [profiles.username],
 		references: [users.username]
 	}),
-	teams: many(teams),
 }));
 
 export const usersRelations = relations(users, ({many}) => ({
 	profiles: many(profiles),
 	sessions: many(sessions),
 	ctfOrganizers: many(ctfOrganizers),
+	teamMembers: many(teamMembers),
+	teamJoinRequests: many(teamJoinRequests),
 	challenges: many(challenges),
 	reports: many(reports),
-	teamMembers: many(teamMembers),
 	notificationUsers: many(notificationUsers),
 	messages: many(messages),
 }));
@@ -44,13 +44,32 @@ export const ctfsRelations = relations(ctfs, ({many}) => ({
 	ctfsChallenges: many(ctfsChallenges),
 }));
 
-export const teamsRelations = relations(teams, ({one, many}) => ({
-	profile: one(profiles, {
-		fields: [teams.profileId],
-		references: [profiles.id]
+export const teamMembersRelations = relations(teamMembers, ({one}) => ({
+	team: one(teams, {
+		fields: [teamMembers.teamName],
+		references: [teams.name]
 	}),
-	participations: many(participations),
+	user: one(users, {
+		fields: [teamMembers.memberName],
+		references: [users.username]
+	}),
+}));
+
+export const teamsRelations = relations(teams, ({many}) => ({
 	teamMembers: many(teamMembers),
+	teamJoinRequests: many(teamJoinRequests),
+	participations: many(participations),
+}));
+
+export const teamJoinRequestsRelations = relations(teamJoinRequests, ({one}) => ({
+	team: one(teams, {
+		fields: [teamJoinRequests.teamName],
+		references: [teams.name]
+	}),
+	user: one(users, {
+		fields: [teamJoinRequests.username],
+		references: [users.username]
+	}),
 }));
 
 export const challengesRelations = relations(challenges, ({one, many}) => ({
@@ -114,17 +133,6 @@ export const ctfsChallengesRelations = relations(ctfsChallenges, ({one, many}) =
 export const reportsRelations = relations(reports, ({one}) => ({
 	user: one(users, {
 		fields: [reports.issuerId],
-		references: [users.id]
-	}),
-}));
-
-export const teamMembersRelations = relations(teamMembers, ({one}) => ({
-	team: one(teams, {
-		fields: [teamMembers.teamId],
-		references: [teams.id]
-	}),
-	user: one(users, {
-		fields: [teamMembers.memberId],
 		references: [users.id]
 	}),
 }));
