@@ -32,6 +32,7 @@ import {
 	route_auth_refresh,
 	route_auth_logout,
 } from './auth';
+import { route_user_me } from './user';
 
 const app = express();
 app.use(middleware_logger);
@@ -85,6 +86,11 @@ app.put(
 );
 
 // SECTION: Users
+app.get(
+	'/api/users/me',
+	authenticateToken,
+	route_user_me,
+)
 app.put(
 	'/api/users/:username',
 	parseNonExistingParam,
@@ -94,6 +100,7 @@ app.put(
 	updateTokens
 );
 
+// SECTION: Health
 app.get('/health', (_req, res) => {
 	res.status(200).send('OK');
 });
