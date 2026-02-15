@@ -70,10 +70,9 @@ CREATE TABLE IF NOT EXISTS teams (
 
   captain_name    TEXT NOT NULL,
 
-  members_count   INTEGER NOT NULL DEFAULT 1
+  members_count   INTEGER NOT NULL DEFAULT 1,
 
-  -- profile_id      INTEGER,
-  -- CONSTRAINT constraint_profile FOREIGN KEY (profile_id) REFERENCES profiles
+  CONSTRAINT constraint_captain_name FOREIGN KEY (captain_name) REFERENCES users(username) ON UPDATE CASCADE
 );
 CREATE TABLE IF NOT EXISTS team_members (
   team_name    TEXT NOT NULL,

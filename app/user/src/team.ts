@@ -1,47 +1,45 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import { db } from './utils/db';
 import { eq, and } from 'drizzle-orm';
 import { users, teams, teamMembers, teamJoinRequests } from './db/schema';
 
-export const createTeam = async(req: Request, res: Response, next: NextFunction) => {
+export const createTeam = async(req: Request, res: Response) => {
 	const decodedUser = res.locals.user;
 
-	const [existingUser] = await db
+	const [dbUser] = await db
 				.select()
 				.from(users)
 				.where(eq(users.id, decodedUser.id));
-	if (!existingUser)
+	if (!dbUser || dbUser.teamName)
 		return res.status(403).send();
 
-	if (existingUser.teamName)
+	const newTeamName = req.body.name;
+	const [existingTeam] = await db
+				.select()
+				.from(teams)
+				.where(eq(teams.name, newTeamName));
+	if (existingTeam)
 		return res.status(403).send();
 
-	const [teamInserted] = await db.insert(teams)
+	await db.insert(teams)
 				.values({
 				name: req.body.name,
 				captainName: decodedUser.username,
-				})
-				.returning();
-	if (!teamInserted)
-		throw new Error('Internal Server Error');
+				});
 
 	await db.insert(teamMembers).values({
-		teamName: teamInserted.name,
+		teamName: newTeamName,
 		memberName: decodedUser.username,
 	});
-	await db.update(users).set({ teamName: teamInserted.name }).where(eq(users.id, decodedUser.id));
+	await db.update(users).set({ teamName: newTeamName }).where(eq(users.id, decodedUser.id));
 	return res.status(201).send();
 }
 
-export const getTeamDetails = async(req: Request, res: Response, next: NextFunction) => {
-	const	requestedTeamName = req.params?.teamName as string;
-	if (!requestedTeamName)
-		return res.status(400).send();
-
+export const getTeamDetails = async(req: Request, res: Response) => {
 	const	[team] = await db
 				.select()
 				.from(teams)
-				.where(eq(teams.name, requestedTeamName));
+				.where(eq(teams.name, req.params.teamName as string));
 	if (!team)
 		return res.status(404).send();
 	
@@ -53,15 +51,11 @@ export const getTeamDetails = async(req: Request, res: Response, next: NextFunct
 			});
 }
 
-export const getTeamMembers = async(req: Request, res: Response, next: NextFunction) => {
-	const	requestedTeamName = req.params?.teamName as string;
-	if (!requestedTeamName)
-		return res.status(400).send();
-
+export const getTeamMembers = async(req: Request, res: Response) => {
 	const	members = await db
 				.select()
 				.from(teamMembers)
-				.where(eq(teamMembers.teamName, requestedTeamName));
+				.where(eq(teamMembers.teamName, req.params.teamName as string));
 	if (!members || members.length === 0)
 		return res.status(404).send();
 	
@@ -69,15 +63,13 @@ export const getTeamMembers = async(req: Request, res: Response, next: NextFunct
 	return res.json(membersNames);
 }
 
-export const leaveTeam = async(req: Request, res: Response, next: NextFunction) => {
-	const	requestedTeamName = req.params.teamName as string;
-
+export const leaveTeam = async(req: Request, res: Response) => {
 	const	decodedUser = res.locals.user;
 
 	const	[team] = await db
 				.select()
 				.from(teams)
-				.where(eq(teams.name, requestedTeamName));
+				.where(eq(teams.name, req.params.teamName as string));
 	if (!team)
 		return res.status(404).send();
 
@@ -92,9 +84,8 @@ export const leaveTeam = async(req: Request, res: Response, next: NextFunction) 
 	return res.status(204).send();
 }
 
-export const deleteMember = async(req: Request, res: Response, next: NextFunction) => {
+export const deleteMember = async(req: Request, res: Response) => {
 	const	requestedUsername = req.params.username as string;
-	const	requestedTeamName = req.params.teamName as string;
 
 	const	decodedUser = res.locals.user;
 	const	[team] = await db
@@ -108,7 +99,7 @@ export const deleteMember = async(req: Request, res: Response, next: NextFunctio
 									select()
 									.from(teamMembers)
 									.where(and(
-										eq(teamMembers.teamName, requestedTeamName),
+										eq(teamMembers.teamName, req.params.teamName as string),
 										eq(teamMembers.memberName, requestedUsername)
 									));
 	if (!DBrequstedMember || DBrequstedMember.teamName !== team.name)
@@ -123,7 +114,7 @@ export const deleteMember = async(req: Request, res: Response, next: NextFunctio
 	return res.status(204).send();
 }
 
-export const handOverLeadership = async(req: Request, res: Response, next: NextFunction) => {
+export const handOverLeadership = async(req: Request, res: Response) => {
 	const	requestedUsername = req.params?.username as string;
 
 	const decodedUser = res.locals.user;
@@ -149,15 +140,15 @@ export const handOverLeadership = async(req: Request, res: Response, next: NextF
 	return res.status(200).send();
 }
 
-export const sendJoinRequest = async(req: Request, res: Response, next: NextFunction) => {
+export const sendJoinRequest = async(req: Request, res: Response) => {
 	const	requestedTeamName = req.params?.teamName as string;
 
 	const decodedUser = res.locals.user;
-	const [existingUser] = await db
+	const [dbUser] = await db
 				.select()
 				.from(users)
 				.where(eq(users.id, decodedUser.id));
-	if (!existingUser || existingUser.teamName)
+	if (!dbUser || dbUser.teamName)
 		return res.status(403).send();
 
 	const	[team] = await db
@@ -176,7 +167,7 @@ export const sendJoinRequest = async(req: Request, res: Response, next: NextFunc
 	return res.status(201).send();
 }
 
-export const cancelJoinRequest = async(req: Request, res: Response, next: NextFunction) => {
+export const cancelJoinRequest = async(res: Response) => {
 	const decodedUser = res.locals.user;
 	await db
 		.delete(teamJoinRequests)
@@ -184,15 +175,15 @@ export const cancelJoinRequest = async(req: Request, res: Response, next: NextFu
 	return res.status(204).send();
 }
 
-export const acceptJoinRequest = async(req: Request, res: Response, next: NextFunction) => {
+export const acceptJoinRequest = async(req: Request, res: Response) => {
 	const	requestedUsername = req.params.username as string;
 
 	const decodedUser = res.locals.user;
-	const [existingUser] = await db
+	const [dbUser] = await db
 				.select()
 				.from(users)
 				.where(eq(users.username, requestedUsername));
-	if (!existingUser || existingUser.teamName)
+	if (!dbUser || dbUser.teamName)
 		return res.status(403).send();
 
 	const	[team] = await db
@@ -222,7 +213,7 @@ export const acceptJoinRequest = async(req: Request, res: Response, next: NextFu
 	return res.status(201).send();
 }
 
-export const declineJoinRequest = async(req: Request, res: Response, next: NextFunction) => {
+export const declineJoinRequest = async(req: Request, res: Response) => {
 	const requestedUsername = req.params.username as string;
 	const decodedUser = res.locals.user;
 
@@ -237,11 +228,11 @@ export const declineJoinRequest = async(req: Request, res: Response, next: NextF
 											eq(teamJoinRequests.teamName, team.name),
 											eq(teamJoinRequests.username, requestedUsername)
 											)
-										)
+										);
 	return res.status(204).send();
 }
 
-export const getSentRequests = async(req: Request, res: Response, next: NextFunction) => {
+export const getSentRequests = async(res: Response) => {
 	const decodedUser = res.locals.user;
 
 	const sentRequests = await db
