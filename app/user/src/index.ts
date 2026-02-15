@@ -45,6 +45,7 @@ import {
 	acceptJoinRequest,
 	declineJoinRequest,
 	getSentRequests,
+	notifyMembers,
 } from './team';
 
 const app = express();
@@ -131,6 +132,7 @@ app.delete(
 	'/api/teams/:teamName/members/',
 	authenticateToken,
 	leaveTeam,
+	notifyMembers,
 );
 app.delete(
 	'/api/teams/:teamName/members/:username',

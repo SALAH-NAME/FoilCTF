@@ -1,7 +1,7 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { db } from './utils/db';
 import { eq, and } from 'drizzle-orm';
-import { users, teams, teamMembers, teamJoinRequests } from './db/schema';
+import { users, teams, teamMembers, teamJoinRequests, notifications, notificationUsers } from './db/schema';
 
 export const createTeam = async(req: Request, res: Response) => {
 	const decodedUser = res.locals.user;
@@ -63,7 +63,7 @@ export const getTeamMembers = async(req: Request, res: Response) => {
 	return res.json(membersNames);
 }
 
-export const leaveTeam = async(req: Request, res: Response) => {
+export const leaveTeam = async(req: Request, res: Response, next: NextFunction) => {
 	const	decodedUser = res.locals.user;
 
 	const	[team] = await db
@@ -80,7 +80,35 @@ export const leaveTeam = async(req: Request, res: Response) => {
 	await db.update(teams).set({ membersCount: team.membersCount - 1 }).where(eq(teams.name, team.name));
 	if (team.membersCount === 0) // last member of the team
 		await db.delete(teams).where(eq(teams.id, team.id));
+	return next();
+}
+
+export const notifyMembers = async(req: Request, res: Response) => {
+	const	decodedUser = res.locals.user;
 	await db.update(users).set({ teamName: null }).where(eq(users.username, decodedUser.username));
+	const [instertedNotification] = await db
+	.insert(notifications)
+	.values({
+		contents: {
+			title: `INFO`,
+			message: `member ${decodedUser.username} has left the team`
+		}
+	})
+	.returning();
+	if (!instertedNotification)
+		throw new Error('Internel Server Error');
+	await db
+	.insert(notificationUsers)
+	.values({
+		userId: decodedUser.id,
+		notificationId: instertedNotification.id
+	});
+	await db
+	.update(notifications)
+	.set({
+		isPublished: true,
+	})
+	.where(eq(notifications.id, instertedNotification.id));
 	return res.status(204).send();
 }
 
