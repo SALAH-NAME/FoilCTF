@@ -83,7 +83,14 @@ export const teams = pgTable("teams", {
 	name: text().notNull(),
 	captainName: text("captain_name").notNull(),
 	membersCount: integer("members_count").default(1).notNull(),
+	description: text(),
+	isLocked: boolean("is_locked").default(false),
 }, (table) => [
+	foreignKey({
+			columns: [table.captainName],
+			foreignColumns: [users.username],
+			name: "constraint_captain_name"
+		}).onUpdate("cascade"),
 	unique("teams_name_key").on(table.name),
 ]);
 

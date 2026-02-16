@@ -10,6 +10,7 @@ import {
 	updateProfileSchema,
 	updateUserSchema,
 	teamCreationSchema,
+	updateTeamSchema,
 } from './utils/types';
 import {
 	authenticateToken,
@@ -45,7 +46,9 @@ import {
 	acceptJoinRequest,
 	declineJoinRequest,
 	getSentRequests,
-	notifyMembers,
+	notifyAllMembers,
+	notifyCaptain,
+	updateTeam,
 } from './team';
 
 const app = express();
@@ -132,22 +135,25 @@ app.delete(
 	'/api/teams/:teamName/members/',
 	authenticateToken,
 	leaveTeam,
-	notifyMembers,
+	notifyAllMembers,
 );
 app.delete(
 	'/api/teams/:teamName/members/:username',
 	authenticateToken,
 	deleteMember,
+	notifyAllMembers,
 );
 app.put(
 	'/api/teams/:username/members',
 	authenticateToken,
 	handOverLeadership,
+	notifyCaptain,
 );
 app.post(
 	'/api/teams/:teamName',
 	authenticateToken,
 	sendJoinRequest,
+	notifyCaptain,
 );
 app.delete(
 	'/api/teams/:teamName',
@@ -158,6 +164,7 @@ app.put(
 	'/api/teams/:username/request',
 	authenticateToken,
 	acceptJoinRequest,
+	notifyAllMembers,
 );
 app.delete(
 	'/api/teams/:username/request',
@@ -168,6 +175,12 @@ app.get(
 	'/api/teams/:username/requests',
 	authenticateToken,
 	getSentRequests,
+);
+app.put(
+	'/api/teams/',
+	middleware_schema_validate(updateTeamSchema),
+	authenticateToken,
+	updateTeam,
 )
 
 app.use(middleware_error);

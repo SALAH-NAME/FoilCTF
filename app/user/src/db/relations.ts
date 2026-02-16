@@ -12,6 +12,7 @@ export const usersRelations = relations(users, ({many}) => ({
 	profiles: many(profiles),
 	sessions: many(sessions),
 	ctfOrganizers: many(ctfOrganizers),
+	teams: many(teams),
 	teamMembers: many(teamMembers),
 	teamJoinRequests: many(teamJoinRequests),
 	challenges: many(challenges),
@@ -44,6 +45,16 @@ export const ctfsRelations = relations(ctfs, ({many}) => ({
 	ctfsChallenges: many(ctfsChallenges),
 }));
 
+export const teamsRelations = relations(teams, ({one, many}) => ({
+	user: one(users, {
+		fields: [teams.captainName],
+		references: [users.username]
+	}),
+	teamMembers: many(teamMembers),
+	teamJoinRequests: many(teamJoinRequests),
+	participations: many(participations),
+}));
+
 export const teamMembersRelations = relations(teamMembers, ({one}) => ({
 	team: one(teams, {
 		fields: [teamMembers.teamName],
@@ -53,12 +64,6 @@ export const teamMembersRelations = relations(teamMembers, ({one}) => ({
 		fields: [teamMembers.memberName],
 		references: [users.username]
 	}),
-}));
-
-export const teamsRelations = relations(teams, ({many}) => ({
-	teamMembers: many(teamMembers),
-	teamJoinRequests: many(teamJoinRequests),
-	participations: many(participations),
 }));
 
 export const teamJoinRequestsRelations = relations(teamJoinRequests, ({one}) => ({

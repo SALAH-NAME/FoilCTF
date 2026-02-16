@@ -72,6 +72,9 @@ CREATE TABLE IF NOT EXISTS teams (
 
   members_count   INTEGER NOT NULL DEFAULT 1,
 
+  description     TEXT DEFAULT NULL,
+  is_locked       BOOLEAN DEFAULT FALSE,
+
   CONSTRAINT constraint_captain_name FOREIGN KEY (captain_name) REFERENCES users(username) ON UPDATE CASCADE
 );
 CREATE TABLE IF NOT EXISTS team_members (

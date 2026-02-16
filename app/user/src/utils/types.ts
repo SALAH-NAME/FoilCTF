@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import { users, sessions, profiles } from '../db/schema';
-import { z } from 'zod';
+import { boolean, z } from 'zod';
 
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
@@ -76,4 +76,11 @@ export const teamCreationSchema = z.object({
 			.max(15)
 			.regex(/^[a-zA-Z0-9_-]+$/),
 	}),
+});
+
+export const updateTeamSchema = z.object({
+	body: z.object({
+		isLocked: z.coerce.boolean().optional(),
+		description: z.string().max(500).optional(),
+	})
 });
