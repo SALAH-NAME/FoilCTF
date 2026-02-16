@@ -97,7 +97,7 @@ export const leaveTeam = async(req: Request, res: Response, next: NextFunction) 
 			await tx.delete(teamMembers).where(eq(teamMembers.memberName, decodedUser.username));
 			await tx.update(teams).set({ membersCount: team.membersCount - 1 }).where(eq(teams.name, team.name));
 			await tx.update(users).set({ teamName: null }).where(eq(users.username, decodedUser.username));
-			if (team.membersCount === 0) { // last member of the team
+			if (team.membersCount === 1) { // last member of the team
 				await tx.delete(teamJoinRequests).where(eq(teamJoinRequests.teamName, team.name));
 				await tx.delete(teams).where(eq(teams.id, team.id));
 			}

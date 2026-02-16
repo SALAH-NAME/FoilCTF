@@ -144,7 +144,7 @@ app.delete(
 	notifyAllMembers,
 );
 app.put(
-	'/api/teams/:username/members',
+	'/api/teams/:username/captain',
 	authenticateToken,
 	handOverLeadership,
 	notifyCaptain,
