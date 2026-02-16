@@ -14,7 +14,7 @@ type Config struct {
 }
 
 func NewConfig() Config {
-	jwtKey := GetEnv("SECRET_KEY", "NTNv7j0TuYARvmNMmWXo6fKvM4o6nv/aUi9ryX38ZH+L1bkrnD1ObOQ8JAUmHCBq7Iy7otZcyAagBLHVKvvYaIpmMuxmARQ97jUVG16Jkpkp1wXOPsrF9zwew6TpczyHkHgX5EuLg2MeBuiT/qJACs1J0apruOOJCg/gOtkjB4c=")
+	jwtKey := GetEnv("SECRET_KEY", "")
 	return Config{
 		GlobalBuffer:     100,
 		ClientBuffer:     100,

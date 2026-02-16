@@ -104,7 +104,7 @@ func (h *Hub) PlayerAuthMiddleware(next http.Handler) http.Handler {
 			JSONError(w, "Event Not Found", http.StatusBadRequest)
 			return
 		}
-		if event.Status != "active" {
+		if event.Status != "active" && event.Status != "published" {
 			JSONError(w, "Not allowed to access event", http.StatusForbidden)
 			return
 		}
@@ -129,20 +129,24 @@ func (h *Hub) EnsureEventAccess(next http.Handler) http.Handler {
 			JSONError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		eventID, err := h.ReadIntParam(r, "id")
-		if err != nil {
-			log.Printf("Invalid eventID: %v", err)
-			JSONError(w, "Invalid eventID", http.StatusBadRequest)
+		event, ok := r.Context().Value(eventKey).(Ctf)
+		if !ok {
+			log.Printf("Could not get event form context")
+			JSONError(w, "event not found", http.StatusInternalServerError)
+			return
+		}
+		if event.Status != "active" {
+			JSONError(w, "Not allowed to access event", http.StatusForbidden)
 			return
 		}
 		teamID, ok := r.Context().Value(teamIDKey).(int)
 		if !ok {
-			log.Printf("Could not get teamID form context for user %s", userID)
+			log.Printf("Could not get teamID form context for user %d", *userID)
 			JSONError(w, "Team not found", http.StatusInternalServerError)
 			return
 		}
 		var part Participation
-		err = h.Db.Where("ctf_id = ? AND team_id = ?", eventID, teamID).
+		err = h.Db.Where("ctf_id = ? AND team_id = ?", event.ID, teamID).
 			First(&part).Error
 		if err != nil {
 			log.Printf("Database Error: %v", err)
@@ -182,7 +186,7 @@ func (h *Hub) EnsureEventOwnership(next http.Handler) http.Handler {
 		if userRole != "admin" {
 			eventID, err := h.ReadIntParam(r, "id")
 			if err != nil {
-				log.Printf("Bad request: Invalid eventID. for user: %s", userID)
+				log.Printf("Bad request: Invalid eventID. for user: %d", *userID)
 				JSONError(w, "Bad request: Invalid eventID.", http.StatusBadRequest)
 				return
 			}
@@ -194,11 +198,11 @@ func (h *Hub) EnsureEventOwnership(next http.Handler) http.Handler {
 			}
 			var count int64
 			err = h.Db.Table("ctf_organizers").
-				Where("ctf_id = ? AND organizer_id = ?", eventID, userID).
+				Where("ctf_id = ? AND organizer_id = ?", eventID, *userID).
 				Count(&count).
 				Error
 			if err != nil || count == 0 {
-				log.Printf("Forbidden: ownership check failed for user: %s, eventID: %d", userID, eventID)
+				log.Printf("Forbidden: ownership check failed for user: %d, eventID: %d", *userID, eventID)
 				JSONError(w, "Forbidden: You do not manage this event.", http.StatusForbidden)
 				return
 			}

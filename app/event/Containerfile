@@ -1,0 +1,21 @@
+FROM docker.io/library/golang:1.25.5-alpine3.23 AS builder
+
+WORKDIR /usr/src/app
+
+COPY go.mod go.sum ./
+
+RUN go mod download
+
+COPY ./src .
+
+RUN go build -o /usr/local/bin/event .
+
+FROM alpine:3.23
+
+WORKDIR /usr/src/app
+
+COPY --from=builder /usr/local/bin/event /usr/local/bin/event
+
+EXPOSE 3004
+
+ENTRYPOINT ["event"]

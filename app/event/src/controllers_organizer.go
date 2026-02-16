@@ -19,7 +19,7 @@ func (h *Hub) ListAllEvents(w http.ResponseWriter, r *http.Request) {
 	db := h.Db.Model(&Ctf{})
 	if userRole != "admin" {
 		db = db.Joins("INNER JOIN ctf_organizers ON ctf_organizers.ctf_id = ctfs.id").
-			Where("ctf_organizers.organizer_id = ?", userID)
+			Where("ctf_organizers.organizer_id = ?", *userID)
 	}
 	db = db.Order("ctfs.start_time DESC")
 	err = db.Find(&events).Error
@@ -35,7 +35,7 @@ func (h *Hub) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	userID, _, err := GetUserInfo(r)
 	var req EventRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("Invalid input: could not fetch event data for user %s: %v", userID, err)
+		log.Printf("Invalid input: could not fetch event data for user %d: %v", *userID, err)
 		JSONError(w, "Invalid Input", http.StatusBadRequest)
 		return
 	}
@@ -141,30 +141,52 @@ func (h *Hub) LinkChallenge(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	var req CtfsChallenge
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("Invalid input: could not fetch event data for user %s: %v", userID, err)
-		JSONError(w, "Invalid Input", http.StatusBadRequest)
+	event, ok := r.Context().Value(eventKey).(Ctf)
+	if !ok {
+		log.Printf("Could not get event form context")
+		JSONError(w, "event not found", http.StatusInternalServerError)
 		return
+	}
+	var req []CtfsChallenge
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if  err != nil {
+		log.Printf("Invalid input: could not fetch event data for user %d: %v", *userID, err)
+		JSONError(w, "Invalid Input", http.StatusBadRequest)
+		return		
 	}
 	var exists bool
-	err = h.Db.Table("challenges").
-		Select("count(*) > 0").
-		Where("id = ? AND is_published = ?", req.ChallengeID, true).
-		Find(&exists).Error
-	if err != nil || !exists {
-		log.Printf("Link Failure: challenge %d not found or not published. user: %s: %v", req.ChallengeID, userID, err)
-		JSONError(w, "Challenge not found or not published", http.StatusBadRequest)
-		return
+	for _, challenge := range req {
+		if challenge.CtfID != event.ID {
+			log.Printf("User %d tried to link challeges to eventID %d on wrong endpoint", *userID, challenge.CtfID )
+			JSONError(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		err = h.Db.Table("challenges").
+			Select("count(*) > 0").
+			Where("id = ? AND is_published = ?", challenge.ChallengeID, true).
+			Find(&exists).Error
+		if err != nil || !exists {
+			log.Printf("Link Failure: challenge %d not found or not published. user: %d: %v",  challenge.ChallengeID, *userID, err)
+			JSONError(w, "Challenge not found or not published", http.StatusBadRequest)
+			return
+		}
 	}
-	err = h.Db.Table("ctfs_challenges").
-		Create(&req).Error
+	h.Db.Transaction(func (tx *gorm.DB) error {
+		for _, challenge := range req {
+			err = h.Db.Table("ctfs_challenges").
+				Create(&challenge).Error
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if err != nil {
-		log.Printf("Could not link challenge %d for user: %s: %v", req.ChallengeID, userID, err)
+		log.Printf("Could not link challengesfor user: %d: %v", *userID, err)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	JSONResponse(w, nil, http.StatusCreated)
+	JSONResponse(w, nil, http.StatusCreated)	
 }
 
 func (h *Hub) UnlinkChallenge(w http.ResponseWriter, r *http.Request) {
@@ -259,6 +281,7 @@ func (h *Hub) StopEvent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		JSONResponse(w, nil, http.StatusCreated)
+	} else {
+		JSONResponse(w, "event already ended", http.StatusConflict) 
 	}
-	JSONResponse(w, "event already ended", http.StatusConflict)
 }

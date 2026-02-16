@@ -4,7 +4,7 @@ ALTER TABLE ctfs ADD COLUMN start_time TIMESTAMP NOT NULL DEFAULT now();
 ALTER TABLE ctfs ADD COLUMN end_time TIMESTAMP NOT NULL DEFAULT (now() + interval '24 hours');
 ALTER TABLE ctfs ADD COLUMN deleted_at TIMESTAMP DEFAULT NULL;
 ALTER TABLE ctfs ADD COLUMN max_teams INTEGER CHECK(max_teams > 0);
-ALTER TABLE ctfs ADD COLUMN status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'ended', 'archived'));
+ALTER TABLE ctfs ADD COLUMN status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'active', 'ended', 'archived'));
 
 ---participations table
 ALTER TABLE participations RENAME COLUMN challenge_id TO ctf_id;
@@ -59,3 +59,7 @@ ALTER TABLE messages ADD CONSTRAINT  constraint_room Foreign Key (chatroom_id) R
 
 --- challenges
 ALTER Table challenges ADD COLUMN category TEXT NOT NULL;
+ALTER table challenges DROP COLUMN reward;
+ALTER table challenges DROP COLUMN reward_min;
+ALTER table challenges DROP COLUMN reward_first_blood;
+ALTER table challenges DROP COLUMN reward_decrements;

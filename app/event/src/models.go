@@ -35,17 +35,16 @@ type CtfOrganizers struct {
 	OrganizerID int `gorm:"column:organizer_id"`
 }
 
-// todo(a) think of adding a model just for link request
 type CtfsChallenge struct {
 	CtfID            int            `json:"ctf_id" gorm:"column:ctf_id;primaryKey"`
 	ChallengeID      int            `json:"challenge_id" gorm:"column:challenge_id;primaryKey"`
-	Reward           int            `json:"reward" gorm:"column:reward"`
-	InitialReward    int            `json:"initial_reward" gorm:"column:initial_reward"`
+	Reward           int            `json:"reward" gorm:"column:reward;default:500"`
+	InitialReward    int            `json:"initial_reward" gorm:"column:initial_reward;default:500"`
 	Flag             map[string]any `json:"flag" gorm:"column:flag;serializer:json"`
-	RewardFirstBlood int            `gorm:"column:reward_first_blood"`
-	RewardDecrements bool           `gorm:"column:reward_decrements"`
-	RewardMin        int            `gorm:"column:reward_min"`
-	Decay            int            `json:"decay" gorm:"decay"`
+	RewardFirstBlood int            `gorm:"column:reward_first_blood;default:0"`
+	RewardDecrements bool           `gorm:"column:reward_decrements;default:true"`
+	RewardMin        int            `gorm:"column:reward_min;default:350;"`
+	Decay            int            `json:"decay" gorm:"decay;default:30"`
 	Attempts         int            `json:"attempts" gorm:"column:attempts"`
 	Solves           int            `json:"solves" gorm:"column:solves"`
 	FirstBloodAt     *time.Time     `json:"first_blood_at" gorm:"column:first_blood_at"`

@@ -151,7 +151,7 @@ func (h *Hub) SubmitFlag(w http.ResponseWriter, r *http.Request) {
 	}
 	teamID, ok := r.Context().Value(teamIDKey).(int)
 	if !ok {
-		log.Printf("Could not get teamID form context for user %s", userID)
+		log.Printf("Could not get teamID form context for user %d", *userID)
 		JSONError(w, "Team not found", http.StatusInternalServerError)
 		return
 	}
@@ -195,7 +195,7 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 	}
 	teamID, ok := r.Context().Value(teamIDKey).(int)
 	if !ok {
-		log.Printf("Could not get teamID form context for user %s", userID)
+		log.Printf("Could not get teamID form context for user %d", *userID)
 		JSONError(w, "Team not found", http.StatusInternalServerError)
 		return
 	}

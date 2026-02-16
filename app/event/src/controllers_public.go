@@ -9,7 +9,7 @@ func (h *Hub) ListEvents(w http.ResponseWriter, r *http.Request) {
 	events := []Ctf{}
 
 	err := h.Db.Table("ctfs").
-		Where("status IN (?)", []string{"active", "ended", "archived"}).
+		Where("status IN (?)", []string{"active", "published","ended", "archived"}).
 		Order("start_time DESC").
 		Find(&events).Error
 	if err != nil {
