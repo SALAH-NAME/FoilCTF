@@ -55,7 +55,8 @@ export default function Page() {
 						type="text"
 						label="Username"
 						value={username}
-						onChange={(value) => {
+						onChange={(e) => {
+							const value = e.target.value;
 							setUsername(value);
 							handleChange('username', value);
 						}}
@@ -71,7 +72,8 @@ export default function Page() {
 						type="password"
 						label="Password"
 						value={password}
-						onChange={(value) => {
+						onChange={(e) => {
+							const value = e.target.value;
 							setPassword(value);
 							handleChange('password', value);
 						}}
@@ -80,13 +82,10 @@ export default function Page() {
 						touched={touched.password}
 						required
 					/>
-
 					<Button type="submit" className="w-full">
 						Sign In
 					</Button>
-
 					<FormDivider />
-
 					<OAuthButton text="Sign in with" onClick={handleOAuth} />
 				</form>
 

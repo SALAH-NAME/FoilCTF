@@ -11,6 +11,8 @@ export interface NavItemConfig {
 		| 'calendar'
 		| 'chart'
 		| 'user'
+		| 'users'
+		| 'team'
 		| 'logout'
 		| 'challenge'
 		| 'instance';

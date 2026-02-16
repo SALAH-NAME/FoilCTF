@@ -150,7 +150,7 @@ export default function InstanceStatusPanel({
 						size="sm"
 						onClick={onStop}
 						aria-label="Stop instance"
-						className='ml-auto right-0 w-fit'
+						className="ml-auto right-0 w-fit"
 					>
 						Stop Instance
 					</Button>
@@ -178,7 +178,7 @@ export default function InstanceStatusPanel({
 						size="sm"
 						onClick={onLaunch}
 						aria-label="Launch challenge instance"
-						className='ml-auto right-0 w-fit'
+						className="ml-auto right-0 w-fit"
 					>
 						Launch Instance
 					</Button>

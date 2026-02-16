@@ -1,5 +1,3 @@
-import Icon from './Icon';
-
 type Difficulty = 'easy' | 'medium' | 'hard';
 
 interface ChallengeCardProps {

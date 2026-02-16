@@ -7,6 +7,7 @@ export type IconName =
 	| 'chart'
 	| 'user'
 	| 'users'
+	| 'team'
 	| 'logout'
 	| 'menu'
 	| 'challenge'
@@ -20,11 +21,15 @@ export type IconName =
 	| 'camera'
 	| 'link'
 	| 'location'
+	| 'map'
+	| 'check'
 	| 'warning'
 	| 'chat'
 	| 'megaphone'
 	| 'info'
 	| 'yen'
+	| 'flag'
+	| 'star'
 	| '42';
 
 // REFERENCE(xenobas): https://heroicons.com/outline
@@ -179,6 +184,24 @@ export default function Icon({
 						strokeLinecap="round"
 						strokeLinejoin="round"
 						d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"
+					/>
+				</svg>
+			);
+		case 'team':
+			return (
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					strokeWidth={1.5}
+					stroke="currentColor"
+					className={className}
+					aria-hidden={ariaHidden}
+				>
+					<path
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"
 					/>
 				</svg>
 			);
@@ -440,6 +463,42 @@ export default function Icon({
 					/>
 				</svg>
 			);
+		case 'map':
+			return (
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					strokeWidth={1.5}
+					stroke="currentColor"
+					className={className}
+					aria-hidden={ariaHidden}
+				>
+					<path
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						d="M9 6.75V15m6-6v8.25m.503 3.498 4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0Z"
+					/>
+				</svg>
+			);
+		case 'check':
+			return (
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					strokeWidth={1.5}
+					stroke="currentColor"
+					className={className}
+					aria-hidden={ariaHidden}
+				>
+					<path
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						d="m4.5 12.75 6 6 9-13.5"
+					/>
+				</svg>
+			);
 		case 'warning':
 			return (
 				<svg
@@ -527,6 +586,43 @@ export default function Icon({
 						strokeLinecap="round"
 						strokeLinejoin="round"
 						d="m9 7.5 3 4.5m0 0 3-4.5M12 12v5.25M15 12H9m6 3H9m12-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+					/>
+				</svg>
+			);
+		case 'flag':
+			return (
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					strokeWidth={1.5}
+					stroke="currentColor"
+					className={className}
+					aria-hidden={ariaHidden}
+				>
+					<path
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5"
+					/>
+				</svg>
+			);
+
+		case 'star':
+			return (
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					strokeWidth={1.5}
+					stroke="currentColor"
+					className={className}
+					aria-hidden={ariaHidden}
+				>
+					<path
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"
 					/>
 				</svg>
 			);

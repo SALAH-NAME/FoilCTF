@@ -3,11 +3,11 @@ import { Link } from 'react-router';
 import Button from '~/components/Button';
 import Icon from '~/components/Icon';
 import EventStatCard from '~/components/EventStatCard';
-import BackLink from '~/components/BackLink';
 import PageSection from '~/components/PageSection';
 import CountdownCard from '~/components/CountdownCard';
 import InfoText from '~/components/InfoText';
 import Modal from '~/components/Modal';
+import PageHeader from '~/components/PageHeader';
 
 interface RouteParams {
 	params: {
@@ -87,10 +87,11 @@ export default function EventDetail({ params }: RouteParams) {
 	};
 
 	return (
-		<div className="flex flex-col gap-6">
-			<BackLink to="/events">Back to Events</BackLink>
+		<div className="flex flex-col gap-4">
+			{/* <BackLink to="/events">Back to Events</BackLink> */}
+			<PageHeader title={event.name} className="mb-4" />
 
-			<section aria-labelledby="event-title">
+			<section aria-labelledby="event-title ">
 				<div className="bg-surface border border-neutral-300 rounded-md overflow-hidden">
 					<div className="bg-linear-to-r from-primary to-secondary gap-4 p-6 md:p-8 flex flex-col sm:flex-row items-center justify-between">
 						<div className="max-w-4xl">

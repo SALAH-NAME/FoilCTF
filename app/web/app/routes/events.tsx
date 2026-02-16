@@ -4,6 +4,7 @@ import PageHeader from '~/components/PageHeader';
 import EventCard from '~/components/EventCard';
 import SearchInput from '~/components/SearchInput';
 import FilterTabs from '~/components/FilterTabs';
+import Pagination from '~/components/Pagination';
 import type { Route } from './+types/events';
 
 type EventStatus = 'upcoming' | 'active' | 'ended';
@@ -123,6 +124,9 @@ export default function Events() {
 		'all' | 'upcoming' | 'active' | 'ended'
 	>(filterParam || 'all');
 
+	const currentPage = parseInt(searchParams.get('page') || '1', 10);
+	const itemsPerPage = parseInt(searchParams.get('perPage') || '9', 10);
+
 	useEffect(() => {
 		const urlFilter = searchParams.get('filter');
 		if (urlFilter && ['upcoming', 'active', 'ended'].includes(urlFilter)) {
@@ -134,11 +138,14 @@ export default function Events() {
 
 	const handleFilterChange = (value: string) => {
 		setActiveFilter(value as typeof activeFilter);
+		const newParams = new URLSearchParams(searchParams);
+		newParams.delete('page');
 		if (value === 'all') {
-			setSearchParams({});
+			newParams.delete('filter');
 		} else {
-			setSearchParams({ filter: value });
+			newParams.set('filter', value);
 		}
+		setSearchParams(newParams);
 	};
 
 	const filteredEvents = mockEvents.filter((event) => {
@@ -149,6 +156,21 @@ export default function Events() {
 			activeFilter === 'all' || event.status === activeFilter;
 		return matchesSearch && matchesFilter;
 	});
+
+	// Pagination
+	const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
+	const startIndex = (currentPage - 1) * itemsPerPage;
+	const paginatedEvents = filteredEvents.slice(
+		startIndex,
+		startIndex + itemsPerPage
+	);
+
+	const handlePageChange = (page: number) => {
+		const newParams = new URLSearchParams(searchParams);
+		newParams.set('page', page.toString());
+		setSearchParams(newParams);
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	};
 
 	const counts = {
 		all: mockEvents.length,
@@ -165,15 +187,16 @@ export default function Events() {
 	];
 
 	return (
-		<div className="flex flex-col gap-4 md:gap-6 min-w-0 w-full">
+		<>
 			<PageHeader title="Events" />
-
-			<div className="flex flex-col gap-3 md:gap-4">
-				<SearchInput
-					value={searchQuery}
-					onChange={(value: string) => setSearchQuery(value)}
-					placeholder="Search events..."
-				/>
+			<div className="flex flex-col gap-4 md:gap-6 min-w-0 w-full max-w-7xl mx-auto  px-4 py-8">
+				<div className="b-6">
+					<SearchInput
+						value={searchQuery}
+						onChange={(value: string) => setSearchQuery(value)}
+						placeholder="Search events..."
+					/>
+				</div>
 
 				<FilterTabs
 					tabs={filters.map((f) => ({
@@ -184,33 +207,51 @@ export default function Events() {
 					activeTab={activeFilter}
 					onChange={handleFilterChange}
 				/>
-			</div>
 
-			<div aria-live="polite" aria-atomic="true" className="sr-only">
-				{filteredEvents.length} events found
-			</div>
-
-			{filteredEvents.length === 0 ? (
-				<div className="text-center py-12">
-					<p className="text-muted">No events found matching your criteria.</p>
+				<div aria-live="polite" aria-atomic="true" className="sr-only">
+					{filteredEvents.length} events found
 				</div>
-			) : (
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-					{filteredEvents.map((event) => (
-						<EventCard
-							key={event.id}
-							id={event.id}
-							name={event.name}
-							status={event.status}
-							startDate={event.startDate}
-							endDate={event.endDate}
-							teamsCount={event.teams}
-							maxTeams={event.maxTeams}
-							organizer={event.organizer}
+
+				{filteredEvents.length === 0 ? (
+					<div className="text-center py-12">
+						<p className="text-muted">
+							No events found matching your criteria.
+						</p>
+					</div>
+				) : (
+					<>
+						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+							{paginatedEvents.map((event) => (
+								<EventCard
+									key={event.id}
+									id={event.id}
+									name={event.name}
+									status={event.status}
+									startDate={event.startDate}
+									endDate={event.endDate}
+									teamsCount={event.teams}
+									maxTeams={event.maxTeams}
+									organizer={event.organizer}
+								/>
+							))}
+						</div>
+
+						<Pagination
+							currentPage={currentPage}
+							totalPages={Math.max(1, totalPages)}
+							onPageChange={handlePageChange}
+							itemsPerPage={itemsPerPage}
+							onItemsPerPageChange={(items) => {
+								const newParams = new URLSearchParams(searchParams);
+								newParams.set('perPage', items.toString());
+								newParams.delete('page');
+								setSearchParams(newParams);
+							}}
+							className="mt-8"
 						/>
-					))}
-				</div>
-			)}
-		</div>
+					</>
+				)}
+			</div>
+		</>
 	);
 }

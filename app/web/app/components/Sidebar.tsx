@@ -26,6 +26,24 @@ const navItems: NavItemConfig[] = [
 			{ to: '/instances', label: 'Instances', icon: 'instance' },
 		],
 	},
+	{
+		to: '/teams',
+		label: 'Teams',
+		icon: 'team',
+		children: [
+			{ to: '/teams', label: 'Browse Teams', icon: 'team' },
+			{ to: '/team', label: 'My Team', icon: 'team' },
+		],
+	},
+	{
+		to: '/friends',
+		label: 'Social',
+		icon: 'users',
+		children: [
+			{ to: '/friends', label: 'Friends', icon: 'users' },
+			{ to: '/users', label: 'Find Users', icon: 'users' },
+		],
+	},
 	{ to: '/signin', label: 'Sign In', icon: 'user' },
 ];
 

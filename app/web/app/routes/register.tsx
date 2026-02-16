@@ -71,7 +71,8 @@ export default function Page() {
 						type="text"
 						label="Username"
 						value={username}
-						onChange={(value) => {
+						onChange={(e) => {
+							const value = e.target.value;
 							setUsername(value);
 							handleChange('username', value, formData);
 						}}
@@ -88,7 +89,8 @@ export default function Page() {
 						type="email"
 						label="Email"
 						value={email}
-						onChange={(value) => {
+						onChange={(e) => {
+							const value = e.target.value;
 							setEmail(value);
 							handleChange('email', value, formData);
 						}}
@@ -105,7 +107,8 @@ export default function Page() {
 						type="password"
 						label="Password"
 						value={password}
-						onChange={(value) => {
+						onChange={(e) => {
+							const value = e.target.value;
 							setPassword(value);
 							handleChange('password', value, formData);
 							if (touched.confirmPassword) {
@@ -128,7 +131,8 @@ export default function Page() {
 						type="password"
 						label="Confirm Password"
 						value={confirmPassword}
-						onChange={(value) => {
+						onChange={(e) => {
+							const value = e.target.value;
 							setConfirmPassword(value);
 							handleChange('confirmPassword', value, formData);
 						}}
@@ -140,13 +144,10 @@ export default function Page() {
 						autoComplete="new-password"
 						required
 					/>
-
 					<Button type="submit" className="w-full">
 						Register
 					</Button>
-
 					<FormDivider />
-
 					<OAuthButton text="Register with" onClick={handleOAuth} />
 				</form>
 

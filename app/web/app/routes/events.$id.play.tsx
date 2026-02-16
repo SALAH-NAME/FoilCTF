@@ -275,7 +275,7 @@ export default function EventPlay({ params }: RouteParams) {
 														difficulty={challenge.difficulty}
 														firstBloodAvailable={challenge.firstBloodAvailable}
 														onClick={() => handleChallengeClick(challenge)}
-														className='lg:max-w-80 w-full lg:min-w-50'
+														className="lg:max-w-80 w-full lg:min-w-50"
 													/>
 												))}
 											</div>

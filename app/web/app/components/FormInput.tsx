@@ -1,18 +1,19 @@
 import { type ChangeEvent, type FocusEvent } from 'react';
 
 interface FormInputProps {
-	id: string;
+	id?: string;
 	name: string;
-	type: 'text' | 'email' | 'password';
+	type: 'text' | 'email' | 'password' | 'textarea';
 	label: string;
 	value: string;
-	onChange: (value: string) => void;
-	onBlur: () => void;
+	onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+	onBlur?: () => void;
 	error?: string;
 	touched?: boolean;
 	placeholder?: string;
 	autoComplete?: string;
 	required?: boolean;
+	rows?: number;
 }
 
 export default function FormInput({
@@ -28,37 +29,57 @@ export default function FormInput({
 	placeholder,
 	autoComplete,
 	required = false,
+	rows = 3,
 }: FormInputProps) {
-	const errorId = error ? `${id}-error` : undefined;
+	const inputId = id || name;
+	const errorId = error ? `${inputId}-error` : undefined;
 
 	return (
 		<div>
 			<label
-				htmlFor={id}
+				htmlFor={inputId}
 				className="block text-sm font-semibold text-dark mb-2"
 			>
 				{label}
 			</label>
-			<input
-				type={type}
-				id={id}
-				name={name}
-				value={value}
-				onChange={(e: ChangeEvent<HTMLInputElement>) =>
-					onChange(e.target.value)
-				}
-				onBlur={onBlur}
-				placeholder={placeholder}
-				autoComplete={autoComplete}
-				required={required}
-				aria-invalid={touched && error ? 'true' : 'false'}
-				aria-describedby={touched && error ? errorId : undefined}
-				className={`w-full px-4 py-2.5 rounded-md border ${
-					touched && error
-						? 'border-red-500 focus:border-red-500'
-						: 'border-dark/20 focus:border-primary'
-				} focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors`}
-			/>
+			{type === 'textarea' ? (
+				<textarea
+					id={inputId}
+					name={name}
+					value={value}
+					onChange={onChange}
+					onBlur={onBlur}
+					placeholder={placeholder}
+					required={required}
+					rows={rows}
+					aria-invalid={touched && error ? 'true' : 'false'}
+					aria-describedby={touched && error ? errorId : undefined}
+					className={`w-full px-4 py-2.5 rounded-md border ${
+						touched && error
+							? 'border-red-500 focus:border-red-500'
+							: 'border-dark/20 focus:border-primary'
+					} focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors`}
+				/>
+			) : (
+				<input
+					type={type}
+					id={inputId}
+					name={name}
+					value={value}
+					onChange={onChange}
+					onBlur={onBlur}
+					placeholder={placeholder}
+					autoComplete={autoComplete}
+					required={required}
+					aria-invalid={touched && error ? 'true' : 'false'}
+					aria-describedby={touched && error ? errorId : undefined}
+					className={`w-full px-4 py-2.5 rounded-md border ${
+						touched && error
+							? 'border-red-500 focus:border-red-500'
+							: 'border-dark/20 focus:border-primary'
+					} focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors`}
+				/>
+			)}
 			{touched && error && (
 				<p id={errorId} className="mt-1 text-sm text-red-600" role="alert">
 					{error}

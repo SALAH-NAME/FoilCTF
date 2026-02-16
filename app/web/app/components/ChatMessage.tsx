@@ -89,7 +89,7 @@ export default function ChatMessage({
 							{formattedTime}
 						</time>
 					</div>
-					<p className="text-sm text-dark break-words">{message}</p>
+					<p className="text-sm text-dark warp-break-words">{message}</p>
 				</div>
 			</div>
 		</div>

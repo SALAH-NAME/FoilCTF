@@ -1,26 +1,35 @@
-import { Link } from 'react-router';
+import { useState } from 'react';
+import { useSearchParams } from 'react-router';
+import PageHeader from '~/components/PageHeader';
+import SearchInput from '~/components/SearchInput';
+import Pagination from '~/components/Pagination';
 import Icon from '~/components/Icon';
-import Button from '~/components/Button';
-import BackLink from '~/components/BackLink';
-import PageSection from '~/components/PageSection';
-import InfoText from '~/components/InfoText';
+import type { Route } from './+types/events.$id.leaderboard';
 
-interface RouteParams {
-	params: {
-		id: string;
-	};
+interface LeaderboardEntry {
+	rank: number;
+	team: string;
+	score: number;
+	solves: number;
+	lastSolve: string;
 }
 
-export function meta({ params }: RouteParams) {
+export function meta({ params }: Route.ComponentProps) {
 	return [
 		{ title: `Leaderboard - Event ${params.id} - FoilCTF` },
 		{ name: 'description', content: `Event leaderboard for ${params.id}` },
 	];
 }
 
-export default function EventLeaderboard({ params }: RouteParams) {
+export default function EventLeaderboard({ params }: Route.ComponentProps) {
+	const [searchParams, setSearchParams] = useSearchParams();
+	const [searchQuery, setSearchQuery] = useState('');
+
+	const currentPage = parseInt(searchParams.get('page') || '1', 10);
+	const itemsPerPage = parseInt(searchParams.get('perPage') || '10', 10);
+
 	// Mock leaderboard data
-	const leaderboard = [
+	const allLeaderboard: LeaderboardEntry[] = [
 		{
 			rank: 1,
 			team: 'Elite Hackers',
@@ -93,104 +102,287 @@ export default function EventLeaderboard({ params }: RouteParams) {
 		},
 	];
 
+	const filteredLeaderboard = searchQuery
+		? allLeaderboard.filter((entry) =>
+				entry.team.toLowerCase().includes(searchQuery.toLowerCase())
+			)
+		: allLeaderboard;
+
+	const totalPages = Math.ceil(filteredLeaderboard.length / itemsPerPage);
+	const startIndex = (currentPage - 1) * itemsPerPage;
+	const paginatedLeaderboard = filteredLeaderboard.slice(
+		startIndex,
+		startIndex + itemsPerPage
+	);
+
+	const handleSearch = (query: string) => {
+		setSearchQuery(query);
+		const newParams = new URLSearchParams(searchParams);
+		if (query) {
+			newParams.set('q', query);
+		} else {
+			newParams.delete('q');
+		}
+		newParams.delete('page');
+		setSearchParams(newParams);
+	};
+
+	const handlePageChange = (page: number) => {
+		const newParams = new URLSearchParams(searchParams);
+		newParams.set('page', page.toString());
+		setSearchParams(newParams);
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	};
+
+	const getRankBadge = (rank: number) => {
+		if (rank === 1) {
+			return (
+				<span className="text-2xl" role="img" aria-label="First place">
+					🥇
+				</span>
+			);
+		}
+		if (rank === 2) {
+			return (
+				<span className="text-2xl" role="img" aria-label="Second place">
+					🥈
+				</span>
+			);
+		}
+		if (rank === 3) {
+			return (
+				<span className="text-2xl" role="img" aria-label="Third place">
+					🥉
+				</span>
+			);
+		}
+		return (
+			<span
+				className="text-lg font-semibold text-dark/70"
+				aria-label={`Rank ${rank}`}
+			>
+				#{rank}
+			</span>
+		);
+	};
+
 	return (
-		<div className="flex flex-col gap-6">
-			<BackLink to={`/events/${params.id}`}>Back to Event</BackLink>
+		<>
+			<PageHeader title={`Event ${params.id} Leaderboard`} />
 
-			<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-				<div className='ml-4'>
-					<h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
-						Leaderboard
-					</h1>
-					<p className="text-muted">Live rankings for Event {params.id}</p>
+			<main
+				id="main-content"
+				className="max-w-7xl mx-auto px-4 py-8 flex flex-col"
+			>
+				<div className="mb-6">
+					<SearchInput
+						value={searchQuery}
+						onChange={handleSearch}
+						placeholder="Search teams..."
+						aria-label="Search teams in leaderboard"
+					/>
 				</div>
-				<InfoText icon="user" className="text-sm text-muted">
-					{leaderboard.length} teams competing
-				</InfoText>
-			</div>
 
-			<div className="bg-surface border border-border rounded-md overflow-hidden">
-				<div className="overflow-x-auto">
-					<table className="w-full">
-						<thead className="bg-dark/5 border-b border-border">
-							<tr>
-								<th className="text-center py-3 px-2 md:py-4 md:px-6 text-xs md:text-sm font-semibold text-foreground">
-									Rank
-								</th>
-								<th className="text-center py-3 px-2 md:py-4 md:px-6 text-xs md:text-sm font-semibold text-foreground border-l border-border">
-									Team
-								</th>
-								<th className="text-center py-3 px-2 md:py-4 md:px-6 text-xs md:text-sm font-semibold text-foreground border-l border-border">
-									Score
-								</th>
-								<th className="text-center py-3 px-2 md:py-4 md:px-6 text-xs md:text-sm font-semibold text-foreground border-l border-border">
-									Solves
-								</th>
-								<th className="text-center py-3 px-2 md:py-4 md:px-6 text-xs md:text-sm font-semibold text-foreground border-l border-border">
-									Last Solve
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							{leaderboard.map((entry) => (
-								<tr
+				{filteredLeaderboard.length === 0 ? (
+					<div
+						className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
+						role="status"
+						aria-live="polite"
+					>
+						<p className="text-dark/60">
+							No teams found matching "{searchQuery}"
+						</p>
+					</div>
+				) : (
+					<>
+						<div
+							className="md:hidden space-y-4 mb-8"
+							role="list"
+							aria-label="Leaderboard entries"
+						>
+							{paginatedLeaderboard.map((entry) => (
+								<div
 									key={entry.rank}
-									className="border-b border-border last:border-0 hover:bg-dark/5 transition-colors"
+									role="listitem"
+									className="bg-white rounded-md p-4 border border-dark/10 hover:border-primary/30 transition-colors"
 								>
-									<td className="py-3 px-2 md:py-4 md:px-6">
-										<div className="flex items-center justify-center gap-2">
-											{entry.rank <= 3 ? (
-												<span className="text-xl md:text-2xl">
-													{entry.rank === 1
-														? '🥇'
-														: entry.rank === 2
-															? '🥈'
-															: '🥉'}
-												</span>
-											) : (
-												<span className="text-base md:text-lg font-semibold text-muted">
-													{entry.rank}
-												</span>
-											)}
+									<div className="flex items-center justify-between mb-3">
+										<div className="flex items-center gap-3">
+											<div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
+												{getRankBadge(entry.rank)}
+											</div>
+											<div>
+												<h3 className="font-semibold text-dark text-lg">
+													{entry.team}
+												</h3>
+												<p className="text-sm text-dark/60">
+													Rank #{entry.rank}
+												</p>
+											</div>
 										</div>
-									</td>
-									<td className="py-3 px-2 md:py-4 md:px-6 text-center border-l border-border">
-										<span className="font-semibold text-foreground text-sm md:text-base">
-											{entry.team}
-										</span>
-									</td>
-									<td className="py-3 px-2 md:py-4 md:px-6 text-center border-l border-border">
-										<span className="font-bold text-primary text-base md:text-lg">
-											{entry.score.toLocaleString()}
-										</span>
-									</td>
-									<td className="py-3 px-2 md:py-4 md:px-6 text-center border-l border-border">
-										<span className="text-muted text-sm md:text-base">
-											{entry.solves}
-										</span>
-									</td>
-									<td className="py-3 px-2 md:py-4 md:px-6 text-center border-l border-border">
-										<span className="text-xs md:text-sm text-muted">
-											{entry.lastSolve}
-										</span>
-									</td>
-								</tr>
+									</div>
+									<div className="grid grid-cols-3 gap-3 pt-3 border-t border-dark/10">
+										<div className="text-center">
+											<p className="text-xs text-dark/60 mb-1">Score</p>
+											<p className="font-bold text-primary text-lg">
+												{entry.score.toLocaleString()}
+											</p>
+										</div>
+										<div className="text-center">
+											<p className="text-xs text-dark/60 mb-1">Solves</p>
+											<p className="font-semibold text-dark">{entry.solves}</p>
+										</div>
+										<div className="text-center">
+											<p className="text-xs text-dark/60 mb-1">Last Solve</p>
+											<p className="font-medium text-dark text-xs">
+												{entry.lastSolve}
+											</p>
+										</div>
+									</div>
+								</div>
 							))}
-						</tbody>
-					</table>
-				</div>
-			</div>
+						</div>
 
-			<PageSection className="bg-primary/5 border-primary/20">
-				<h3 className="font-semibold text-foreground mb-2">
-					How Rankings Work
-				</h3>
-				<ul className="space-y-1 text-sm text-muted">
-					<li>• Teams are ranked by total score</li>
-					<li>• Each challenge has a point value</li>
-					<li>• Faster solves may earn bonus points</li>
-				</ul>
-			</PageSection>
-		</div>
+						<div className="hidden md:block bg-white rounded-md border border-dark/10 overflow-hidden mb-8">
+							<div className="overflow-x-auto">
+								<table
+									className="w-full"
+									role="table"
+									aria-label="Team leaderboard"
+								>
+									<thead>
+										<tr className="bg-dark/5 border-b border-dark/10">
+											<th
+												scope="col"
+												className="text-center py-4 px-6 text-sm font-semibold text-dark"
+											>
+												Rank
+											</th>
+											<th
+												scope="col"
+												className="text-left py-4 px-6 text-sm font-semibold text-dark"
+											>
+												Team
+											</th>
+											<th
+												scope="col"
+												className="text-center py-4 px-6 text-sm font-semibold text-dark"
+											>
+												Score
+											</th>
+											<th
+												scope="col"
+												className="text-center py-4 px-6 text-sm font-semibold text-dark"
+											>
+												Solves
+											</th>
+											<th
+												scope="col"
+												className="text-center py-4 px-6 text-sm font-semibold text-dark"
+											>
+												Last Solve
+											</th>
+										</tr>
+									</thead>
+									<tbody>
+										{paginatedLeaderboard.map((entry) => (
+											<tr
+												key={entry.rank}
+												className="border-b border-dark/10 last:border-0 hover:bg-dark/5 transition-colors"
+											>
+												<td className="py-4 px-6">
+													<div className="flex items-center justify-center">
+														{getRankBadge(entry.rank)}
+													</div>
+												</td>
+												<td className="py-4 px-6">
+													<span className="font-semibold text-dark">
+														{entry.team}
+													</span>
+												</td>
+												<td className="py-4 px-6 text-center">
+													<span className="font-bold text-primary text-lg">
+														{entry.score.toLocaleString()}
+													</span>
+												</td>
+												<td className="py-4 px-6 text-center">
+													<span className="text-dark/70 font-medium">
+														{entry.solves}
+													</span>
+												</td>
+												<td className="py-4 px-6 text-center">
+													<span className="text-sm text-dark/60">
+														{entry.lastSolve}
+													</span>
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+						</div>
+
+						<Pagination
+							currentPage={currentPage}
+							totalPages={Math.max(1, totalPages)}
+							onPageChange={handlePageChange}
+							itemsPerPage={itemsPerPage}
+							onItemsPerPageChange={(items) => {
+								const newParams = new URLSearchParams(searchParams);
+								newParams.set('perPage', items.toString());
+								newParams.delete('page');
+								setSearchParams(newParams);
+							}}
+							className="mt-auto"
+						/>
+					</>
+				)}
+
+				<div className="mt-8 bg-primary/5 border border-primary/20 rounded-md p-6">
+					<h3 className="font-semibold text-dark mb-3 flex items-center gap-2">
+						<Icon
+							name="info"
+							className="size-5 text-primary"
+							aria-hidden={true}
+						/>
+						How Rankings Work
+					</h3>
+					<ul className="space-y-2 text-sm text-dark/70">
+						<li className="flex items-start gap-2">
+							<span className="text-primary font-bold">•</span>
+							<span>
+								Teams are ranked by total score from solved challenges
+							</span>
+						</li>
+						<li className="flex items-start gap-2">
+							<span className="text-primary font-bold">•</span>
+							<span>Each challenge has a point value based on difficulty</span>
+						</li>
+						<li className="flex items-start gap-2">
+							<span className="text-primary font-bold">•</span>
+							<span>Faster solves may earn bonus points in some events</span>
+						</li>
+						<li className="flex items-start gap-2">
+							<span className="text-primary font-bold">•</span>
+							<span>Rankings update in real-time as challenges are solved</span>
+						</li>
+					</ul>
+				</div>
+
+				<div
+					className="sr-only"
+					role="status"
+					aria-live="polite"
+					aria-atomic="true"
+				>
+					{searchQuery && (
+						<>
+							{filteredLeaderboard.length} team
+							{filteredLeaderboard.length !== 1 ? 's' : ''} found
+						</>
+					)}
+				</div>
+			</main>
+		</>
 	);
 }

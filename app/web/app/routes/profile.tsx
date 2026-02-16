@@ -445,7 +445,8 @@ export default function Page() {
 						type="email"
 						label="New Email Address"
 						value={emailForm.newEmail}
-						onChange={(value) => {
+						onChange={(e) => {
+							const value = e.target.value;
 							setEmailForm((prev) => ({ ...prev, newEmail: value }));
 							handleEmailChange('email', value, emailForm);
 						}}
@@ -463,7 +464,8 @@ export default function Page() {
 						type="password"
 						label="Current Password"
 						value={emailForm.password}
-						onChange={(value) => {
+						onChange={(e) => {
+							const value = e.target.value;
 							setEmailForm((prev) => ({ ...prev, password: value }));
 							handleEmailChange('password', value, emailForm);
 						}}
@@ -508,7 +510,8 @@ export default function Page() {
 						type="password"
 						label="Current Password"
 						value={passwordForm.currentPassword}
-						onChange={(value) => {
+						onChange={(e) => {
+							const value = e.target.value;
 							setPasswordForm((prev) => ({ ...prev, currentPassword: value }));
 							handlePasswordChange('currentPassword', value, passwordForm);
 						}}
@@ -529,7 +532,8 @@ export default function Page() {
 						type="password"
 						label="New Password"
 						value={passwordForm.newPassword}
-						onChange={(value) => {
+						onChange={(e) => {
+							const value = e.target.value;
 							setPasswordForm((prev) => ({ ...prev, newPassword: value }));
 							handlePasswordChange('newPassword', value, passwordForm);
 						}}
@@ -551,7 +555,8 @@ export default function Page() {
 						type="password"
 						label="Confirm New Password"
 						value={passwordForm.confirmPassword}
-						onChange={(value) => {
+						onChange={(e) => {
+							const value = e.target.value;
 							setPasswordForm((prev) => ({ ...prev, confirmPassword: value }));
 							handlePasswordChange('confirmPassword', value, passwordForm);
 						}}
@@ -636,7 +641,8 @@ export default function Page() {
 								type="text"
 								label=""
 								value={deleteForm.confirmation}
-								onChange={(value) => {
+								onChange={(e) => {
+									const value = e.target.value;
 									setDeleteForm((prev) => ({
 										...prev,
 										confirmation: value,
@@ -665,8 +671,8 @@ export default function Page() {
 							type="password"
 							label="Current Password"
 							value={deleteForm.password}
-							onChange={(value) =>
-								setDeleteForm((prev) => ({ ...prev, password: value }))
+							onChange={(e) =>
+								setDeleteForm((prev) => ({ ...prev, password: e.target.value }))
 							}
 							onBlur={() => {}}
 							placeholder="Enter your password"
