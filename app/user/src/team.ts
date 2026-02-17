@@ -225,7 +225,18 @@ export const sendJoinRequest = async(req: Request, res: Response, next: NextFunc
 			if (team.isLocked === true) {
 				throw { status: 403 };
 			}
-		
+
+			const existingRequest = await tx
+				.select()
+				.from(teamJoinRequests)
+				.where(and(
+					eq(teamJoinRequests.username, decodedUser.username),
+					eq(teamJoinRequests.teamName, team.name)
+				));
+			if (existingRequest) {
+				throw { status: 403 };
+			}
+
 			await tx
 				.insert(teamJoinRequests)
 				.values({
