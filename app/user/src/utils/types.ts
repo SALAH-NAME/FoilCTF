@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import { users, sessions, profiles } from '../db/schema';
-import { boolean, z } from 'zod';
+import { boolean, object, z } from 'zod';
 
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
@@ -13,6 +13,16 @@ export interface Post {
 
 export interface AuthRequest extends Request {
 	user?: User;
+}
+
+export class FoilCTF_error extends Error {
+	public statusCode: number;
+	constructor(message: string, statusCode: number) {
+		super(message);
+		this.statusCode = statusCode;
+
+		this.name = 'FoilCTF_error';
+	}
 }
 
 const PASSWORD_MIN_CHARACTERS = 8;

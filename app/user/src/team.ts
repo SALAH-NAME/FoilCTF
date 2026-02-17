@@ -1,30 +1,31 @@
 import { NextFunction, Request, Response } from 'express';
 import { db } from './utils/db';
-import { eq, and, sql, ne } from 'drizzle-orm';
+import { eq, and, sql, ne, ilike } from 'drizzle-orm';
 import { users, teams, teamMembers, teamJoinRequests, notifications, notificationUsers } from './db/schema';
+import { FoilCTF_error } from './utils/types';
 
 export const createTeam = async(req: Request, res: Response) => {
 	const decodedUser = res.locals.user;
 	const newTeamName = req.body.name;
 
+	const [dbUser] = await db
+				.select()
+				.from(users)
+				.where(eq(users.id, decodedUser.id));
+	if (!dbUser || dbUser.teamName) {
+		return res.json(new FoilCTF_error('Forbidden', 403));
+	}
+
+	const [existingTeam] = await db
+				.select()
+				.from(teams)
+				.where(eq(teams.name, newTeamName));
+	if (existingTeam) {
+		return res.json(new FoilCTF_error('name already used', 409));
+	}
+
 	try {
 		await db.transaction(async (tx) => {
-			const [dbUser] = await tx
-						.select()
-						.from(users)
-						.where(eq(users.id, decodedUser.id));
-			if (!dbUser || dbUser.teamName) {
-				throw { status: 403 }; // I know abderrahim is gonna hate this saying "it is supposed to be used for errors" but AFAIK there's no other way to specify the right status code
-                                        // you gotta do what you gotta do :)
-			}
-
-			const [existingTeam] = await tx
-						.select()
-						.from(teams)
-						.where(eq(teams.name, newTeamName));
-			if (existingTeam) {
-				throw { status: 409 };
-			}
 
 			await tx.insert(teams)
 						.values({
@@ -38,64 +39,76 @@ export const createTeam = async(req: Request, res: Response) => {
 			});
 			await tx.update(users).set({ teamName: newTeamName }).where(eq(users.id, decodedUser.id));
 		});
+
 		return res.status(201).send();
-	} catch (err: any) { 
-		if (err.status)
-			return res.status(err.status).send();
+	} catch (err) {
 		console.error(err);
 		return res.status(500).send();
 	}
 }
 
 export const getTeamDetails = async(req: Request, res: Response) => {
+	const limit = Number(req.query.limit) || 10;
+	const page = Number(req.query.page) || 1;
+
 	const	[team] = await db
 				.select()
 				.from(teams)
-				.where(eq(teams.name, req.params.teamName as string));
+				.where(eq(teams.name, req.params.teamName as string))
+				.limit(limit)
+				.offset(limit * (page - 1)); // redundant
+
 	if (!team)
-		return res.status(404).send();
-	
-	const {name, captainName, membersCount, ...privateInfos} = team;
+		return res.json(new FoilCTF_error('Not Found', 404));
+
+	const {name, captainName, membersCount, description, isLocked, ...privateInfos} = team;
 
 	return res.json({
 			name: name,
 			captainName: captainName,
 			membersCount: membersCount,
+			description: description,
+			isLocked: isLocked,
 			});
 }
 
 export const getTeamMembers = async(req: Request, res: Response) => {
+	const limit = Number(req.query.limit) || 10;
+	const page = Number(req.query.page) || 1;
+
 	const	members = await db
 				.select()
 				.from(teamMembers)
-				.where(eq(teamMembers.teamName, req.params.teamName as string));
+				.where(eq(teamMembers.teamName, req.params.teamName as string))
+				.limit(limit)
+				.offset(limit * (page - 1));
+
 	if (!members || members.length === 0)
-		return res.status(404).send();
+		return res.json(new FoilCTF_error('Not Found', 404));
 
-	const	membersNames = members.map( ({ memberName }) => memberName ); // more infos maybe? e.g user avatar?
-
+	const	membersNames = members.map( ({ memberName }) => memberName );
 	return res.json(membersNames);
 }
 
 export const leaveTeam = async(req: Request, res: Response, next: NextFunction) => {
 	const	decodedUser = res.locals.user;
 
+	const	[team] = await db
+				.select()
+				.from(teams)
+				.where(eq(teams.name, req.params.teamName as string));
+	if (!team) {
+		return res.json(new FoilCTF_error('Forbidden', 403));
+	}
+	if (team.captainName === decodedUser.username && team.membersCount != 1) {
+		return res.json(new FoilCTF_error('Forbidden', 403));	
+	}
+
 	try {
 		await db.transaction(async (tx) => {
-			const	[team] = await tx
-						.select()
-						.from(teams)
-						.where(eq(teams.name, req.params.teamName as string));
-			if (!team) {
-				throw { status: 403 };
-			}
-		
-			if (team.captainName === decodedUser.username && team.membersCount != 1) {
-				throw { status: 403 };	
-			}
 		
 			await tx.delete(teamMembers).where(eq(teamMembers.memberName, decodedUser.username));
-			await tx.update(teams).set({ membersCount: team.membersCount - 1 }).where(eq(teams.name, team.name));
+			await tx.update(teams).set({ membersCount: sql`${teams.membersCount} - 1` }).where(eq(teams.name, team.name));
 			await tx.update(users).set({ teamName: null }).where(eq(users.username, decodedUser.username));
 			if (team.membersCount === 1) { // last member of the team
 				await tx.delete(teamJoinRequests).where(eq(teamJoinRequests.teamName, team.name));
@@ -106,10 +119,9 @@ export const leaveTeam = async(req: Request, res: Response, next: NextFunction) 
 			res.locals.contents = { title: "", message: `${decodedUser.username} has left the team` };
 			res.locals.exception = decodedUser.username;
 		});
+
 		return next();
-	} catch (err: any) { 
-		if (err.status)
-			return res.status(err.status).send();
+	} catch (err) {
 		console.error(err);
 		return res.status(500).send();
 	}
@@ -119,30 +131,31 @@ export const deleteMember = async(req: Request, res: Response, next: NextFunctio
 	const	requestedUsername = req.params.username as string;
 	const	decodedUser = res.locals.user;
 
+	const	[team] = await db
+				.select()
+				.from(teams)
+				.where(eq(teams.captainName, decodedUser.username));
+	if (!team) {
+		return res.json(new FoilCTF_error('Forbidden', 403));	
+	}
+
+	const [DBrequstedMember] = await db.
+		select()
+		.from(teamMembers)
+		.where(and(
+			eq(teamMembers.teamName, req.params.teamName as string),
+			eq(teamMembers.memberName, requestedUsername)
+	));
+	if (!DBrequstedMember || DBrequstedMember.teamName !== team.name) {
+		return res.json(new FoilCTF_error('Forbidden', 403));	
+	}
+
+	if (requestedUsername === decodedUser.username) {
+		return res.json(new FoilCTF_error('Forbidden', 403));	
+	}
+
 	try {
 		await db.transaction(async (tx) => {
-			const	[team] = await tx
-						.select()
-						.from(teams)
-						.where(eq(teams.captainName, decodedUser.username));
-			if (!team) {
-				throw { status: 403 };	
-			}
-
-			const [DBrequstedMember] = await tx.
-											select()
-											.from(teamMembers)
-											.where(and(
-												eq(teamMembers.teamName, req.params.teamName as string),
-												eq(teamMembers.memberName, requestedUsername)
-											));
-			if (!DBrequstedMember || DBrequstedMember.teamName !== team.name) {
-				throw { status: 403 };	
-			}
-		
-			if (requestedUsername === decodedUser.username) {
-				throw { status: 400 };
-			}
 
 			await tx.delete(teamMembers).where(eq(teamMembers.memberName, requestedUsername));
 			await tx.update(teams).set({ membersCount: team.membersCount - 1 }).where(eq(teams.name, team.name));
@@ -152,117 +165,104 @@ export const deleteMember = async(req: Request, res: Response, next: NextFunctio
 			res.locals.contents = { title: "", message: `${decodedUser.username} has been deleted` };
 			res.locals.exception = decodedUser.username;
 		});
+
 		return next();
-	} catch (err: any) { 
-		if (err.status)
-			return res.status(err.status).send();
+	} catch (err) {
 		console.error(err);
 		return res.status(500).send();
 	}
 }
 
 export const handOverLeadership = async(req: Request, res: Response, next: NextFunction) => {
-	const requestedUsername = req.params?.username as string;
+	const requestedUsername = req.params.username as string;
 	const decodedUser = res.locals.user;
 
-	try {
-		await db.transaction(async (tx) => {
-			const	[team] = await tx
-						.select()
-						.from(teams)
-						.where(eq(teams.captainName, decodedUser.username));
-			if (!team) {
-				throw { status: 403 };	
-			}
-		
-			const [member] = await tx
-						.select()
-						.from(teamMembers)
-						.where(and(
-							eq(teamMembers.memberName, requestedUsername),
-							eq(teamMembers.teamName, team.name),
-							));
-			if (!member) {
-				throw { status: 403 };	
-			}
-		
-			await tx.update(teams).set({ captainName: requestedUsername }).where(eq(teams.name, team.name));
-
-			res.locals.captainName = member.memberName; // new captain
-			res.locals.teamName = team.name;
-			res.locals.contents = { title: "", message: `${decodedUser.username} made you the captain of the team` };
-		});
-		return next();
-	} catch (err: any) { 
-		if (err.status)
-			return res.status(err.status).send();
-		console.error(err);
-		return res.status(500).send();
+	const	[team] = await db
+				.select()
+				.from(teams)
+				.where(eq(teams.captainName, decodedUser.username));
+	if (!team) {
+		return res.json(new FoilCTF_error('Forbidden', 403));
 	}
+
+	const [member] = await db
+				.select()
+				.from(teamMembers)
+				.where(and(
+					eq(teamMembers.memberName, requestedUsername),
+					eq(teamMembers.teamName, team.name),
+					));
+	if (!member) {
+		return res.json(new FoilCTF_error('Forbidden', 403));
+	}
+
+	await db.update(teams).set({ captainName: requestedUsername }).where(eq(teams.name, team.name));
+
+	res.locals.captainName = member.memberName; // new captain
+	res.locals.teamName = team.name;
+	res.locals.contents = { title: "", message: `${decodedUser.username} made you the captain of the team` };
+
+	return next();
 }
 
 export const sendJoinRequest = async(req: Request, res: Response, next: NextFunction) => {
-	const	requestedTeamName = req.params?.teamName as string;
+	const	requestedTeamName = req.params.teamName as string;
 	const decodedUser = res.locals.user;
 
-	try {
-		await db.transaction(async (tx) => {
-			const [dbUser] = await tx
-						.select()
-						.from(users)
-						.where(eq(users.id, decodedUser.id));
-			if (!dbUser || dbUser.teamName) {
-				throw { status: 403 };	
-			}
-		
-			const	[team] = await tx
-						.select()
-						.from(teams)
-						.where(eq(teams.name, requestedTeamName));
-			if (!team) {
-				throw { status: 404 };	
-			}
-			if (team.isLocked === true) {
-				throw { status: 403 };
-			}
-
-			const existingRequest = await tx
+	const [dbUser] = await db
 				.select()
-				.from(teamJoinRequests)
-				.where(and(
-					eq(teamJoinRequests.username, decodedUser.username),
-					eq(teamJoinRequests.teamName, team.name)
-				));
-			if (existingRequest) {
-				throw { status: 403 };
-			}
-
-			await tx
-				.insert(teamJoinRequests)
-				.values({
-					teamName: requestedTeamName,
-					username: decodedUser.username
-					});
-
-			res.locals.captainName = team.captainName;
-			res.locals.teamName = team.name;
-			res.locals.contents = { title: "", message: `${decodedUser.username} sent a join request` };
-		});
-		return next();
-	} catch (err: any) { 
-		if (err.status)
-			return res.status(err.status).send();
-		console.error(err);
-		return res.status(500).send();
+				.from(users)
+				.where(eq(users.id, decodedUser.id));
+	if (!dbUser || dbUser.teamName) {
+		return res.json(new FoilCTF_error('Forbidden', 403));
 	}
+
+	const	[team] = await db
+				.select()
+				.from(teams)
+				.where(eq(teams.name, requestedTeamName));
+	if (!team) {
+		return res.json(new FoilCTF_error('Not Found', 404));
+	}
+	if (team.isLocked === true) {
+		return res.json(new FoilCTF_error('Forbidden', 403));
+	}
+
+	const existingRequests = await db
+		.select()
+		.from(teamJoinRequests)
+		.where(and(
+			eq(teamJoinRequests.username, decodedUser.username),
+			eq(teamJoinRequests.teamName, team.name)
+		));
+	if (existingRequests.length > 0) {
+		return res.json(new FoilCTF_error('Forbidden', 403));
+	}
+
+	await db
+		.insert(teamJoinRequests)
+		.values({
+			teamName: requestedTeamName,
+			username: decodedUser.username
+			});
+
+	res.locals.captainName = team.captainName;
+	res.locals.teamName = team.name;
+	res.locals.contents = { title: "", message: `${decodedUser.username} sent a join request` };
+
+	return next();
 }
 
-export const cancelJoinRequest = async(res: Response) => {
+export const cancelJoinRequest = async(req: Request, res: Response) => {
 	const decodedUser = res.locals.user;
 
 	await db
 		.delete(teamJoinRequests)
-		.where(eq(teamJoinRequests.username, decodedUser.username));
+		.where(and(
+			eq(teamJoinRequests.username, decodedUser.username),
+			eq(teamJoinRequests.teamName, req.params.teamName as string)
+			)
+		);
 
 	return res.status(204).send();
 }
@@ -271,34 +271,35 @@ export const acceptJoinRequest = async(req: Request, res: Response, next: NextFu
 	const requestedUsername = req.params.username as string;
 	const decodedUser = res.locals.user;
 
+	const [dbUser] = await db
+				.select()
+				.from(users)
+				.where(eq(users.username, requestedUsername));
+	if (!dbUser || dbUser.teamName) {
+		return res.json(new FoilCTF_error('Forbidden', 403));
+	}
+
+	const	[team] = await db
+				.select()
+				.from(teams)
+				.where(eq(teams.captainName, decodedUser.username));
+	if (!team) {
+		return res.json(new FoilCTF_error('Forbidden', 403));
+	}
+
+	const [teamJoinRequest] = await db
+				.select()
+				.from(teamJoinRequests)
+				.where(and(
+					eq(teamJoinRequests.username, requestedUsername),
+					eq(teamJoinRequests.teamName, team.name),
+					));
+	if (!teamJoinRequest) {
+		return res.json(new FoilCTF_error('Not Found', 404));
+	}
+
 	try {
 		await db.transaction(async (tx) => {
-			const [dbUser] = await tx
-						.select()
-						.from(users)
-						.where(eq(users.username, requestedUsername));
-			if (!dbUser || dbUser.teamName) {
-				throw { status: 403 };	
-			}
-		
-			const	[team] = await tx
-						.select()
-						.from(teams)
-						.where(eq(teams.captainName, decodedUser.username));
-			if (!team) {
-				throw { status: 403 };	
-			}
-		
-			const [teamJoinRequest] = await tx
-						.select()
-						.from(teamJoinRequests)
-						.where(and(
-							eq(teamJoinRequests.username, requestedUsername),
-							eq(teamJoinRequests.teamName, team.name),
-							));
-			if (!teamJoinRequest) {
-				throw { status: 404 };	
-			}
 		
 			await tx.delete(teamJoinRequests).where(
 				and(
@@ -317,10 +318,9 @@ export const acceptJoinRequest = async(req: Request, res: Response, next: NextFu
 			res.locals.contents = { title: "new member!", message: `${teamJoinRequest.username} joined the team` };
 			res.locals.exception = decodedUser.username;
 		});
+
 		return next();
-	} catch (err: any) { 
-		if (err.status)
-			return res.status(err.status).send();
+	} catch (err) { 
 		console.error(err);
 		return res.status(500).send();
 	}
@@ -330,40 +330,34 @@ export const declineJoinRequest = async(req: Request, res: Response) => {
 	const requestedUsername = req.params.username as string;
 	const decodedUser = res.locals.user;
 
-	try {
-		await db.transaction(async (tx) => {
-
-			const [team] = await tx
-						.select()
-						.from(teams)
-						.where(eq(teams.captainName, decodedUser.username));
-			if (!team) {
-				throw { status: 403 };
-			}
-		
-			await tx.delete(teamJoinRequests).where(
-				and(
-					eq(teamJoinRequests.teamName, team.name),
-					eq(teamJoinRequests.username, requestedUsername)
-					)
-			);
-		});
-		return res.status(204).send();
-	} catch (err: any) { 
-		if (err.status)
-			return res.status(err.status).send();
-		console.error(err);
-		return res.status(500).send();
+	const [team] = await db
+				.select()
+				.from(teams)
+				.where(eq(teams.captainName, decodedUser.username));
+	if (!team) {
+		return res.json(new FoilCTF_error('Forbidden', 403));
 	}
+	await db.delete(teamJoinRequests).where(
+		and(
+			eq(teamJoinRequests.teamName, team.name),
+			eq(teamJoinRequests.username, requestedUsername)
+			)
+	);
+
+	return res.status(204).send();
 }
 
-export const getSentRequests = async(res: Response) => {
+export const getSentRequests = async(req: Request, res: Response) => {
+	const limit = Number(req.query.limit) || 10;
+	const page = Number(req.query.page) || 1;
 	const decodedUser = res.locals.user;
 
 	const sentRequests = await db
 		.select()
 		.from(teamJoinRequests)
-		.where(eq(teamJoinRequests.username, decodedUser.username));
+		.where(eq(teamJoinRequests.username, decodedUser.username))
+		.limit(limit)
+		.offset(limit * (page - 1));
 
 	return res.json(sentRequests);
 }
@@ -371,16 +365,16 @@ export const getSentRequests = async(res: Response) => {
 export const notifyCaptain = async(res: Response) => {
 	const captainName = res.locals.captainName;
 
+	const [captainUser] = await db
+		.select()
+		.from(users)
+		.where(eq(users.username, captainName));
+	if (!captainUser) {
+		return res.json(new FoilCTF_error('Forbidden', 403));
+	}
+
 	try {
 		await db.transaction(async (tx) => {
-			const [captainUser] = await tx
-				.select()
-				.from(users)
-				.where(eq(users.username, captainName));
-			if (!captainUser) {
-				throw { status: 403 };
-			}
-
 			const [insertedNotification] = await tx
 				.insert(notifications)
 				.values(res.locals.contents)
@@ -402,10 +396,9 @@ export const notifyCaptain = async(res: Response) => {
 				.set({ isPublished: true})
 				.where(eq(notifications.id, insertedNotification.id));
 		});
+
 		return res.status(200).send();
-	} catch (err: any) { 
-		if (err.status)
-			return res.status(err.status).send();
+	} catch (err) {
 		console.error(err);
 		return res.status(500).send();
 	}
@@ -415,21 +408,21 @@ export const notifyAllMembers = async(res: Response) => {
 	const teamName = res.locals.teamName;
 	const exception = res.locals.exception;
 
+	const membersToNotify = await db // data race?
+		.select()
+		.from(users)
+		.where(
+			and(
+				eq(users.teamName, teamName),
+				ne(users.username, exception),
+			)
+		);
+	if (membersToNotify.length === 0) {
+		return res.status(200).send();
+	}
+
 	try {
 		await db.transaction(async (tx) => {
-			const membersToNotify = await tx
-				.select()
-				.from(users)
-				.where(
-					and(
-						eq(users.teamName, teamName),
-						ne(users.username, exception),
-					)
-				);
-			if (membersToNotify.length === 0) {
-				throw { status: 200 }; // :)))
-			}
-
 			const [insertedNotification] = await tx
 				.insert(notifications)
 				.values(res.locals.contents)
@@ -451,10 +444,9 @@ export const notifyAllMembers = async(res: Response) => {
 				.set({ isPublished: true})
 				.where(eq(notifications.id, insertedNotification.id));
 		});
+
 		return res.status(200).send();
-	} catch (err: any) { 
-		if (err.status)
-			return res.status(err.status).send();
+	} catch (err) {
 		console.error(err);
 		return res.status(500).send();
 	}
@@ -465,32 +457,47 @@ export const updateTeam = async(req: Request, res: Response, next: NextFunction)
 	const isLocked = req.body.isLocked;
 	const description = req.body.description;
 
-	try {
-		await db.transaction(async (tx) => {
-			const [team] = await tx
-				.select()
-				.from(teams)
-				.where(eq(teams.captainName, decodedUser.username));
-			if (!team) {
-				throw { status: 403 };	
-			}
-
-			if (isLocked !== undefined || description !== undefined) {
-				await tx
-				.update(teams)
-				.set({
-					isLocked: isLocked,
-					description: description
-				})
-				.where(eq(teams.name, team.name));
-			}
-		});
-		return res.status(201).send();
-	} catch (err: any) { 
-		if (err.status)
-			return res.status(err.status).send();
-		console.error(err);
-		return res.status(500).send();
+	const [team] = await db
+		.select()
+		.from(teams)
+		.where(eq(teams.captainName, decodedUser.username));
+	if (!team) {
+		return res.json(new FoilCTF_error('Forbidden', 403));
 	}
+
+	if (isLocked !== undefined || description !== undefined) {
+		await db
+		.update(teams)
+		.set({
+			isLocked: isLocked,
+			description: description
+		})
+		.where(eq(teams.name, team.name));
+	}
+
+	return res.status(201).send();
+}
+
+export const getTeams = async(req: Request, res: Response) => {
+	const limit = Number(req.query.limit) || 10;
+	const page = Number(req.query.page) || 1;
+	const search = req.query.q as string;
+
+	const dbTeams = await db
+		.select()
+		.from(teams)
+		.where(search ? ilike(teams.name, `${search}%`) : undefined)
+		.limit(limit)
+		.offset(limit * (page - 1));
+
+	const dbTeamsPublicData = dbTeams.map( (team) => ({
+		name: team.name,
+		captainName: team.captainName,
+		membersCount: team.membersCount,
+		description: team.description,
+		isLocked: team.isLocked,
+	}));
+
+	return res.json(dbTeamsPublicData);
 }
 

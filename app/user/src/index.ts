@@ -49,6 +49,7 @@ import {
 	notifyAllMembers,
 	notifyCaptain,
 	updateTeam,
+	getTeams,
 } from './team';
 
 const app = express();
@@ -144,7 +145,7 @@ app.delete(
 	notifyAllMembers,
 );
 app.put(
-	'/api/teams/:username/captain',
+	'/api/teams/captain/:username',
 	authenticateToken,
 	handOverLeadership,
 	notifyCaptain,
@@ -161,18 +162,18 @@ app.delete(
 	cancelJoinRequest,
 );
 app.put(
-	'/api/teams/:username/request',
+	'/api/teams/request/:username',
 	authenticateToken,
 	acceptJoinRequest,
 	notifyAllMembers,
 );
 app.delete(
-	'/api/teams/:username/request',
+	'/api/teams/request/:username',
 	authenticateToken,
 	declineJoinRequest,
 );
 app.get(
-	'/api/teams/:username/requests',
+	'/api/teams/requests/:username',
 	authenticateToken,
 	getSentRequests,
 );
@@ -181,6 +182,10 @@ app.put(
 	middleware_schema_validate(updateTeamSchema),
 	authenticateToken,
 	updateTeam,
+);
+app.get(
+	'/api/teams/',
+	getTeams,
 )
 
 app.use(middleware_error);

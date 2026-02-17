@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS team_members (
   team_name    TEXT NOT NULL,
   member_name  TEXT NOT NULL,
 
-  CONSTRAINT constraint_team FOREIGN KEY (team_name) REFERENCES teams(name) ON UPDATE CASCADE,
+  CONSTRAINT constraint_team FOREIGN KEY (team_name) REFERENCES teams(name) ON DELETE CASCADE,
   CONSTRAINT constraint_member FOREIGN KEY (member_name) REFERENCES users(username) ON UPDATE CASCADE
 );
 CREATE TABLE IF NOT EXISTS team_join_requests (
