@@ -174,7 +174,7 @@ export const deleteMember = async(req: Request, res: Response, next: NextFunctio
 }
 
 export const handOverLeadership = async(req: Request, res: Response, next: NextFunction) => {
-	const requestedUsername = req.params.username as string;
+	const requestedUsername = req.body.username;
 	const decodedUser = res.locals.user;
 
 	const	[team] = await db

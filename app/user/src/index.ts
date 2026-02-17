@@ -11,6 +11,7 @@ import {
 	updateUserSchema,
 	teamCreationSchema,
 	updateTeamSchema,
+	transferLeadershipSchema,
 } from './utils/types';
 import {
 	authenticateToken,
@@ -127,8 +128,8 @@ app.get('/health', (_req, res) => {
 // SECTION: Teams
 app.post(
 	'/api/teams/',
-	authenticateToken,
 	middleware_schema_validate(teamCreationSchema),
+	authenticateToken,
 	createTeam,
 );
 app.get(
@@ -152,7 +153,8 @@ app.delete(
 	notifyAllMembers,
 );
 app.put(
-	'/api/teams/captain/:username',
+	'/api/teams/:teamName/captain',
+	middleware_schema_validate(transferLeadershipSchema),
 	authenticateToken,
 	handOverLeadership,
 	notifyCaptain,

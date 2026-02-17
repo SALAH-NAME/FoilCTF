@@ -92,5 +92,15 @@ export const updateTeamSchema = z.object({
 	body: z.object({
 		isLocked: z.coerce.boolean().optional(),
 		description: z.string().max(500).optional(),
-	})
+	}),
 });
+
+export const transferLeadershipSchema = z.object({
+	body: z.object({
+		username: z
+		.string()
+		.min(3)
+		.max(15)
+		.regex(/^[a-zA-Z0-9_-]+$/),
+	}),
+})
