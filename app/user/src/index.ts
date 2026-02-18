@@ -51,6 +51,7 @@ import {
 	notifyCaptain,
 	updateTeam,
 	getTeams,
+	getIncomingRequests,
 } from './team';
 import { route_user_me } from './user';
 
@@ -196,6 +197,11 @@ app.get(
 	'/api/teams/',
 	getTeams,
 );
+app.get(
+	'/api/teams/requests',
+	authenticateToken,
+	getIncomingRequests,
+)
 
 app.use(middleware_error);
 

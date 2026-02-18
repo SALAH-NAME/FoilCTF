@@ -100,7 +100,7 @@ export const getTeamMembers = async(req: Request, res: Response) => {
 	});
 }
 
-export const leaveTeam = async(req: Request, res: Response, next: NextFunction) => {
+export const leaveTeam = async(req: Request, res: Response, next: NextFunction) => { // data race?
 	const	decodedUser = res.locals.user;
 
 	const	[team] = await db
@@ -137,23 +137,24 @@ export const leaveTeam = async(req: Request, res: Response, next: NextFunction) 
 	}
 }
 
-export const deleteMember = async(req: Request, res: Response, next: NextFunction) => {
-	const	requestedUsername = req.params.username as string;
-	const	decodedUser = res.locals.user;
+export const deleteMember = async(req: Request, res: Response, next: NextFunction) => { // data race?
+	const requestedUsername = req.params.username as string;
+	const requestedTeamName = req.params.teamName as string;
+	const decodedUser = res.locals.user;
 
 	const	[team] = await db
 				.select()
 				.from(teams)
 				.where(eq(teams.captainName, decodedUser.username));
-	if (!team) {
-		return res.json(new FoilCTF_error('Forbidden', 403));	
+	if (!team || requestedTeamName !== team.name) {
+		return res.json(new FoilCTF_error('Forbidden', 403));
 	}
 
 	const [DBrequstedMember] = await db.
 		select()
 		.from(teamMembers)
 		.where(and(
-			eq(teamMembers.teamName, req.params.teamName as string),
+			eq(teamMembers.teamName, requestedTeamName),
 			eq(teamMembers.memberName, requestedUsername)
 	));
 	if (!DBrequstedMember || DBrequstedMember.teamName !== team.name) {
@@ -277,7 +278,7 @@ export const cancelJoinRequest = async(req: Request, res: Response) => {
 	return res.status(204).send();
 }
 
-export const acceptJoinRequest = async(req: Request, res: Response, next: NextFunction) => {
+export const acceptJoinRequest = async(req: Request, res: Response, next: NextFunction) => { // data race?
 	const requestedTeamName = req.params.teamName as string;
 	const requestedUsername = req.params.username as string;
 	const decodedUser = res.locals.user;
@@ -294,7 +295,11 @@ export const acceptJoinRequest = async(req: Request, res: Response, next: NextFu
 				.select()
 				.from(teams)
 				.where(eq(teams.captainName, decodedUser.username));
-	if (!team || team.name !== requestedTeamName) {
+	if (  !team
+		|| team.name !== requestedTeamName
+		|| team.isLocked === true
+		|| team.membersCount >= team.maxMembers
+		) {
 		return res.json(new FoilCTF_error('Forbidden', 403));
 	}
 
@@ -506,7 +511,7 @@ export const updateTeam = async(req: Request, res: Response, next: NextFunction)
 export const getTeams = async(req: Request, res: Response) => {
 	const limit = Number(req.query.limit) || 10;
 	const page = Number(req.query.page) || 1;
-	const search = req.query.q as string;
+	const search = req.query.q as string; // filter just as other gets?
 
 	const dbTeams = await db
 		.select()
@@ -526,3 +531,5 @@ export const getTeams = async(req: Request, res: Response) => {
 	return res.json(dbTeamsPublicData);
 }
 
+export const getIncomingRequests = async(req: Request, res: Response) => {
+}
