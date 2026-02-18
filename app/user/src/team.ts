@@ -116,11 +116,13 @@ export const leaveTeam = async(req: Request, res: Response, next: NextFunction) 
 
 	try {
 		await db.transaction(async (tx) => {
-		
+
 			await tx.delete(teamMembers).where(eq(teamMembers.memberName, decodedUser.username));
-			await tx.update(teams).set({ membersCount: sql`${teams.membersCount} - 1` }).where(eq(teams.name, team.name));
+			const [updatedTeam] = await tx.update(teams).set({ membersCount: sql`${teams.membersCount} - 1` }).where(eq(teams.name, team.name)).returning();
+			if (!updatedTeam)
+				throw new Error('Could not insert into DB');
 			await tx.update(users).set({ teamName: null }).where(eq(users.username, decodedUser.username));
-			if (team.membersCount === 1) { // last member of the team
+			if (updatedTeam.membersCount === 0) { // last member of the team
 				await tx.delete(teamJoinRequests).where(eq(teamJoinRequests.teamName, team.name));
 				await tx.delete(teams).where(eq(teams.id, team.id));
 			}
@@ -378,12 +380,14 @@ export const getSentRequests = async(req: Request, res: Response) => {
 	if (search)
 		filters.push(ilike(teamJoinRequests.teamName, `${search}%`));
 
-	const sentRequests = await db
+	const dbRequests = await db
 		.select()
 		.from(teamJoinRequests)
 		.where(and(...filters))
 		.limit(limit)
 		.offset(limit * (page - 1));
+
+	const sentRequests = dbRequests.map( ({ teamName }) => teamName );
 
 	return res.json({
 		data: sentRequests,
@@ -531,5 +535,38 @@ export const getTeams = async(req: Request, res: Response) => {
 	return res.json(dbTeamsPublicData);
 }
 
-export const getIncomingRequests = async(req: Request, res: Response) => {
+export const getReceivedRequests = async(req: Request, res: Response) => {
+	const decodedUser = res.locals.user;
+	const limit = Math.max(Number(req.query.limit) || 10, 1);
+	const page = Math.max(Number(req.query.page) || 1, 1);
+	const search = req.query.q as string;
+
+	const [team] = await db
+		.select()
+		.from(teams)
+		.where(eq(teams.captainName, decodedUser.username));
+	if (!team) {
+		return res.json(new FoilCTF_error('Forbidden', 403));
+	}
+
+	const filters = [
+		eq(teamJoinRequests.teamName, team.name)
+	];
+	if (search)
+		filters.push(ilike(teamJoinRequests.username, `${search}%`));
+
+	const dbRequests = await db
+		.select()
+		.from(teamJoinRequests)
+		.where(and(...filters))
+		.limit(limit)
+		.offset(limit * (page - 1));
+
+	const receivedRequests = dbRequests.map( ({ username }) => username );
+
+	return res.json({
+		data: receivedRequests,
+		page,
+		limit,
+	});
 }

@@ -87,7 +87,8 @@ export const teamCreationSchema = z.object({
 			.regex(/^[a-zA-Z0-9_-]+$/),
 		maxMembers: z
 			.number()
-			.optional(),
+			.min(1)
+			.optional()
 	}),
 });
 
@@ -95,7 +96,7 @@ export const updateTeamSchema = z.object({
 	body: z.object({
 		isLocked: z.coerce.boolean().optional(),
 		description: z.string().max(500).optional(),
-		maxMembers: z.number().optional(),
+		maxMembers: z.number().min(1).optional(),
 	}),
 });
 
