@@ -2,44 +2,65 @@ package main
 
 import (
 	"log"
+	"net/http"
+	"os"
 
-	fiber "github.com/gofiber/fiber/v3"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
-type Route struct {
-	pattern string
-	methods []string
-	handler fiber.Handler
-}
+func EnsureDirectories(dirs ...string) error {
+	for _, dir := range dirs {
+		_, err := os.Stat(dir)
+		if err == nil {
+			log.Printf("directory %q already exists", dir)
+			continue
+		} else if !os.IsNotExist(err) {
+			return err
+		}
 
-func MakeRoutes(app *App) (routes, containers, images []Route) {
-	routes = append(routes, Route_Image_Create(app))
-	routes = append(routes, Route_Image_Build(app))
-	routes = append(routes, Route_Container_Create(app))
-
-	images = append(images, Route_Image_List(app))
-	images = append(images, Route_Image_Inspect(app))
-	images = append(images, Route_Image_Delete(app))
-
-	containers = append(containers, Route_Container_List(app))
-	containers = append(containers, Route_Container_Inspect(app))
-	containers = append(containers, Route_Container_Start(app))
-	containers = append(containers, Route_Container_Stop(app))
-	containers = append(containers, Route_Container_Delete(app))
-
-	return routes, containers, images
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			return err
+		}
+		log.Printf("directory %q was created", dir)
+	}
+	return nil
 }
 
 func main() {
-	app := new(App)
-	err := app.Init()
-	if err != nil {
-		log.Fatalf("Could not initialize the application due to %v", err)
+	var app App
+	var err error
+
+	if app.Env, err = LoadEnvironment(); err != nil {
+		log.Fatalf("could not load environment variables due to:\n\t%v", err)
 	}
-	defer app.Terminate()
+	if err := EnsureDirectories(app.Env.PodmanDirImages, app.Env.PodmanDirHealth); err != nil {
+		log.Fatalf("could not ensure directories due to:\n\t%v", err)
+	}
 
-	routes, containers, images := MakeRoutes(app)
-	app.RegisterRoutes(routes, containers, images)
+	app.Init()
+	if err := app.ConnectPodman(); err != nil {
+		log.Fatalf("could not connect to podman socket due to:\n\t%v", err)
+	}
 
-	app.Listen()
+	srv := chi.NewRouter()
+	srv.Use(middleware.Logger)
+	srv.Use(middleware.Recoverer)
+	srv.Use(cors.Handler(cors.Options{
+		AllowedOrigins: []string{"https://localhost:3006", "http://localhost:3006", "http://127.0.0.1:3006"},
+		AllowedMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodHead, http.MethodOptions},
+	}))
+
+	srv.Get("/health", RouteHealth)
+	srv.Get("/metrics", adapterRoute(&app, RoutePrometheus))
+	srv.Route("/api/sandbox", func(r chi.Router) {
+		r.Use(adapterMiddleware(&app, MiddlePrometheus))
+		r.Route("/images", RoutesImage(&app))
+		r.Route("/containers", RoutesContainer(&app))
+	})
+
+	if err := http.ListenAndServe(app.Env.ServerAddress, srv); err != nil {
+		log.Fatalf("failed during listen and serve due to:\n\t%v", err)
+	}
 }

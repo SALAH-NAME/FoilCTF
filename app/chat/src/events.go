@@ -19,52 +19,66 @@ type Message struct {
 	DeletedAt  *time.Time `json:"deleted_at,omitempty" gorm:"index"`
 }
 
-func Broadcast(h *Hub, message *Message, clientIdIgnore string) {
+func GetClients(h *Hub, message *Message, clientIdIgnore string) []*Client {
 	h.Mutex.Lock()
 	defer h.Mutex.Unlock()
-	for client := range h.Clients {
-		if client.RoomID == message.ChatRoomID && client.ID != clientIdIgnore {
-			go func(m Message, c *Client) {
-				select {
-				case c.Send <- m:
-				case <-time.After(h.Conf.BroadcastTimeout):
-					{
-						// the timeout condition  is triggerd AFTER the channelbuffer of 200 is full,
-						// so the user is lagging, this makes zombie goroutines/connections consuming
-						// cpu and by the time crashing the server
-						h.Unregister <- c
-					}
-				}
-			}(*message, client)
+	targets := []*Client{}
+	for userID, connections := range h.Clients {
+		if userID == clientIdIgnore {
+			continue
 		}
+		for client := range connections {
+			if client.RoomID == message.ChatRoomID && !client.IsClosed() {
+				targets = append(targets, client)
+			}
+		}
+	}
+	return targets
+}
+
+func Broadcast(h *Hub, message *Message, clientIdIgnore string) {
+	targets := GetClients(h, message, clientIdIgnore)
+
+	for _, client := range targets {
+		go func(m Message, c *Client) {
+			if !c.SafeSend(m, h.Conf.BroadcastTimeout) {
+				log.Printf("ERROR: WEBSOCKET: Unregistering client %q due to failure during broadcast", c.Name)
+				h.Unregister <- c
+			}
+		}(*message, client)
 	}
 }
 
 func SendError(userID string, h *Hub, mssg Message) {
 	h.Mutex.Lock()
-	defer h.Mutex.Unlock()
-	for client := range h.Clients {
-		if client.ID == userID {
-			select {
-			case client.Send <- mssg:
-			default:
-				log.Printf("WARNING: could not send error message to %s", userID)
-			}
-			return
+	var clientList []*Client
+	if connections, ok := h.Clients[userID]; ok {
+		for client := range connections {
+			clientList = append(clientList, client)
+		}
+	}
+	h.Mutex.Unlock()
+
+	for _, client := range clientList {
+		if !client.SafeSend(mssg, 100*time.Millisecond) {
+			log.Printf("WARNING: WEBSOCKET: could not send error message to %q: either the channel is closed or full", userID)
 		}
 	}
 }
 
 func HandleMessageEvent(h *Hub, eventMessage *Message) {
 	eventMessage.SentTime = time.Now()
-	if result := h.Db.Create(eventMessage); result.Error != nil {
-		log.Printf("DATABASE ERROR: Failed to save message: %v", result.Error)
+
+	err := h.Db.Create(eventMessage).Error
+	if err != nil {
+		log.Printf("ERROR: DATABASE: Failed to save message: %v", err)
 		SendError(eventMessage.SenderID, h, Message{
 			Event:   "error",
-			Content: "SERVER: Could not save your message, please try again.",
+			Content: "Could not save your message.",
 		})
 		return
 	}
+
 	Broadcast(h, eventMessage, "")
 }
 
@@ -77,23 +91,23 @@ func HandleEditEvent(h *Hub, eventMessage *Message) {
 			"edited_at": &now,
 		})
 	if result.Error != nil {
-		log.Printf("DATABASE ERROR: Edit failed for messageID %d: %v:", eventMessage.Id, result.Error)
+		log.Printf("ERROR: DATABASE: Edit failed for Message#%05d: %v", eventMessage.Id, result.Error)
 		SendError(eventMessage.SenderID, h, Message{
 			Event:   "error",
-			Content: "SERVER: Could not process edit.",
+			Content: "Could not process edit action.",
+		})
+		return
+	}
+	if result.RowsAffected == 0 {
+		log.Printf("DEBUG: EVENTS: Message %d for user %s not found or time limit has expired.",
+			eventMessage.Id, eventMessage.SenderID)
+		SendError(eventMessage.SenderID, h, Message{
+			Event:   "error",
+			Content: "You don't have permission to edit this message or time limit has expired.",
 		})
 		return
 	}
 
-	if result.RowsAffected == 0 {
-		log.Printf("EDIT REJECTED: Message %d for user %s not found or time limit has expired.",
-			eventMessage.Id, eventMessage.SenderID)
-		SendError(eventMessage.SenderID, h, Message{
-			Event:   "error",
-			Content: "SERVER: you don't have permission to edit this message or time limit has expired.",
-		})
-		return
-	}
 	eventMessage.IsEdited = true
 	eventMessage.EditedAt = &now
 	Broadcast(h, eventMessage, "")
@@ -110,10 +124,10 @@ func HandleDeleteEvent(h *Hub, eventMessage *Message) {
 		eventMessage.Event = "delete"
 		Broadcast(h, eventMessage, "")
 	} else {
-		log.Printf("DATABASE ERROR: Delete failed for messageID %d: %v:", eventMessage.Id, result.Error)
+		log.Printf("ERROR: DATABASE: Delete failed for messageID %d: %v:", eventMessage.Id, result.Error)
 		SendError(eventMessage.SenderID, h, Message{
 			Event:   "error",
-			Content: "SERVER: Could not process delete.",
+			Content: "Could not process delete action.",
 		})
 		return
 
@@ -126,30 +140,48 @@ func HandleTypingEvent(h *Hub, eventMessage *Message) {
 
 func HandleJoinEvent(h *Hub, client *Client) {
 	h.Mutex.Lock()
-	h.Clients[client] = true
+	if _, ok := h.Clients[client.ID]; !ok {
+		h.Clients[client.ID] = make(map[*Client]bool)
+	}
+	h.Clients[client.ID][client] = true
 	h.Mutex.Unlock()
-	log.Printf("INFO: user %s (ID: %s) has joined the chat", client.Name, client.ID)
+	log.Printf("INFO: EVENTS: user { Name: %q, ID: %q } has joined the chat", client.Name, client.ID)
+
 	joinMssg := Message{
-		Event:    "join",
-		Name:     client.Name,
-		Content:  fmt.Sprintf("%s has joined the chat", client.Name),
-		SentTime: time.Now(),
+		Event:      "join",
+		Name:       client.Name,
+		ChatRoomID: client.RoomID,
+		Content:    fmt.Sprintf("%s has joined the chat", client.Name),
+		SentTime:   time.Now(),
 	}
 	Broadcast(h, &joinMssg, "")
 }
 
-func HandleLeaveEvent(h *Hub, client *Client) {
-	close(client.Send)
-	client.Connection.Close()
+func RemoveClient(h *Hub, client *Client) {
 	h.Mutex.Lock()
-	delete(h.Clients, client)
-	h.Mutex.Unlock()
-	log.Printf("INFO: user %s (ID: %s) has left the chat", client.Name, client.ID)
+	defer h.Mutex.Unlock()
+	connections, ok := h.Clients[client.ID]
+	if !ok {
+		return
+	}
+	if _, exits := connections[client]; !exits {
+		return
+	}
+	delete(connections, client)
+	if len(connections) == 0 {
+		delete(h.Clients, client.ID)
+	}
+	client.SafeClose()
+}
+
+func HandleLeaveEvent(h *Hub, client *Client) {
+	RemoveClient(h, client)
 	leaveMssg := Message{
-		Event:    "leave",
-		Name:     client.Name,
-		Content:  fmt.Sprintf("%s has left the chat", client.Name),
-		SentTime: time.Now(),
+		Event:      "leave",
+		Name:       client.Name,
+		ChatRoomID: client.RoomID,
+		Content:    fmt.Sprintf("%s has left the chat", client.Name),
+		SentTime:   time.Now(),
 	}
 	Broadcast(h, &leaveMssg, "")
 }
