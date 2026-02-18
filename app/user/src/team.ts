@@ -6,7 +6,7 @@ import { FoilCTF_error } from './utils/types';
 
 export const createTeam = async(req: Request, res: Response) => {
 	const decodedUser = res.locals.user;
-	const newTeamName = req.body.name;
+	const {newTeamName, maxMembers} = req.body;
 
 	const [dbUser] = await db
 				.select()
@@ -27,11 +27,13 @@ export const createTeam = async(req: Request, res: Response) => {
 	try {
 		await db.transaction(async (tx) => {
 
-			await tx.insert(teams)
-						.values({
-						name: newTeamName,
-						captainName: decodedUser.username,
-						});
+			await tx
+				.insert(teams)
+				.values({
+				name: newTeamName,
+				captainName: decodedUser.username,
+				maxMembers: maxMembers
+				});
 
 			await tx.insert(teamMembers).values({
 				teamName: newTeamName,
@@ -56,12 +58,13 @@ export const getTeamDetails = async(req: Request, res: Response) => {
 	if (!team)
 		return res.json(new FoilCTF_error('Not Found', 404));
 
-	const {name, captainName, membersCount, description, isLocked, ...privateInfos} = team;
+	const {name, captainName, membersCount, description, isLocked, maxMembers, ...privateInfos} = team;
 
 	return res.json({
 			name: name,
 			captainName: captainName,
 			membersCount: membersCount,
+			maxMembers: maxMembers,
 			description: description,
 			isLocked: isLocked,
 			});
@@ -121,11 +124,11 @@ export const leaveTeam = async(req: Request, res: Response, next: NextFunction) 
 				await tx.delete(teamJoinRequests).where(eq(teamJoinRequests.teamName, team.name));
 				await tx.delete(teams).where(eq(teams.id, team.id));
 			}
-		
-			res.locals.teamName = team.name;
-			res.locals.contents = { title: "", message: `${decodedUser.username} has left the team` };
-			res.locals.exception = decodedUser.username;
 		});
+
+		res.locals.teamName = team.name;
+		res.locals.contents = { title: "", message: `${decodedUser.username} has left the team` };
+		res.locals.exception = decodedUser.username;
 
 		return next();
 	} catch (err) {
@@ -167,11 +170,11 @@ export const deleteMember = async(req: Request, res: Response, next: NextFunctio
 			await tx.delete(teamMembers).where(eq(teamMembers.memberName, requestedUsername));
 			await tx.update(teams).set({ membersCount: sql`${teams.membersCount} - 1` }).where(eq(teams.name, team.name));
 			await tx.update(users).set({ teamName: null }).where(eq(users.username, requestedUsername));
-
-			res.locals.teamName = team.name;
-			res.locals.contents = { title: "", message: `${decodedUser.username} has been deleted` };
-			res.locals.exception = decodedUser.username;
 		});
+
+		res.locals.teamName = team.name;
+		res.locals.contents = { title: "", message: `${decodedUser.username} has been deleted` };
+		res.locals.exception = decodedUser.username;
 
 		return next();
 	} catch (err) {
@@ -231,7 +234,7 @@ export const sendJoinRequest = async(req: Request, res: Response, next: NextFunc
 	if (!team) {
 		return res.json(new FoilCTF_error('Not Found', 404));
 	}
-	if (team.isLocked === true) {
+	if (team.isLocked === true || team.membersCount >= team.maxMembers) {
 		return res.json(new FoilCTF_error('Forbidden', 403));
 	}
 
@@ -308,7 +311,7 @@ export const acceptJoinRequest = async(req: Request, res: Response, next: NextFu
 
 	try {
 		await db.transaction(async (tx) => {
-		
+
 			await tx.delete(teamJoinRequests).where(
 				and(
 					eq(teamJoinRequests.teamName, team.name),
@@ -317,15 +320,17 @@ export const acceptJoinRequest = async(req: Request, res: Response, next: NextFu
 			);
 			await tx.insert(teamMembers).values({
 							memberName: requestedUsername,
-							teamName: team.name,
+							teamName: requestedTeamName,
 							});
-			await tx.update(teams).set({ membersCount: sql`${teams.membersCount} + 1` }).where(eq(teams.name, team.name)); // prevent reace condition
+			// if (team.membersCount + 1 === team.maxMembers)
+			// 	await tx.update(teams).set({ isLocked: true }).where(eq(teams.name, team.name));
+			await tx.update(teams).set({ membersCount: sql`${teams.membersCount} + 1` }).where(eq(teams.name, team.name));
 			await tx.update(users).set({ teamName: team.name }).where(eq(users.username, requestedUsername));
-		
-			res.locals.teamName = team.name;
-			res.locals.contents = { title: "new member!", message: `${teamJoinRequest.username} joined the team` };
-			res.locals.exception = decodedUser.username;
 		});
+
+		res.locals.teamName = team.name;
+		res.locals.contents = { title: "new member!", message: `${teamJoinRequest.username} joined the team` };
+		res.locals.exception = decodedUser.username;
 
 		return next();
 	} catch (err) { 
@@ -474,8 +479,7 @@ export const notifyAllMembers = async(res: Response) => {
 
 export const updateTeam = async(req: Request, res: Response, next: NextFunction) => {
 	const decodedUser = res.locals.user;
-	const isLocked = req.body.isLocked;
-	const description = req.body.description;
+	const {isLocked, description, maxMembers} = req.body;
 
 	const [team] = await db
 		.select()
@@ -485,12 +489,13 @@ export const updateTeam = async(req: Request, res: Response, next: NextFunction)
 		return res.json(new FoilCTF_error('Forbidden', 403));
 	}
 
-	if (isLocked !== undefined || description !== undefined) {
+	if (isLocked !== undefined || description !== undefined || maxMembers !== undefined) {
 		await db
 		.update(teams)
 		.set({
 			isLocked: isLocked,
-			description: description
+			description: description,
+			maxMembers: maxMembers,
 		})
 		.where(eq(teams.name, team.name));
 	}

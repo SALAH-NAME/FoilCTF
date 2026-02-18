@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS teams (
   name            TEXT NOT NULL UNIQUE,
 
   captain_name    TEXT NOT NULL,
+  max_members     INTEGER NOT NULL DEFAULT 1,
 
   members_count   INTEGER NOT NULL DEFAULT 1,
 

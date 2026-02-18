@@ -195,7 +195,7 @@ app.put(
 app.get(
 	'/api/teams/',
 	getTeams,
-)
+);
 
 app.use(middleware_error);
 

@@ -115,7 +115,7 @@ export const containersRelations = relations(containers, ({one}) => ({
 	}),
 	ctfsChallenge: one(ctfsChallenges, {
 		fields: [containers.ctfId],
-		references: [ctfsChallenges.ctfId]
+		references: [ctfsChallenges.challengeId]
 	}),
 }));
 

@@ -82,6 +82,7 @@ export const teams = pgTable("teams", {
 	id: serial().primaryKey().notNull(),
 	name: text().notNull(),
 	captainName: text("captain_name").notNull(),
+	maxMembers: integer("max_members").default(1).notNull(),
 	membersCount: integer("members_count").default(1).notNull(),
 	description: text(),
 	isLocked: boolean("is_locked").default(false),
@@ -102,7 +103,7 @@ export const teamMembers = pgTable("team_members", {
 			columns: [table.teamName],
 			foreignColumns: [teams.name],
 			name: "constraint_team"
-		}).onUpdate("cascade"),
+		}).onDelete("cascade"),
 	foreignKey({
 			columns: [table.memberName],
 			foreignColumns: [users.username],
@@ -198,7 +199,7 @@ export const containers = pgTable("containers", {
 		}),
 	foreignKey({
 			columns: [table.ctfId, table.challengeId],
-			foreignColumns: [ctfsChallenges.ctfId, ctfsChallenges.challengeId],
+			foreignColumns: [ctfsChallenges.challengeId, ctfsChallenges.ctfId],
 			name: "constraint_ctf_challenge"
 		}),
 ]);
