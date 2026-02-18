@@ -36,7 +36,7 @@ func (h *Hub) CalculateNewReward(link *CtfsChallenge) int {
 }
 
 func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag string) (bool, int, error) {
-	var isFirtsBlood bool
+	var isFirstBlood bool
 	var pointsToAward int
 	err := h.Db.Transaction(func(tx *gorm.DB) error {
 		now := time.Now()
@@ -80,8 +80,8 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 		lossPoints := oldReward - link.Reward
 
 		// check if first blood and update relevant culomns
-		isFirtsBlood = (link.FirstBloodAt == nil)
-		if isFirtsBlood {
+		isFirstBlood = (link.FirstBloodAt == nil)
+		if isFirstBlood {
 			pointsToAward += link.RewardFirstBlood
 			link.FirstBloodAt = &now
 			link.FirstbloodId = &teamID
@@ -133,56 +133,61 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 		}
 		return nil
 	})
-	return isFirtsBlood, pointsToAward, err
+	return isFirstBlood, pointsToAward, err
 }
 
 func (h *Hub) SubmitFlag(w http.ResponseWriter, r *http.Request) {
 	eventID, _ := h.ReadIntParam(r, "id")
+
 	challengeID, err := h.ReadIntParam(r, "chall_id")
 	if err != nil {
-		log.Printf("Invalid challengeID: %v", err)
+		log.Printf("DEBUG - Flag Submission - Invalid challenge id: %v", err)
 		JSONError(w, "Invalid challengeID", http.StatusBadRequest)
 		return
 	}
+
 	userID, _, err := GetUserInfo(r)
 	if err != nil {
-		log.Printf("Unauthorized: %v", err)
+		log.Printf("DEBUG - Flag Submission - Unauthorized: %v", err)
 		JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
 	teamID, ok := r.Context().Value(teamIDKey).(int)
 	if !ok {
-		log.Printf("Could not get teamID form context for user %d", *userID)
+		log.Printf("DEBUG - Flag Submission - Could not get team id from the context for user %d: %v", *userID, err)
 		JSONError(w, "Team not found", http.StatusNotFound)
 		return
 	}
+
 	var req FlagRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("Invalid request : %v", err)
+		log.Printf("ERROR - Flag Submission - Invalid request format: %v", err)
 		JSONError(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
-	isFirtsBlood, finalPoints, err := h.ProcessSolve(eventID, challengeID, teamID, req.Flag)
+
+	isFirstBlood, finalPoints, err := h.ProcessSolve(eventID, challengeID, teamID, req.Flag)
 	if err != nil {
 		HandleSubmitError(w, err)
 		return
 	}
-	if isFirtsBlood {
+	if isFirstBlood {
 		msg := fmt.Sprintf("Team %d solved chalenge %d!", teamID, challengeID)
-		errNotif := h.Notify("🩸 First Blood!", msg, eventID)
-		if errNotif != nil {
-			log.Printf("Failed to send first blood notification")
+		if err := h.Notify("🩸 First Blood!", msg, eventID); err != nil {
+			log.Printf("ERROR - Flag Submission - Could not send first blood notification: %v", err)
 		}
 	}
-	err = h.UpdateScoreBoard(eventID, w)
-	if err != nil {
-		log.Printf("Could not fetch scorebord data due to : %v", err)
+
+	if err := h.UpdateScoreBoard(eventID, w); err != nil {
+		log.Printf("ERROR - Flag Submission - Could not fetch scoreboard data due to: %v", err)
 		JSONError(w, "Could not fetch data", http.StatusInternalServerError)
 		return
 	}
+
 	resp := map[string]any{
 		"status":        "correct",
-		"first_blood":   isFirtsBlood,
+		"first_blood":   isFirstBlood,
 		"points_earned": finalPoints,
 	}
 	JSONResponse(w, resp, http.StatusOK)
@@ -191,42 +196,49 @@ func (h *Hub) SubmitFlag(w http.ResponseWriter, r *http.Request) {
 func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 	userID, _, err := GetUserInfo(r)
 	if err != nil {
-		log.Printf("Unauthorized: %v", err)
+		log.Printf("DEBUG - Join - Unauthorized: %v", err)
 		JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
 	event, ok := r.Context().Value(eventKey).(Ctf)
 	if !ok {
-		log.Printf("Could not get event form context")
+		log.Printf("DEBUG - Join - Could not get event from the request context")
 		JSONError(w, "event not found", http.StatusNotFound)
 		return
 	}
+
 	teamID, ok := r.Context().Value(teamIDKey).(int)
 	if !ok {
-		log.Printf("Could not get teamID form context for user %d", *userID)
+		log.Printf("DEBUG - Join - Could not get team id for user %d from the request context", *userID)
 		JSONError(w, "Team not found", http.StatusNotFound)
 		return
 	}
+
 	var roomInstance ChatRoom
 	var globalChatRoomID int
+
 	err = h.Db.Transaction(func(tx *gorm.DB) error {
 		var team Team
 		err = tx.First(&team, teamID).Error
 		if err != nil {
 			return errors.New("team not found")
 		}
+
 		var currentPanticipants int64
 		err := tx.Table("participations").Where("ctf_id = ?", event.ID).
 			Count(&currentPanticipants).Error
 		if err != nil {
 			return err
 		}
+
 		if event.MaxTeams <= int(currentPanticipants) {
 			return errors.New("event is full")
 		}
 		if team.TeamSize < event.TeamMembersMin || team.TeamSize > event.TeamMembersMax {
 			return errors.New("invalid team size")
 		}
+
 		participation := Participation{
 			TeamID: teamID,
 			CtfID:  event.ID,
@@ -237,6 +249,7 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return errors.New("already registered")
 		}
+
 		roomInstance = ChatRoom{
 			CtfID:     event.ID,
 			TeamID:    teamID,
@@ -246,12 +259,13 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+
 		err = tx.Table("chat_rooms").Select("id").
-			Where("ctf_id = ? AND room_type= 'global", event.ID).
+			Where("ctf_id = ? AND room_type = 'global", event.ID).
 			First(&globalChatRoomID).
 			Error
 		if err != nil {
-			errors.New("ctf chat room not found")
+			return errors.New("ctf chat room not found")
 		}
 		return nil
 	})
@@ -259,12 +273,13 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 		HandleJoinError(w, err)
 		return
 	}
+
 	resp := map[string]any{
-		"event":        event,
-		"registered":   true,
-		"team_id":      teamID,
+		"event":          event,
+		"registered":     true,
+		"team_id":        teamID,
 		"team_chat_room": roomInstance.ID,
-		"ctf_chat_room" : globalChatRoomID,
+		"ctf_chat_room":  globalChatRoomID,
 	}
 	JSONResponse(w, resp, http.StatusCreated)
 }
@@ -272,22 +287,25 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 func (h *Hub) ListCtfsChallenges(w http.ResponseWriter, r *http.Request) {
 	userID, _, err := GetUserInfo(r)
 	if err != nil {
-		log.Printf("Unauthorized: %v", err)
+		log.Printf("DEBUG - List Ctfs - Unauthorized: %v", err)
 		JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
 	event, ok := r.Context().Value(eventKey).(Ctf)
 	if !ok {
-		log.Printf("Could not get event form context")
+		log.Printf("DEBUG - List Ctfs - Could not get event from the request context")
 		JSONError(w, "event not found", http.StatusNotFound)
 		return
 	}
+
 	teamID, ok := r.Context().Value(teamIDKey).(int)
 	if !ok {
-		log.Printf("Could not get teamID form context for user %d", *userID)
+		log.Printf("DEBUG - Join - Could not get team id for user %d from the request context", *userID)
 		JSONError(w, "Team not found", http.StatusNotFound)
 		return
 	}
+
 	// fetch the teams's solved challenge ids
 	solvedMap := make(map[int]bool)
 	var solvedIDs []int
@@ -295,13 +313,14 @@ func (h *Hub) ListCtfsChallenges(w http.ResponseWriter, r *http.Request) {
 		Where("team_id = ?", teamID).
 		Pluck("chall_id", &solvedIDs).Error
 	if err != nil {
-		log.Printf("Database Error: %v", err)
+		log.Printf("ERROR - List Ctfs - Could not query solved challenge ids: %v", err)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	for _, id := range solvedIDs {
 		solvedMap[id] = true
 	}
+
 	// get required challenge data
 	unfilteredChallenges := []UnfilteredCtfChallenges{}
 	err = h.Db.Table("ctfs_challenges").
@@ -312,10 +331,11 @@ func (h *Hub) ListCtfsChallenges(w http.ResponseWriter, r *http.Request) {
 		Where("ctfs_challenges.ctf_id = ?", event.ID).
 		Scan(&unfilteredChallenges).Error
 	if err != nil {
-		log.Printf("Database Error: %v", err)
+		log.Printf("ERROR - List Ctfs - Could not query challenge data: %v", err)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
 	// filtering locked challenges,
 	// grouping challenges by category
 	// and setting isSolved data
@@ -328,7 +348,7 @@ func (h *Hub) ListCtfsChallenges(w http.ResponseWriter, r *http.Request) {
 		}
 		isUnlocked, err := h.IsChallengeUnlocked(link, &teamID)
 		if err != nil {
-			log.Printf("Database Error: %v", err)
+			log.Printf("ERROR - List Ctfs - Could check if the challenge is unlocked: %v", err)
 			JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -343,5 +363,6 @@ func (h *Hub) ListCtfsChallenges(w http.ResponseWriter, r *http.Request) {
 		grouped[category] = append(grouped[category], challenge.PlayerChallengeView)
 
 	}
+
 	JSONResponse(w, grouped, http.StatusOK)
 }

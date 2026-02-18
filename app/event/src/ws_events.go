@@ -8,8 +8,9 @@ import (
 func (h *Hub) HandleJoin(client *Client) {
 	h.Mutex.Lock()
 	defer h.Mutex.Unlock()
+
 	h.Clients[client] = true
-	log.Printf("INFO: userID: %v has joined the server", client.LogId())
+	log.Printf("DEBUG - Hub - User %v has joined the server", client.LogId())
 }
 
 func (h *Hub) HandleUnjoin(client *Client) {
@@ -19,9 +20,10 @@ func (h *Hub) HandleUnjoin(client *Client) {
 		return
 	}
 	delete(h.Clients, client)
+
 	client.Connection.Close()
 	close(client.Send)
-	log.Printf("INFO: userID: %v has left the server", client.LogId())
+	log.Printf("DEBUG - Hub - User %v has left the server", client.LogId())
 }
 
 func (h *Hub) HandleWsEvent(eventws *WsEvent) {
@@ -30,7 +32,7 @@ func (h *Hub) HandleWsEvent(eventws *WsEvent) {
 	case "update":
 		h.BroadcastData(eventws)
 	default:
-		log.Printf("ERROR: Unknown event type received %s", eventws.Event)
+		log.Printf("ERROR - WebSocket - Unknown event type %q could not be processed", eventws.Event)
 	}
 }
 
@@ -47,15 +49,16 @@ func (h *Hub) BroadcastData(eventws *WsEvent) {
 func (h *Hub) SendToClient(client *Client, event WsEvent) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("ERROR: Panic in SendToClient for user %v: %v", client.LogId(), r)
+			log.Printf("ERROR - WebSocket - Unexpected panic during SendToClient for user %v: %v", client.LogId(), r)
 			h.UnregisterChan <- client
 		}
 	}()
+
 	select {
 	case client.Send <- event:
 	case <-time.After(h.Conf.BroadcastTimeout):
 		{
-			log.Printf("userid %v timed out, disconnecting", client.LogId())
+			log.Printf("ERROR - WebSocket - User %v has timed out", client.LogId())
 			h.UnregisterChan <- client
 		}
 	}

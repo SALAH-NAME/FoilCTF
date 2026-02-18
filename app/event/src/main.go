@@ -7,7 +7,6 @@ import (
 
 func NewServer(router http.Handler) (*http.Server, string) {
 	port := GetEnv("PORT", "3009")
-
 	return &http.Server{
 		Addr:    ":" + port,
 		Handler: router,
@@ -15,18 +14,21 @@ func NewServer(router http.Handler) (*http.Server, string) {
 }
 
 func main() {
+	conf := NewConfig()
+
 	db, err := DbInit()
 	if err != nil {
 		log.Fatalf("Database Error: %v", err)
 	}
-	conf := NewConfig()
+
 	hub := GetHub(db, conf)
 	go hub.ChannelsMonitoring()
+
 	router := hub.RegisterRoutes()
 	srv, port := NewServer(router)
-	log.Printf("Event Service Started On Port: %s !", port)
+	log.Printf("DEBUG - HTTP - Listening on http://localhost:%s", port)
 
 	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("SERVER ERROR: Failed to start the server: %v", err)
+		log.Fatalf("ERROR - HTTP - Could not start due to: %v", err)
 	}
 }

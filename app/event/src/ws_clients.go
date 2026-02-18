@@ -29,7 +29,7 @@ func (client *Client) WriteData() {
 	}()
 	for event := range client.Send {
 		if err := client.Connection.WriteJSON(event); err != nil {
-			log.Printf("ERROR: failed to receive data due to: %v", err)
+			log.Printf("ERROR - WebSocket - Could not write data due to: %v", err)
 			return
 		}
 	}
@@ -42,7 +42,7 @@ func (client *Client) ReadData() {
 	for {
 		var event WsEvent
 		if err := client.Connection.ReadJSON(&event); err != nil {
-			log.Printf("ERROR: Unexpected close : %v", err)
+			log.Printf("ERROR - WebSocket - Could not read data due to: %v", err)
 			break
 		}
 		client.Hub.GlobalChan <- event
