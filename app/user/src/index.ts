@@ -171,18 +171,18 @@ app.delete(
 	cancelJoinRequest,
 );
 app.put(
-	'/api/teams/request/:username',
+	'/api/teams/:teamName/requests/:username',
 	authenticateToken,
 	acceptJoinRequest,
 	notifyAllMembers,
 );
 app.delete(
-	'/api/teams/request/:username',
+	'/api/teams/:teamName/requests/:username',
 	authenticateToken,
 	declineJoinRequest,
 );
 app.get(
-	'/api/teams/requests/:username',
+	'/api/teams/:teamName/requests', // teamName is redundant! ( '/api/user/requests' ? )
 	authenticateToken,
 	getSentRequests,
 );

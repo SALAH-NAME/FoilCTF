@@ -48,15 +48,10 @@ export const createTeam = async(req: Request, res: Response) => {
 }
 
 export const getTeamDetails = async(req: Request, res: Response) => {
-	const limit = Number(req.query.limit) || 10;
-	const page = Number(req.query.page) || 1;
-
 	const	[team] = await db
 				.select()
 				.from(teams)
 				.where(eq(teams.name, req.params.teamName as string))
-				.limit(limit)
-				.offset(limit * (page - 1)); // redundant
 
 	if (!team)
 		return res.json(new FoilCTF_error('Not Found', 404));
@@ -73,13 +68,20 @@ export const getTeamDetails = async(req: Request, res: Response) => {
 }
 
 export const getTeamMembers = async(req: Request, res: Response) => {
-	const limit = Number(req.query.limit) || 10;
-	const page = Number(req.query.page) || 1;
+	const limit = Math.max(Number(req.query.limit) || 10, 1);
+	const page = Math.max(Number(req.query.page) || 1, 1);
+	const search = req.query.q as string;
+
+	const filters = [
+		eq(teamMembers.teamName, req.params.teamName as string)
+	];
+	if (search)
+		filters.push(ilike(teamMembers.memberName, `${search}%`));
 
 	const	members = await db
 				.select()
 				.from(teamMembers)
-				.where(eq(teamMembers.teamName, req.params.teamName as string))
+				.where(and(...filters))
 				.limit(limit)
 				.offset(limit * (page - 1));
 
@@ -87,7 +89,12 @@ export const getTeamMembers = async(req: Request, res: Response) => {
 		return res.json(new FoilCTF_error('Not Found', 404));
 
 	const	membersNames = members.map( ({ memberName }) => memberName );
-	return res.json(membersNames);
+
+	return res.json({
+		data: membersNames,
+		page,
+		limit,
+	});
 }
 
 export const leaveTeam = async(req: Request, res: Response, next: NextFunction) => {
@@ -158,7 +165,7 @@ export const deleteMember = async(req: Request, res: Response, next: NextFunctio
 		await db.transaction(async (tx) => {
 
 			await tx.delete(teamMembers).where(eq(teamMembers.memberName, requestedUsername));
-			await tx.update(teams).set({ membersCount: team.membersCount - 1 }).where(eq(teams.name, team.name));
+			await tx.update(teams).set({ membersCount: sql`${teams.membersCount} - 1` }).where(eq(teams.name, team.name));
 			await tx.update(users).set({ teamName: null }).where(eq(users.username, requestedUsername));
 
 			res.locals.teamName = team.name;
@@ -268,6 +275,7 @@ export const cancelJoinRequest = async(req: Request, res: Response) => {
 }
 
 export const acceptJoinRequest = async(req: Request, res: Response, next: NextFunction) => {
+	const requestedTeamName = req.params.teamName as string;
 	const requestedUsername = req.params.username as string;
 	const decodedUser = res.locals.user;
 
@@ -283,7 +291,7 @@ export const acceptJoinRequest = async(req: Request, res: Response, next: NextFu
 				.select()
 				.from(teams)
 				.where(eq(teams.captainName, decodedUser.username));
-	if (!team) {
+	if (!team || team.name !== requestedTeamName) {
 		return res.json(new FoilCTF_error('Forbidden', 403));
 	}
 
@@ -292,7 +300,7 @@ export const acceptJoinRequest = async(req: Request, res: Response, next: NextFu
 				.from(teamJoinRequests)
 				.where(and(
 					eq(teamJoinRequests.username, requestedUsername),
-					eq(teamJoinRequests.teamName, team.name),
+					eq(teamJoinRequests.teamName, requestedTeamName),
 					));
 	if (!teamJoinRequest) {
 		return res.json(new FoilCTF_error('Not Found', 404));
@@ -327,6 +335,7 @@ export const acceptJoinRequest = async(req: Request, res: Response, next: NextFu
 }
 
 export const declineJoinRequest = async(req: Request, res: Response) => {
+	const requestedTeamName = req.params.teamName as string;
 	const requestedUsername = req.params.username as string;
 	const decodedUser = res.locals.user;
 
@@ -334,12 +343,12 @@ export const declineJoinRequest = async(req: Request, res: Response) => {
 				.select()
 				.from(teams)
 				.where(eq(teams.captainName, decodedUser.username));
-	if (!team) {
+	if (!team || requestedTeamName !== team.name ) {
 		return res.json(new FoilCTF_error('Forbidden', 403));
 	}
 	await db.delete(teamJoinRequests).where(
 		and(
-			eq(teamJoinRequests.teamName, team.name),
+			eq(teamJoinRequests.teamName, requestedTeamName),
 			eq(teamJoinRequests.username, requestedUsername)
 			)
 	);
@@ -348,18 +357,29 @@ export const declineJoinRequest = async(req: Request, res: Response) => {
 }
 
 export const getSentRequests = async(req: Request, res: Response) => {
-	const limit = Number(req.query.limit) || 10;
-	const page = Number(req.query.page) || 1;
+	const limit = Math.max(Number(req.query.limit) || 10, 1);
+	const page = Math.max(Number(req.query.page) || 1, 1);
+	const search = req.query.q as string;
 	const decodedUser = res.locals.user;
+
+	const filters = [
+		eq(teamJoinRequests.username, decodedUser.username)
+	];
+	if (search)
+		filters.push(ilike(teamJoinRequests.teamName, `${search}%`));
 
 	const sentRequests = await db
 		.select()
 		.from(teamJoinRequests)
-		.where(eq(teamJoinRequests.username, decodedUser.username))
+		.where(and(...filters))
 		.limit(limit)
 		.offset(limit * (page - 1));
 
-	return res.json(sentRequests);
+	return res.json({
+		data: sentRequests,
+		page,
+		limit,
+	});
 }
 
 export const notifyCaptain = async(res: Response) => {
