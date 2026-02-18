@@ -53,7 +53,6 @@ CREATE TABLE IF NOT EXISTS chat_rooms (
     room_type   VARCHAR(20) DEFAULT 'team', -- 'global' 'team' 'admin'
     
     CONSTRAINT fk_chat_room_ctf FOREIGN KEY (ctf_id) REFERENCES ctfs(id),
-    CONSTRAINT fk_chat_room_team FOREIGN KEY (team_id) REFERENCES teams(id)
 );
 
 ---messages table

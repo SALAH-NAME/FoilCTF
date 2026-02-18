@@ -208,6 +208,7 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var roomInstance ChatRoom
+	var globalChatRoomID int
 	err = h.Db.Transaction(func(tx *gorm.DB) error {
 		var team Team
 		err = tx.First(&team, teamID).Error
@@ -245,6 +246,13 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+		err = tx.Table("chat_rooms").Select("id").
+			Where("ctf_id = ? AND room_type= 'global", event.ID).
+			First(&globalChatRoomID).
+			Error
+		if err != nil {
+			errors.New("ctf chat room not found")
+		}
 		return nil
 	})
 	if err != nil {
@@ -255,7 +263,8 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 		"event":        event,
 		"registered":   true,
 		"team_id":      teamID,
-		"chat_room_id": roomInstance.ID,
+		"team_chat_room": roomInstance.ID,
+		"ctf_chat_room" : globalChatRoomID,
 	}
 	JSONResponse(w, resp, http.StatusCreated)
 }

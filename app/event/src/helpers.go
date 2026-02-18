@@ -54,6 +54,7 @@ func HandleJoinError(w http.ResponseWriter, err error) {
 		"event is full":      http.StatusForbidden,
 		"invalid team size":  http.StatusPreconditionFailed,
 		"already registered": http.StatusConflict,
+		"ctf chat room not found": http.StatusNotFound,
 	}
 	code, exists := errorMap[err.Error()]
 	if !exists {

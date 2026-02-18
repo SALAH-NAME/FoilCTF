@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -242,43 +243,60 @@ func (h *Hub) StartEvent(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, "event not found", http.StatusNotFound)
 		return
 	}
-	if event.Status != "active" {
+	if event.Status == "active" {
+		JSONResponse(w, "event already active", http.StatusConflict)
+		return
+	}
+	var roomInstance ChatRoom
+	err := h.Db.Transaction(func(tx *gorm.DB) error {
 		var count int64
-		err := h.Db.Table("ctfs_challenges").
+		err := tx.Table("ctfs_challenges").
 			Where("ctf_id = ?", event.ID).
 			Count(&count).Error
 		if err != nil {
-			log.Printf("Database Error: %v", err)
-			JSONError(w, "Internal Server Error", http.StatusInternalServerError)
-			return
+			return err
 		}
 		if count == 0 {
-			log.Printf("Cannot start witout challenges")
-			JSONError(w, "Cannot start witout challenges", http.StatusConflict)
-			return
+			return errors.New("no linked challenge found")
 		}
 		now := time.Now()
 		updatedEvent := map[string]any{
 			"status":     "active",
 			"start_time": now,
 		}
-		err = h.Db.Model(&event).
+		err = tx.Model(&event).
 			Select("status", "start_time").
 			Updates(updatedEvent).Error
 		if err != nil {
+			return err
+		}
+		roomInstance = ChatRoom{
+			CtfID:     event.ID,
+			Room_Type: "global",
+		}
+		return tx.Table("chat_rooms").
+			Create(&roomInstance).Error
+	})
+	if err != nil {
+		if err.Error() == "no linked challenge found" {
+			log.Printf("Cannot start event %d without challenges", event.ID)
+			JSONError(w, "Cannot start event %d without challenges", http.StatusConflict)
+		} else {
 			log.Printf("Database Error: %v", err)
 			JSONError(w, "Internal Server Error", http.StatusInternalServerError)
-			return
 		}
-		msg := fmt.Sprintf("Event %s has officially started! Good luck", event.Name)
-		errNotif := h.Notify("Event active !", msg, event.ID)
-		if errNotif != nil {
-			log.Printf("Failed to send start notification")
-		}
-		JSONResponse(w, nil, http.StatusCreated)
 		return
+	}	
+	msg := fmt.Sprintf("Event %s has officially started! Good luck", event.Name)
+	errNotif := h.Notify("Event active !", msg, event.ID)
+	if errNotif != nil {
+		log.Printf("Failed to send start notification")
 	}
-	JSONResponse(w, "event already active", http.StatusConflict)
+	resp := map[string]any {
+		"event_id": event.ID,
+		"ctf_chat_room": roomInstance.ID,
+	}	
+	JSONResponse(w, resp, http.StatusCreated)
 }
 
 func (h *Hub) StopEvent(w http.ResponseWriter, r *http.Request) {
