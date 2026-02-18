@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 
 	// "fmt"
@@ -101,7 +102,7 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 				return subQuery.Error
 			}
 			err := tx.Table("participations").
-				Where("ctf_id = ? AND team_id IN (?)",eventID, subQuery).
+				Where("ctf_id = ? AND team_id IN (?)", eventID, subQuery).
 				Update("score", gorm.Expr("score - ?", lossPoints)).Error
 			if err != nil {
 				return err
@@ -136,7 +137,7 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 }
 
 func (h *Hub) SubmitFlag(w http.ResponseWriter, r *http.Request) {
-	eventID, _ := h.ReadIntParam(r, "id") // err already checked
+	eventID, _ := h.ReadIntParam(r, "id")
 	challengeID, err := h.ReadIntParam(r, "chall_id")
 	if err != nil {
 		log.Printf("Invalid challengeID: %v", err)
@@ -152,7 +153,7 @@ func (h *Hub) SubmitFlag(w http.ResponseWriter, r *http.Request) {
 	teamID, ok := r.Context().Value(teamIDKey).(int)
 	if !ok {
 		log.Printf("Could not get teamID form context for user %d", *userID)
-		JSONError(w, "Team not found", http.StatusInternalServerError)
+		JSONError(w, "Team not found", http.StatusNotFound)
 		return
 	}
 	var req FlagRequest
@@ -165,6 +166,13 @@ func (h *Hub) SubmitFlag(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		HandleSubmitError(w, err)
 		return
+	}
+	if isFirtsBlood {
+		msg := fmt.Sprintf("Team %d solved chalenge %d!", teamID, challengeID)
+		errNotif := h.Notify("🩸 First Blood!", msg, eventID)
+		if errNotif != nil {
+			log.Printf("Failed to send first blood notification")
+		}
 	}
 	err = h.UpdateScoreBoard(eventID, w)
 	if err != nil {
@@ -190,13 +198,13 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 	event, ok := r.Context().Value(eventKey).(Ctf)
 	if !ok {
 		log.Printf("Could not get event form context")
-		JSONError(w, "event not found", http.StatusInternalServerError)
+		JSONError(w, "event not found", http.StatusNotFound)
 		return
 	}
 	teamID, ok := r.Context().Value(teamIDKey).(int)
 	if !ok {
 		log.Printf("Could not get teamID form context for user %d", *userID)
-		JSONError(w, "Team not found", http.StatusInternalServerError)
+		JSONError(w, "Team not found", http.StatusNotFound)
 		return
 	}
 	var roomInstance ChatRoom
@@ -219,9 +227,9 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 			return errors.New("invalid team size")
 		}
 		participation := Participation{
-			TeamID:   teamID,
-			CtfID:    event.ID,
-			Score:    0,
+			TeamID: teamID,
+			CtfID:  event.ID,
+			Score:  0,
 		}
 		err = tx.Table("participations").
 			Create(&participation).Error
@@ -253,22 +261,78 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Hub) ListCtfsChallenges(w http.ResponseWriter, r *http.Request) {
+	userID, _, err := GetUserInfo(r)
+	if err != nil {
+		log.Printf("Unauthorized: %v", err)
+		JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	event, ok := r.Context().Value(eventKey).(Ctf)
 	if !ok {
 		log.Printf("Could not get event form context")
-		JSONError(w, "event not found", http.StatusInternalServerError)
+		JSONError(w, "event not found", http.StatusNotFound)
 		return
 	}
-	challenges := []PlayerChallengeView{}
-	err := h.Db.Table("ctfs_challenges").
-		Select("ctfs_challenges.challenge_id AS id, challenges.name, challenges.description, challenges.category, ctfs_challenges.reward, ctfs_challenges.solves").
-		Joins("INNER JOIN challenges on ctfs_challenges.challenge_id = challenges.id").
-		Where("ctfs_challenges.id = ?", event.ID).
-		Scan(&challenges).Error
+	teamID, ok := r.Context().Value(teamIDKey).(int)
+	if !ok {
+		log.Printf("Could not get teamID form context for user %d", *userID)
+		JSONError(w, "Team not found", http.StatusNotFound)
+		return
+	}
+	// fetch the teams's solved challenge ids
+	solvedMap := make(map[int]bool)
+	var solvedIDs []int
+	err = h.Db.Table("solves").
+		Where("team_id = ?", teamID).
+		Pluck("chall_id", &solvedIDs).Error
 	if err != nil {
 		log.Printf("Database Error: %v", err)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	JSONResponse(w, challenges, http.StatusOK)
+	for _, id := range solvedIDs {
+		solvedMap[id] = true
+	}
+	// get required challenge data
+	unfilteredChallenges := []UnfilteredCtfChallenges{}
+	err = h.Db.Table("ctfs_challenges").
+		Select("ctfs_challenges.challenge_id AS id, challenges.name, challenges.description, "+
+			"challenges.category, ctfs_challenges.reward, ctfs_challenges.solves, "+
+			"ctfs_challenges.is_hidden, ctfs_challenges.released_at, ctfs_challenges.requires_challenge_id").
+		Joins("INNER JOIN challenges on ctfs_challenges.challenge_id = challenges.id").
+		Where("ctfs_challenges.ctf_id = ?", event.ID).
+		Scan(&unfilteredChallenges).Error
+	if err != nil {
+		log.Printf("Database Error: %v", err)
+		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	// filtering locked challenges,
+	// grouping challenges by category
+	// and setting isSolved data
+	grouped := make(map[string][]PlayerChallengeView)
+	for _, challenge := range unfilteredChallenges {
+		link := CtfsChallenge{
+			ReleasedAt:          challenge.ReleasedAt,
+			IsHidden:            challenge.IsHidden,
+			RequiresChallengeId: challenge.RequiresChallengeId,
+		}
+		isUnlocked, err := h.IsChallengeUnlocked(link, &teamID)
+		if err != nil {
+			log.Printf("Database Error: %v", err)
+			JSONError(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		if !isUnlocked {
+			continue
+		}
+		challenge.PlayerChallengeView.IsSolved = solvedMap[challenge.PlayerChallengeView.ID]
+		category := challenge.PlayerChallengeView.Category
+		if category == "" {
+			category = "General"
+		}
+		grouped[category] = append(grouped[category], challenge.PlayerChallengeView)
+
+	}
+	JSONResponse(w, grouped, http.StatusOK)
 }

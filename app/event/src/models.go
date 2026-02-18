@@ -29,37 +29,30 @@ type Ctf struct {
 	Status         string         `json:"status" gorm:"column:status"`
 	MaxTeams       int            `json:"max_teams" gorm:"column:max_teams"`
 }
- 
+
 type CtfOrganizers struct {
 	CtfID       int `gorm:"column:ctf_id"`
 	OrganizerID int `gorm:"column:organizer_id"`
 }
 
 type CtfsChallenge struct {
-	CtfID            int            `json:"ctf_id" gorm:"column:ctf_id;primaryKey"`
-	ChallengeID      int            `json:"challenge_id" gorm:"column:challenge_id;primaryKey"`
-	Reward           int            `json:"reward" gorm:"column:reward;default:500"`
-	InitialReward    int            `json:"initial_reward" gorm:"column:initial_reward;default:500"`
-	Flag             map[string]any `json:"flag" gorm:"column:flag;serializer:json"`
-	RewardFirstBlood int            `gorm:"column:reward_first_blood;default:0"`
-	RewardDecrements bool           `gorm:"column:reward_decrements;default:true"`
-	RewardMin        int            `gorm:"column:reward_min;default:350;"`
-	Decay            int            `json:"decay" gorm:"decay;default:30"`
-	Attempts         int            `json:"attempts" gorm:"column:attempts"`
-	Solves           int            `json:"solves" gorm:"column:solves"`
-	FirstBloodAt     *time.Time     `json:"first_blood_at" gorm:"column:first_blood_at"`
-	FirstbloodId     *int           `json:"first_blood_id" gorm:"column:first_blood_id"`
-	ContainerLimits  map[string]any `json:"container_limits" gorm:"column:container_limits;serializer:json"`
-}
-
-type PlayerChallengeView struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Category    string `json:"category"`
-	Reward      string `json:"reward"`
-	Solves      string `json:"solves"`
-	IsSoled     bool   `json:"is_solved"`
+	CtfID               int            `json:"ctf_id" gorm:"column:ctf_id;primaryKey"`
+	ChallengeID         int            `json:"challenge_id" gorm:"column:challenge_id;primaryKey"`
+	Reward              int            `json:"reward" gorm:"column:reward;default:500"`
+	InitialReward       int            `json:"initial_reward" gorm:"column:initial_reward;default:500"`
+	Flag                map[string]any `json:"flag" gorm:"column:flag;serializer:json"`
+	RewardFirstBlood    int            `gorm:"column:reward_first_blood;default:0"`
+	RewardDecrements    bool           `gorm:"column:reward_decrements;default:true"`
+	RewardMin           int            `gorm:"column:reward_min;default:350;"`
+	Decay               int            `json:"decay" gorm:"decay;default:30"`
+	Attempts            int            `json:"attempts" gorm:"column:attempts"`
+	Solves              int            `json:"solves" gorm:"column:solves"`
+	FirstBloodAt        *time.Time     `json:"first_blood_at" gorm:"column:first_blood_at"`
+	FirstbloodId        *int           `json:"first_blood_id" gorm:"column:first_blood_id"`
+	ContainerLimits     map[string]any `json:"container_limits" gorm:"column:container_limits;serializer:json"`
+	ReleasedAt          *time.Time     `gorm:"column:released_at"`
+	RequiresChallengeId *int           `gorm:"column:requires_challenge_id"`
+	IsHidden            *bool          `gorm:"column:is_hidden"`
 }
 
 type Participation struct {
@@ -90,9 +83,15 @@ type Solve struct {
 }
 
 type Notification struct {
-	ID        int             `gorm:"primaryKey"`
-	CreatedAt time.Time       `gorm:"column:created_at"`
-	Contents  json.RawMessage `gorm:"column:contents;type:json"`
+	ID          int             `gorm:"primaryKey"`
+	CreatedAt   time.Time       `gorm:"column:created_at"`
+	Contents    json.RawMessage `gorm:"column:contents;type:json"`
+	IsPublished bool            `gorm:"column:is_published"`
+}
+
+type NotificationUsers struct {
+	NotificationID int `gorm:"column:notification_id"`
+	UserID         int `gorm:"column:user_id;primaryKey"`
 }
 
 type TeamData struct {
@@ -114,4 +113,44 @@ type ChatRoom struct {
 	CtfID     int    `gorm:"column:ctf_id"`
 	TeamID    int    `gorm:"column:team_id"`
 	Room_Type string `gorm:"column:room_type"`
+}
+
+type EventDetails struct {
+	Name               string         `json:"name"`
+	TeamMembersMin     int            `json:"team_members_min"`
+	TeamMembersMax     int            `json:"team_members_max"`
+	MetaData           map[string]any `json:"metadata"`
+	StartTime          time.Time      `json:"start_time"`
+	EndTime            time.Time      `json:"end_time"`
+	Status             string         `json:"status"`
+	ParticipationCount int64          `json:"participation_count"`
+	ChallengeCount     int64          `json:"challenge_count"`
+}
+
+type OrganizersInfo struct {
+	Username string `json:"username"`
+	Avatar   string `json:"avatar"`
+}
+
+type UserStatus struct {
+	IsOrganizer bool `json:"is_organizer"`
+	IsGuest     bool `json:"is_guest"`
+	IsJoined    bool `json:"is_joined"`
+}
+
+type PlayerChallengeView struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Category    string `json:"category"`
+	Reward      string `json:"reward"`
+	Solves      string `json:"solves"`
+	IsSolved    bool   `json:"is_solved"`
+}
+
+type UnfilteredCtfChallenges struct {
+	PlayerChallengeView PlayerChallengeView `gorm:"embedded"`
+	ReleasedAt          *time.Time          `gorm:"column:released_at"`
+	RequiresChallengeId *int                `gorm:"column:requires_challenge_id"`
+	IsHidden            *bool               `gorm:"column:is_hidden"`
 }

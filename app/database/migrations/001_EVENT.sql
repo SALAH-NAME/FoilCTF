@@ -4,7 +4,7 @@ ALTER TABLE ctfs ADD COLUMN start_time TIMESTAMP NOT NULL DEFAULT now();
 ALTER TABLE ctfs ADD COLUMN end_time TIMESTAMP NOT NULL DEFAULT (now() + interval '24 hours');
 ALTER TABLE ctfs ADD COLUMN deleted_at TIMESTAMP DEFAULT NULL;
 ALTER TABLE ctfs ADD COLUMN max_teams INTEGER CHECK(max_teams > 0);
-ALTER TABLE ctfs ADD COLUMN status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'active', 'ended', 'archived'));
+ALTER TABLE ctfs ADD COLUMN status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'active', 'ended'));
 
 ---participations table
 ALTER TABLE participations RENAME COLUMN challenge_id TO ctf_id;
@@ -21,7 +21,10 @@ ADD COLUMN reward_min INTEGER DEFAULT 100 NOT NULL,
 ADD COLUMN decay INTEGER DEFAULT 50 NOT NULL,
 ADD COLUMN reward_first_blood INTEGER DEFAULT 0 NOT NULL,
 ADD COLUMN reward_decrements BOOLEAN DEFAULT TRUE NOT NULL,
-ADD COLUMN initial_reward INTEGER DEFAULT 500  NOT NULL;
+ADD COLUMN initial_reward INTEGER DEFAULT 500  NOT NULL,
+ADD COLUMN released_at TIMESTAMP NULL,
+ADD COLUMN requires_challenge_id INTEGER NULL,
+ADD COLUMN is_hidden BOOLEAN DEFAULT false;
 
 ALTER TABLE ctfs_challenges 
 ADD CONSTRAINT constraint_decay_positive CHECK (decay > 0);
@@ -59,7 +62,7 @@ ALTER TABLE messages ADD CONSTRAINT  constraint_room Foreign Key (chatroom_id) R
 
 --- challenges
 ALTER Table challenges ADD COLUMN category TEXT NOT NULL;
-ALTER table challenges DROP COLUMN reward;
-ALTER table challenges DROP COLUMN reward_min;
-ALTER table challenges DROP COLUMN reward_first_blood;
-ALTER table challenges DROP COLUMN reward_decrements;
+-- ALTER table challenges DROP COLUMN reward;
+-- ALTER table challenges DROP COLUMN reward_min;
+-- ALTER table challenges DROP COLUMN reward_first_blood;
+-- ALTER table challenges DROP COLUMN reward_decrements;

@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -81,7 +83,7 @@ func (h *Hub) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	currentEvent, ok := r.Context().Value(eventKey).(Ctf)
 	if !ok {
 		log.Printf("Could not get event form context")
-		JSONError(w, "event not found", http.StatusInternalServerError)
+		JSONError(w, "event not found", http.StatusNotFound)
 		return
 	}
 	var req EventRequest
@@ -109,7 +111,16 @@ func (h *Hub) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, "Update failed", http.StatusInternalServerError)
 		return
 	}
-	JSONResponse(w, updatedEvent, http.StatusOK)
+	var resp Ctf
+	err = h.Db.Table("ctfs").
+		Where("id = ?", currentEvent.ID).
+		First(&resp).Error
+	if err != nil {
+		log.Printf("Database error :%v", err)
+		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	JSONResponse(w, resp, http.StatusOK)
 }
 
 func (h *Hub) DeleteEvent(w http.ResponseWriter, r *http.Request) {
@@ -124,11 +135,10 @@ func (h *Hub) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, "Cannot delete a live event", http.StatusConflict)
 		return
 	}
-	// Soft delete
 	err := h.Db.Delete(&event).Error
 	if err != nil {
 		log.Printf("Database error :%v", err)
-		JSONError(w, "Database Error", http.StatusInternalServerError)
+		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	JSONResponse(w, nil, http.StatusNoContent)
@@ -144,20 +154,20 @@ func (h *Hub) LinkChallenge(w http.ResponseWriter, r *http.Request) {
 	event, ok := r.Context().Value(eventKey).(Ctf)
 	if !ok {
 		log.Printf("Could not get event form context")
-		JSONError(w, "event not found", http.StatusInternalServerError)
+		JSONError(w, "event not found", http.StatusNotFound)
 		return
 	}
 	var req []CtfsChallenge
 	err = json.NewDecoder(r.Body).Decode(&req)
-	if  err != nil {
+	if err != nil {
 		log.Printf("Invalid input: could not fetch event data for user %d: %v", *userID, err)
 		JSONError(w, "Invalid Input", http.StatusBadRequest)
-		return		
+		return
 	}
 	var exists bool
 	for _, challenge := range req {
 		if challenge.CtfID != event.ID {
-			log.Printf("User %d tried to link challeges to eventID %d on wrong endpoint", *userID, challenge.CtfID )
+			log.Printf("User %d tried to link challeges to eventID %d on wrong endpoint", *userID, challenge.CtfID)
 			JSONError(w, "Forbidden", http.StatusForbidden)
 			return
 		}
@@ -166,14 +176,14 @@ func (h *Hub) LinkChallenge(w http.ResponseWriter, r *http.Request) {
 			Where("id = ? AND is_published = ?", challenge.ChallengeID, true).
 			Find(&exists).Error
 		if err != nil || !exists {
-			log.Printf("Link Failure: challenge %d not found or not published. user: %d: %v",  challenge.ChallengeID, *userID, err)
+			log.Printf("Link Failure: challenge %d not found or not published. user: %d: %v", challenge.ChallengeID, *userID, err)
 			JSONError(w, "Challenge not found or not published", http.StatusBadRequest)
 			return
 		}
 	}
-	h.Db.Transaction(func (tx *gorm.DB) error {
+	h.Db.Transaction(func(tx *gorm.DB) error {
 		for _, challenge := range req {
-			err = h.Db.Table("ctfs_challenges").
+			err = tx.Table("ctfs_challenges").
 				Create(&challenge).Error
 			if err != nil {
 				return err
@@ -186,14 +196,21 @@ func (h *Hub) LinkChallenge(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	JSONResponse(w, nil, http.StatusCreated)	
+	ids := make([]int, len(req))
+	for i, c := range req {
+		ids[i] = c.ChallengeID
+	}
+	resp := map[string]any{
+		"linked ids": ids,
+	}
+	JSONResponse(w, resp, http.StatusCreated)
 }
 
 func (h *Hub) UnlinkChallenge(w http.ResponseWriter, r *http.Request) {
 	event, ok := r.Context().Value(eventKey).(Ctf)
 	if !ok {
 		log.Printf("Could not get event form context")
-		JSONError(w, "event not found", http.StatusInternalServerError)
+		JSONError(w, "event not found", http.StatusNotFound)
 		return
 	}
 	challID, err := h.ReadIntParam(r, "chall_id")
@@ -222,7 +239,7 @@ func (h *Hub) StartEvent(w http.ResponseWriter, r *http.Request) {
 	event, ok := r.Context().Value(eventKey).(Ctf)
 	if !ok {
 		log.Printf("Could not get event form context")
-		JSONError(w, "event not found", http.StatusInternalServerError)
+		JSONError(w, "event not found", http.StatusNotFound)
 		return
 	}
 	if event.Status != "active" {
@@ -253,17 +270,22 @@ func (h *Hub) StartEvent(w http.ResponseWriter, r *http.Request) {
 			JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
+		msg := fmt.Sprintf("Event %s has officially started! Good luck", event.Name)
+		errNotif := h.Notify("Event active !", msg, event.ID)
+		if errNotif != nil {
+			log.Printf("Failed to send start notification")
+		}
 		JSONResponse(w, nil, http.StatusCreated)
-	} else {
-		JSONResponse(w, "event already active", http.StatusConflict)
+		return
 	}
+	JSONResponse(w, "event already active", http.StatusConflict)
 }
 
 func (h *Hub) StopEvent(w http.ResponseWriter, r *http.Request) {
 	event, ok := r.Context().Value(eventKey).(Ctf)
 	if !ok {
 		log.Printf("Could not get event form context")
-		JSONError(w, "event not found", http.StatusInternalServerError)
+		JSONError(w, "event not found", http.StatusNotFound)
 		return
 	}
 	if event.Status != "ended" {
@@ -281,7 +303,7 @@ func (h *Hub) StopEvent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		JSONResponse(w, nil, http.StatusCreated)
-	} else {
-		JSONResponse(w, "event already ended", http.StatusConflict) 
+		return
 	}
+	JSONResponse(w, "event already ended", http.StatusConflict)
 }

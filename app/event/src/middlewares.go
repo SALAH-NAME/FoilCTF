@@ -108,7 +108,20 @@ func (h *Hub) PlayerAuthMiddleware(next http.Handler) http.Handler {
 			JSONError(w, "Not allowed to access event", http.StatusForbidden)
 			return
 		}
-		// todo(a): c pttr mieux de déplacer
+		var count int64
+		err = h.Db.Table("ctfs_challenges").
+			Where("ctf_id = ?", event.ID).
+			Count(&count).Error
+		if err != nil {
+			log.Printf("Database Error: %v", err)
+			JSONError(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		if count == 0 {
+			log.Printf("user %d can't access an active event without challenges", *userID)
+			JSONError(w, "Cannot join event witout challenges", http.StatusConflict)
+			return
+		}
 		teamID, err := h.GetTeamIDByUserID(*userID)
 		if err != nil {
 			log.Printf("Error: %v", err)
@@ -196,12 +209,13 @@ func (h *Hub) EnsureEventOwnership(next http.Handler) http.Handler {
 				JSONError(w, "Event Not Found", http.StatusBadRequest)
 				return
 			}
-			var count int64
-			err = h.Db.Table("ctf_organizers").
-				Where("ctf_id = ? AND organizer_id = ?", eventID, *userID).
-				Count(&count).
-				Error
-			if err != nil || count == 0 {
+			isOwner, err := h.IsOwner(eventID, *userID)
+			if err != nil {
+				log.Printf("Database Error: %v", err)
+				JSONError(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			if !isOwner {
 				log.Printf("Forbidden: ownership check failed for user: %d, eventID: %d", *userID, eventID)
 				JSONError(w, "Forbidden: You do not manage this event.", http.StatusForbidden)
 				return
@@ -210,4 +224,20 @@ func (h *Hub) EnsureEventOwnership(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), eventKey, event)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func (h *Hub) IsOwner(eventID, organizerID int) (bool, error) {
+	var count int64
+
+	err := h.Db.Table("ctf_organizers").
+		Where("ctf_id = ? AND organizer_id = ?", eventID, organizerID).
+		Count(&count).
+		Error
+	if err != nil {
+		return false, err
+	}
+	if count == 0 {
+		return false, nil
+	}
+	return true, nil
 }

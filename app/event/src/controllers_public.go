@@ -9,7 +9,7 @@ func (h *Hub) ListEvents(w http.ResponseWriter, r *http.Request) {
 	events := []Ctf{}
 
 	err := h.Db.Table("ctfs").
-		Where("status IN (?)", []string{"active", "published","ended", "archived"}).
+		Where("status IN (?)", []string{"active", "published", "ended"}).
 		Order("start_time DESC").
 		Find(&events).Error
 	if err != nil {
@@ -21,31 +21,84 @@ func (h *Hub) ListEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Hub) GetEvent(w http.ResponseWriter, r *http.Request) {
+	userID, _ := r.Context().Value(userIDKey).(*int)
+	userRole, _ := r.Context().Value(userRoleKey).(string)
 	event, ok := r.Context().Value(eventKey).(Ctf)
 	if !ok {
 		log.Printf("Could not get event form context")
-		JSONError(w, "event not found", http.StatusInternalServerError)
+		JSONError(w, "event not found", http.StatusNotFound)
 		return
 	}
-	if event.Status == "draft" {
-		JSONError(w, "Event is not accessible", http.StatusForbidden)
+	var has_privilege bool
+	has_privilege, err := h.CheckVisibility(userRole, event.ID, userID)
+	if err != nil {
+		log.Printf("Database Error: %v", err)
+		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	JSONResponse(w, event, http.StatusOK)
+	if event.Status == "draft" && !has_privilege {
+		JSONError(w, "Event Not Found", http.StatusNotFound)
+		return
+	}
+	userStatus, participationTeam := h.GetUserStatus(has_privilege, userID, event.ID)
+	eventDetails := EventDetails{
+		Name:           event.Name,
+		TeamMembersMax: event.TeamMembersMax,
+		TeamMembersMin: event.TeamMembersMin,
+		MetaData:       event.MetaData,
+		StartTime:      event.StartTime,
+		EndTime:        event.EndTime,
+		Status:         event.Status,
+	}
+	err = h.Db.Table("participations").
+		Count(&eventDetails.ParticipationCount).Error
+	if err != nil {
+		log.Printf("Database Error: %v", err)
+		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	eventDetails.ChallengeCount, err = h.CountChallenges(has_privilege, event.ID, participationTeam)
+	if err != nil {
+		log.Printf("Database Error: %v", err)
+		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	organizersInfo, err := h.GetOrganizersInfo(event.ID)
+	if err != nil {
+		log.Printf("Database Error: %v", err)
+		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	resp := map[string]any{
+		"event_data":  eventDetails,
+		"organizers":  organizersInfo,
+		"user_status": userStatus,
+	}
+	if event.Status == "active" || event.Status == "ended" {
+		limit := 3
+		topTeams, err := h.FetchScoreboardData(w, event.ID, &limit)
+		if err != nil {
+			log.Printf("Could not fetch scorebord data due to : %v", err)
+			JSONError(w, "Could not fetch data", http.StatusInternalServerError)
+			return
+		}
+		resp["top_teams"] = topTeams
+	}
+	JSONResponse(w, resp, http.StatusOK)
 }
 
 func (h *Hub) GetScoreboard(w http.ResponseWriter, r *http.Request) {
 	event, ok := r.Context().Value(eventKey).(Ctf)
 	if !ok {
 		log.Printf("Could not get event form context")
-		JSONError(w, "event not found", http.StatusInternalServerError)
+		JSONError(w, "event not found", http.StatusNotFound)
 		return
 	}
 	switch event.Status {
 	case "active":
 		h.ServeScoreboardWs(w, r, event.ID)
 	case "ended":
-		sbData, err := h.FetchScoreboardData(w, event.ID)
+		sbData, err := h.FetchScoreboardData(w, event.ID, nil)
 		if err != nil {
 			log.Printf("Could not fetch scorebord data due to : %v", err)
 			JSONError(w, "Could not fetch data", http.StatusInternalServerError)

@@ -39,6 +39,7 @@ func (h *Hub) RegisterRoutes() http.Handler {
 
 			r.Route("/{id}", func(r chi.Router) {
 				r.Use(h.EnsureEventOwnership)
+				// r.Get("/")
 				r.Put("/", h.UpdateEvent)
 				r.Delete("/", h.DeleteEvent)
 				r.Post("/start", h.StartEvent)

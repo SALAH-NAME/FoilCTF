@@ -21,7 +21,7 @@ func (h *Hub) ServeScoreboardWs(w http.ResponseWriter, r *http.Request, eventID 
 	go joinedClient.WriteData()
 
 	h.RegisterChan <- joinedClient
-	initSbData, err := h.FetchScoreboardData(w, eventID)
+	initSbData, err := h.FetchScoreboardData(w, eventID, nil)
 	if err != nil {
 		log.Printf("Could not fetch scorebord data due to : %v", err)
 		JSONError(w, "Could not fetch data", http.StatusInternalServerError)
