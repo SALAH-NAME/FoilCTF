@@ -40,6 +40,7 @@ import {
 	route_auth_refresh,
 	route_auth_logout,
 } from './auth';
+import { route_user_me } from './user';
 
 const app = express();
 app.use(middleware_cors());
@@ -100,6 +101,11 @@ app.get('/api/oauth/42/connect', route_oauth_42_connect);
 app.get('/api/oauth/42/connect/verify', route_oauth_42_verify('connect'));
 
 // SECTION: Users
+app.get(
+	'/api/users/me',
+	authenticateToken,
+	route_user_me,
+)
 app.put(
 	'/api/users/:username',
 	parseNonExistingParam,
@@ -109,6 +115,7 @@ app.put(
 	updateTokens
 );
 
+// SECTION: Health
 app.get('/health', (_req, res) => {
 	res.status(200).send('OK');
 });
