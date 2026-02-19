@@ -37,12 +37,12 @@ export function middleware_error(
 		err instanceof SyntaxError ||
 		err instanceof MulterError
 	) {
-		return res.json(new FoilCTF_Error("Bad Request", 400));
+		return res.status(400).json(new FoilCTF_Error("Bad Request", 400));
 	}
 	if (err instanceof UploadError) {
-		return res.json({statusCode: err.status_code, message: err.message});
-return res.json(new FoilCTF_Success("Created", 201));	}
+		return res.status(err.status_code).json(new FoilCTF_Error(err.message, err.status_code));
+	}
 
 	console.error(err);
-	return res.json(new FoilCTF_Error("Internal Server Error", 500));
+	return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 }

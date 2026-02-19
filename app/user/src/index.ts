@@ -124,7 +124,7 @@ app.put(
 
 // SECTION: Health
 app.get('/health', (_req, res) => {
-	return res.json(new FoilCTF_Success("OK", 200));
+	return res.status(200).json(new FoilCTF_Success("OK", 200));
 });
 
 // SECTION: Teams
@@ -143,7 +143,7 @@ app.get(
 	getTeamMembers, // public data
 );
 app.delete(
-	'/api/teams/:teamName/members/',
+	'/api/teams/:teamName/members',
 	authenticateToken,
 	leaveTeam,
 	notifyAllMembers,
@@ -199,10 +199,10 @@ app.get(
 	getTeams,
 );
 app.get(
-	'/api/teams/requests',
+	'/api/teams/requests/shit/fuck/ikhan', // !!!!!!!!!!! conflicts with /api/teams/:teamName, getTeamDetails
 	authenticateToken,
 	getReceivedRequests,
-)
+);
 
 app.use(middleware_error);
 

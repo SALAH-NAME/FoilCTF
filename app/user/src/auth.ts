@@ -2,7 +2,7 @@ import zod from 'zod';
 import bcrypt from 'bcrypt';
 import { eq } from 'drizzle-orm';
 import ms, { StringValue } from 'ms';
-import jwt, { type JwtPayload } from 'jsonwebtoken';
+import jwt, { JsonWebTokenError, type JwtPayload } from 'jsonwebtoken';
 import { type Request, type Response } from 'express';
 
 import { db } from './utils/db';
@@ -23,7 +23,7 @@ export const route_auth_register = async (
 		const { username, email, password } = req.body; // already validated by zod
 		const existingUser = await user_exists(username, email);
 		if (existingUser) {
-			return res.json(new FoilCTF_Error("Conflict", 409));
+			return res.status(409).json(new FoilCTF_Error("Conflict", 409));
 		}
 
 		const hashedPassword = await bcrypt.hash(password, 10);
@@ -40,10 +40,10 @@ export const route_auth_register = async (
 			totalpoints: 0,
 		});
 		console.log(`New user created: ${username}`);
-		return res.json(new FoilCTF_Success("Created", 201));
+		return res.status(201).json(new FoilCTF_Success("Created", 201));
 	} catch (err) {
 		console.error(err);
-		return res.json(new FoilCTF_Error("Internal Server Error", 500));
+		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 };
 
@@ -62,7 +62,7 @@ export const route_auth_login = async (
 			user?.password ?? '$2b$10$dummyhashplaceholder'
 		);
 		if (user === undefined || !passwordIsValid) {
-			return res.json(new FoilCTF_Error("Invalid username or password", 401));
+			return res.status(401).json(new FoilCTF_Error("Invalid username or password", 401));
 		}
 
 		const accessToken = generateAccessToken(
@@ -84,10 +84,10 @@ export const route_auth_login = async (
 			sameSite: 'strict',
 			maxAge: duration,
 		});
-		return res.json({ accessToken: accessToken, refreshToken: refreshToken });
+		return res.status(200).json({ accessToken: accessToken, refreshToken: refreshToken });
 	} catch (err) {
 		console.error(err);
-		return res.json(new FoilCTF_Error("Internal Server Error", 500));
+		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 };
 
@@ -101,7 +101,7 @@ export const route_auth_refresh = async (req: Request, res: Response) => {
 			.from(sessions)
 			.where(eq(sessions.refreshtoken, token)); // delete the expired ones? or even limit number of devices connected to at a time
 		if (session === undefined) {
-			return res.json(new FoilCTF_Error("Forbidden", 403));
+			return res.status(403).json(new FoilCTF_Error("Forbidden", 403));
 		}
 
 		const [user] = await db
@@ -109,17 +109,19 @@ export const route_auth_refresh = async (req: Request, res: Response) => {
 			.from(users)
 			.where(eq(users.id, session.userId));
 		if (user === undefined) {
-			return res.json(new FoilCTF_Error("Bad Request", 400));
+			return res.status(400).json(new FoilCTF_Error("Bad Request", 400));
 		}
 		const newAccessToken = generateAccessToken(
 			user.username as string,
 			user.role,
 			user.id
 		);
-		return res.json({ accessToken: newAccessToken });
+		return res.status(200).json({ accessToken: newAccessToken });
 	} catch (err) {
+		if (err instanceof JsonWebTokenError)
+			return res.status(401).json(new FoilCTF_Error("Unauthorized", 401));
 		console.error(err);
-		return res.json(new FoilCTF_Error("Internal Server Error", 500));
+		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 };
 
@@ -136,9 +138,9 @@ export const route_auth_logout = async (req: Request, res: Response) => {
 			secure: true,
 			sameSite: 'strict',
 		});
-		return res.json(new FoilCTF_Success("No Content", 204));
+		return res.status(204).json(new FoilCTF_Success("No Content", 204));
 	} catch (err) {
 		console.error(err);
-		return res.json(new FoilCTF_Error("Internal Server Error", 500));
+		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 };

@@ -27,6 +27,14 @@ export class FoilCTF_Error extends Error {
 
 		this.name = 'FoilCTF_Error';
 	}
+
+	toJSON() {
+		return {
+			error: true,
+			message: this.message,
+			status: this.statusCode
+		}
+	}
 }
 
 export class FoilCTF_Success {
@@ -36,6 +44,13 @@ export class FoilCTF_Success {
 	constructor(message: string, statusCode: number) {
 		this.statusCode = statusCode;
 		this.message = message
+	}
+
+	toJSON() {
+		return {
+			message: this.message,
+			status: this.statusCode
+		}
 	}
 }
 
@@ -92,12 +107,13 @@ export const updateProfileSchema = z.object({
 
 export const teamCreationSchema = z.object({
 	body: z.object({
-		name:	z
+		newTeamName: z
 			.string()
 			.min(3)
 			.max(15)
 			.regex(/^[a-zA-Z0-9_-]+$/),
 		maxMembers: z
+			.coerce
 			.number()
 			.min(1)
 			.optional()
@@ -108,7 +124,7 @@ export const updateTeamSchema = z.object({
 	body: z.object({
 		isLocked: z.coerce.boolean().optional(),
 		description: z.string().max(500).optional(),
-		maxMembers: z.number().min(1).optional(),
+		maxMembers: z.coerce.number().min(1).optional(),
 	}),
 });
 

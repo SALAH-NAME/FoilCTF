@@ -4,7 +4,7 @@ import { eq, and, sql, ne, ilike } from 'drizzle-orm';
 import { users, teams, teamMembers, teamJoinRequests, notifications, notificationUsers } from './db/schema';
 import { FoilCTF_Error, FoilCTF_Success } from './utils/types';
 
-export const createTeam = async(req: Request, res: Response) => {
+export const createTeam = async(req: Request, res: Response, next: NextFunction) => {
 	const decodedUser = res.locals.user;
 	const {newTeamName, maxMembers} = req.body;
 
@@ -42,27 +42,27 @@ export const createTeam = async(req: Request, res: Response) => {
 			await tx.update(users).set({ teamName: newTeamName }).where(eq(users.id, decodedUser.id));
 		});
 
-		return res.json(new FoilCTF_Success("Created", 201));
+		return res.status(201).json(new FoilCTF_Success("Created", 201));
 	} catch (err) {
 		if (err instanceof FoilCTF_Error)
-			return res.json(err);
+			return res.status(err.statusCode).json(err);
 		console.error(err);
-		return res.json(new FoilCTF_Error("Internal Server Error", 500));
+		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
-export const getTeamDetails = async(req: Request, res: Response) => {
+export const getTeamDetails = async(req: Request, res: Response, next: NextFunction) => {
 	const	[team] = await db
 				.select()
 				.from(teams)
 				.where(eq(teams.name, req.params.teamName as string))
 
 	if (!team)
-		return res.json(new FoilCTF_Error('Not Found', 404));
+		return res.status(404).json(new FoilCTF_Error('Not Found', 404));
 
 	const {name, captainName, membersCount, description, isLocked, maxMembers, ...privateInfos} = team;
 
-	return res.json({
+	return res.status(200).json({
 			name: name,
 			captainName: captainName,
 			membersCount: membersCount,
@@ -72,7 +72,7 @@ export const getTeamDetails = async(req: Request, res: Response) => {
 			});
 }
 
-export const getTeamMembers = async(req: Request, res: Response) => {
+export const getTeamMembers = async(req: Request, res: Response, next: NextFunction) => {
 	const limit = Math.max(Number(req.query.limit) || 10, 1);
 	const page = Math.max(Number(req.query.page) || 1, 1);
 	const search = req.query.q as string;
@@ -91,18 +91,18 @@ export const getTeamMembers = async(req: Request, res: Response) => {
 				.offset(limit * (page - 1));
 
 	if (!members || members.length === 0)
-		return res.json(new FoilCTF_Error('Not Found', 404));
+		return res.status(404).json(new FoilCTF_Error('Not Found', 404));
 
 	const	membersNames = members.map( ({ memberName }) => memberName );
 
-	return res.json({
+	return res.status(200).json({
 		data: membersNames,
 		page,
 		limit,
 	});
 }
 
-export const leaveTeam = async(req: Request, res: Response, next: NextFunction) => { // data race?
+export const leaveTeam = async(req: Request, res: Response, next: NextFunction) => {
 	const	decodedUser = res.locals.user;
 
 	try {
@@ -132,20 +132,20 @@ export const leaveTeam = async(req: Request, res: Response, next: NextFunction) 
 			}
 
 			res.locals.teamName = team.name;
-			res.locals.contents = { title: "", message: `${decodedUser.username} has left the team` };
+			res.locals.contents = { title: "Member Left Team", message: `${decodedUser.username} has left the team` };
 			res.locals.exception = decodedUser.username;
 		});
 
 		return next();
 	} catch (err) {
 		if (err instanceof FoilCTF_Error)
-			return res.json(err);
+			return res.status(err.statusCode).json(err);
 		console.error(err);
-		return res.json(new FoilCTF_Error("Internal Server Error", 500));
+		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
-export const deleteMember = async(req: Request, res: Response, next: NextFunction) => { // data race?
+export const deleteMember = async(req: Request, res: Response, next: NextFunction) => {
 	const targetUsername = req.params.username as string;
 	const targetTeamName = req.params.teamName as string;
 	const decodedUser = res.locals.user;
@@ -180,16 +180,16 @@ export const deleteMember = async(req: Request, res: Response, next: NextFunctio
 			await tx.update(users).set({ teamName: null }).where(eq(users.username, targetUsername));
 
 			res.locals.teamName = team.name;
-			res.locals.contents = { title: "", message: `${decodedUser.username} has been deleted` };
+			res.locals.contents = { title: "Member Has Been Deleted", message: `${decodedUser.username} has been deleted` };
 			res.locals.exception = decodedUser.username;
 		});
 
 		return next();
 	} catch (err) {
 		if (err instanceof FoilCTF_Error)
-			return res.json(err);
+			return res.status(err.statusCode).json(err);
 		console.error(err);
-		return res.json(new FoilCTF_Error("Internal Server Error", 500));
+		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
@@ -222,15 +222,15 @@ export const handOverLeadership = async(req: Request, res: Response, next: NextF
 		
 			res.locals.captainName = member.memberName; // new captain
 			res.locals.teamName = team.name;
-			res.locals.contents = { title: "", message: `${decodedUser.username} made you the captain of the team` };
+			res.locals.contents = { title: "New Captain", message: `${decodedUser.username} made you the captain of the team` };
 		});
 
 		return next();
 	} catch (err) {
 		if (err instanceof FoilCTF_Error)
-			return res.json(err);
+			return res.status(err.statusCode).json(err);
 		console.error(err);
-		return res.json(new FoilCTF_Error("Internal Server Error", 500));
+		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
@@ -256,7 +256,7 @@ export const sendJoinRequest = async(req: Request, res: Response, next: NextFunc
 				throw new FoilCTF_Error('Not Found', 404);
 			}
 			if (team.isLocked === true || team.membersCount >= team.maxMembers) {
-				throw new FoilCTF_Error('Forbidden', 403);
+				throw new FoilCTF_Error('Team is locked', 403);
 			}
 
 			const existingRequests = await tx
@@ -267,7 +267,7 @@ export const sendJoinRequest = async(req: Request, res: Response, next: NextFunc
 					eq(teamJoinRequests.teamName, team.name)
 				));
 			if (existingRequests.length > 0) {
-				throw new FoilCTF_Error('Forbidden', 403);
+				throw new FoilCTF_Error('Already sent a request', 403);
 			}
 
 			await tx
@@ -279,19 +279,19 @@ export const sendJoinRequest = async(req: Request, res: Response, next: NextFunc
 
 			res.locals.captainName = team.captainName;
 			res.locals.teamName = team.name;
-			res.locals.contents = { title: "", message: `${decodedUser.username} sent a join request` };
+			res.locals.contents = { title: "New Join Request", message: `${decodedUser.username} sent a join request` };
 		});
 	
 		return next();
 	} catch (err) {
 		if (err instanceof FoilCTF_Error)
-			return res.json(err);
+			return res.status(err.statusCode).json(err);
 		console.error(err);
-		return res.json(new FoilCTF_Error("Internal Server Error", 500));
+		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
-export const cancelJoinRequest = async(req: Request, res: Response) => {
+export const cancelJoinRequest = async(req: Request, res: Response, next: NextFunction) => {
 	const decodedUser = res.locals.user;
 
 	await db
@@ -302,10 +302,10 @@ export const cancelJoinRequest = async(req: Request, res: Response) => {
 			)
 		);
 
-	return res.json(new FoilCTF_Success("No Content", 204));
+	return res.status(204).json(new FoilCTF_Success("No Content", 204));
 }
 
-export const acceptJoinRequest = async(req: Request, res: Response, next: NextFunction) => { // data race?
+export const acceptJoinRequest = async(req: Request, res: Response, next: NextFunction) => {
 	const targetTeamName = req.params.teamName as string;
 	const targetUsername = req.params.username as string;
 	const decodedUser = res.locals.user;
@@ -361,13 +361,13 @@ export const acceptJoinRequest = async(req: Request, res: Response, next: NextFu
 		return next();
 	} catch (err) { 
 		if (err instanceof FoilCTF_Error)
-			return res.json(err);
+			return res.status(err.statusCode).json(err);
 		console.error(err);
-		return res.json(new FoilCTF_Error("Internal Server Error", 500));
+		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
-export const declineJoinRequest = async(req: Request, res: Response) => {
+export const declineJoinRequest = async(req: Request, res: Response, next: NextFunction) => {
 	const targetTeamName = req.params.teamName as string;
 	const targetUsername = req.params.username as string;
 	const decodedUser = res.locals.user;
@@ -388,17 +388,16 @@ export const declineJoinRequest = async(req: Request, res: Response) => {
 					)
 			);
 		});
+		return res.status(204).json(new FoilCTF_Success("No Content", 204));
 	} catch (err) {
 		if (err instanceof FoilCTF_Error)
-			return res.json(err);
+			return res.status(err.statusCode).json(err);
 		console.error(err);
-		return res.json(new FoilCTF_Error("Internal Server Error", 500));
+		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 	}
-
-	return res.json(new FoilCTF_Success("No Content", 204));
 }
 
-export const getSentRequests = async(req: Request, res: Response) => {
+export const getSentRequests = async(req: Request, res: Response, next: NextFunction) => {
 	const limit = Math.max(Number(req.query.limit) || 10, 1);
 	const page = Math.max(Number(req.query.page) || 1, 1);
 	const search = req.query.q as string;
@@ -419,15 +418,20 @@ export const getSentRequests = async(req: Request, res: Response) => {
 
 	const sentRequests = dbRequests.map( ({ teamName }) => teamName );
 
-	return res.json({
+	return res.status(200).json({
 		data: sentRequests,
 		page,
 		limit,
 	});
 }
 
-export const notifyCaptain = async(res: Response) => {
-	const captainName = res.locals.captainName;
+export const notifyCaptain = async(req: Request, res: Response, next: NextFunction) => {
+	const captainName = res.locals?.captainName;
+	const contents = res.locals.contents;
+
+	console.log("contents:", contents);
+	if (true === true)
+		return res.status(200).send('all good but no notification');
 
 	try {
 		await db.transaction(async (tx) => {
@@ -438,13 +442,15 @@ export const notifyCaptain = async(res: Response) => {
 			if (!captainUser) {
 				throw new FoilCTF_Error('Forbidden', 403);
 			}
+
 			const [insertedNotification] = await tx
 				.insert(notifications)
-				.values(res.locals.contents)
+				.values(contents)
 				.returning();
 			if (!insertedNotification) {
 				throw new Error('Could not insert into DB');
 			}
+			console.log("inserted notification:", insertedNotification);
 
 			const notificationUserRow = {
 				notificationId: insertedNotification.id,
@@ -460,18 +466,23 @@ export const notifyCaptain = async(res: Response) => {
 				.where(eq(notifications.id, insertedNotification.id));
 		});
 
-		return res.json(new FoilCTF_Success("OK", 200));
+		return res.status(200).json(new FoilCTF_Success("OK", 200));
 	} catch (err) {
 		if (err instanceof FoilCTF_Error)
-			return res.json(err);
+			return res.status(err.statusCode).json(err);
 		console.error(err);
-		return res.json(new FoilCTF_Error("Internal Server Error", 500));
+		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
-export const notifyAllMembers = async(res: Response) => {
+export const notifyAllMembers = async(req: Request, res: Response, next: NextFunction) => {
 	const teamName = res.locals.teamName;
 	const exception = res.locals.exception;
+	const contents = res.locals.contents
+
+	console.log("contents:", contents);
+	if (true === true)
+		return res.status(200).send('all good but no notification');
 
 	try {
 		await db.transaction(async (tx) => {
@@ -485,12 +496,12 @@ export const notifyAllMembers = async(res: Response) => {
 					)
 				);
 			if (membersToNotify.length === 0) {
-				throw new FoilCTF_Error('Forbidden', 403);
+				throw new FoilCTF_Success('OK', 200);
 			}
 
 			const [insertedNotification] = await tx
 				.insert(notifications)
-				.values(res.locals.contents)
+				.values(contents)
 				.returning();
 			if (!insertedNotification) {
 				throw new Error('Could not insert into DB');
@@ -510,12 +521,12 @@ export const notifyAllMembers = async(res: Response) => {
 				.where(eq(notifications.id, insertedNotification.id));
 		});
 
-		return res.json(new FoilCTF_Success("OK", 200));
+		return res.status(200).json(new FoilCTF_Success("OK", 200));
 	} catch (err) {
-		if (err instanceof FoilCTF_Error)
-			return res.json(err);
+		if (err instanceof FoilCTF_Error || err instanceof FoilCTF_Success)
+			return res.status(err.statusCode).json(err);
 		console.error(err);
-		return res.json(new FoilCTF_Error("Internal Server Error", 500));
+		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
@@ -544,13 +555,13 @@ export const updateTeam = async(req: Request, res: Response, next: NextFunction)
 				.where(eq(teams.name, team.name));
 			}
 
-			return res.json(new FoilCTF_Success("Created", 201));
+			return res.status(200).json(new FoilCTF_Success("Created", 200));
 		});
 	} catch (err) {
 		if (err instanceof FoilCTF_Error)
-			return res.json(err);
+			return res.status(err.statusCode).json(err);
 		console.error(err);
-		return res.json(new FoilCTF_Error("Internal Server Error", 500));
+		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
@@ -574,7 +585,7 @@ export const getTeams = async(req: Request, res: Response) => {
 		isLocked: team.isLocked,
 	}));
 
-	return res.json(dbTeamsPublicData);
+	return res.status(200).json(dbTeamsPublicData);
 }
 
 export const getReceivedRequests = async(req: Request, res: Response) => {
@@ -588,7 +599,7 @@ export const getReceivedRequests = async(req: Request, res: Response) => {
 		.from(teams)
 		.where(eq(teams.captainName, decodedUser.username));
 	if (!team) {
-		return res.json(new FoilCTF_Error('Forbidden', 403))
+		return res.status(403).json(new FoilCTF_Error('Forbidden', 403))
 	}
 
 	const filters = [
@@ -604,7 +615,7 @@ export const getReceivedRequests = async(req: Request, res: Response) => {
 		.limit(limit)
 		.offset(limit * (page - 1));
 	const receivedRequests = dbRequests.map( ({ username }) => username );
-	return res.json({
+	return res.status(200).json({
 		data: receivedRequests,
 		page,
 		limit,

@@ -38,13 +38,13 @@ export const parseNonExistingParam = async (
 	next: NextFunction
 ) => {
 	const username = req.params?.username as string | undefined;
-	if (!username) return res.json(new FoilCTF_Error("Bad Request", 400));
+	if (!username) return res.status(400).json(new FoilCTF_Error("Bad Request", 400));
 
 	const [user] = await db
 		.select({ id: users.id })
 		.from(users)
 		.where(eq(users.username, username));
-	if (!user) return res.json(new FoilCTF_Error("Not Found", 404));
+	if (!user) return res.status(404).json(new FoilCTF_Error("Not Found", 404));
 
 	next();
 };
@@ -56,11 +56,11 @@ export function authenticateToken(
 ) {
 	const authHeader = req.get('authorization');
 	if (!authHeader) {
-		return res.json(new FoilCTF_Error("Unauthorized", 401));
+		return res.status(401).json(new FoilCTF_Error("Unauthorized", 401));
 	}
 	const [bearer, ...tokens] = authHeader.split(' ');
 	if (bearer !== 'Bearer' || tokens.length != 1) {
-		return res.json(new FoilCTF_Error("Unauthorized", 401));
+		return res.status(401).json(new FoilCTF_Error("Unauthorized", 401));
 	}
 	try {
 		const decoded = jwt.verify(tokens[0] ?? ' ', AccessTokenSecret) as User;
@@ -68,7 +68,7 @@ export function authenticateToken(
 		req.user = decoded; // multer expects the request not the ressponse (meaning I can't use the res.locals)
 		next();
 	} catch (err) {
-		return res.json(new FoilCTF_Error("Unauthorized", 401));
+		return res.status(401).json(new FoilCTF_Error("Unauthorized", 401));
 	}
 }
 
