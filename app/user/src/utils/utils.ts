@@ -77,30 +77,6 @@ export function authenticateToken(
 	return next();
 }
 
-export function authenticateToken2(
-	req: AuthRequest,
-	res: Response,
-	next: NextFunction
-) {
-	const authHeader = req.get('authorization');
-	if (!authHeader) {
-		return res.sendStatus(401);
-	}
-	const [bearer, ...tokens] = authHeader.split(' ');
-	if (bearer !== 'Bearer' || tokens.length != 1) {
-		return res.sendStatus(401);
-	}
-
-	try {
-		const decoded = jwt.verify(tokens[0] ?? ' ', AccessTokenSecret) as User;
-		res.locals.user = decoded;
-		req.user = decoded; // multer expects the request not the ressponse (meaning I can't use the res.locals)
-		next();
-	} catch (err) {
-		return res.sendStatus(401);
-	}
-}
-
 export function middleware_schema_validate(schema: ZodObject) {
 	return async (req: Request, _res: Response, next: NextFunction) => {
 		const { body } = schema.parse({ body: req.body });
