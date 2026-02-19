@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-import { User, AuthRequest } from './types';
+import { User, AuthRequest, FoilCTF_Error } from './types';
 import {
 	AccessTokenSecret,
 	AccessTokenExpiry,
@@ -38,13 +38,13 @@ export const parseNonExistingParam = async (
 	next: NextFunction
 ) => {
 	const username = req.params?.username as string | undefined;
-	if (!username) return res.status(400).send();
+	if (!username) return res.json(new FoilCTF_Error("Bad Request", 400));
 
 	const [user] = await db
 		.select({ id: users.id })
 		.from(users)
 		.where(eq(users.username, username));
-	if (!user) return res.sendStatus(404);
+	if (!user) return res.json(new FoilCTF_Error("Not Found", 404));
 
 	next();
 };
@@ -56,11 +56,11 @@ export function authenticateToken(
 ) {
 	const authHeader = req.get('authorization');
 	if (!authHeader) {
-		return res.sendStatus(401);
+		return res.json(new FoilCTF_Error("Unauthorized", 401));
 	}
 	const [bearer, ...tokens] = authHeader.split(' ');
 	if (bearer !== 'Bearer' || tokens.length != 1) {
-		return res.sendStatus(401);
+		return res.json(new FoilCTF_Error("Unauthorized", 401));
 	}
 	try {
 		const decoded = jwt.verify(tokens[0] ?? ' ', AccessTokenSecret) as User;
@@ -68,7 +68,7 @@ export function authenticateToken(
 		req.user = decoded; // multer expects the request not the ressponse (meaning I can't use the res.locals)
 		next();
 	} catch (err) {
-		return res.sendStatus(401);
+		return res.json(new FoilCTF_Error("Unauthorized", 401));
 	}
 }
 

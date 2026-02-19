@@ -1,6 +1,10 @@
 import { Request } from 'express';
 import { users, sessions, profiles } from '../db/schema';
 import { boolean, object, z } from 'zod';
+import {
+	PASSWORD_MIN_CHARACTERS,
+	PASSWORD_MAX_CHARACTERS,
+} from './env'
 
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
@@ -25,8 +29,16 @@ export class FoilCTF_Error extends Error {
 	}
 }
 
-const PASSWORD_MIN_CHARACTERS = 8;
-const PASSWORD_MAX_CHARACTERS = 64;
+export class FoilCTF_Success {
+	public statusCode: number;
+	public message: string;
+
+	constructor(message: string, statusCode: number) {
+		this.statusCode = statusCode;
+		this.message = message
+	}
+}
+
 
 export const registerSchema = z.object({
 	body: z.object({

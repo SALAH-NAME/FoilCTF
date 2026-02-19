@@ -13,7 +13,7 @@ import {
 	generateRefreshToken,
 	user_exists,
 } from './utils/utils';
-import { loginSchema, registerSchema } from './utils/types';
+import { FoilCTF_Error, FoilCTF_Success, loginSchema, registerSchema } from './utils/types';
 
 export const route_auth_register = async (
 	req: Request<any, any, zod.infer<typeof registerSchema>['body']>,
@@ -23,7 +23,7 @@ export const route_auth_register = async (
 		const { username, email, password } = req.body; // already validated by zod
 		const existingUser = await user_exists(username, email);
 		if (existingUser) {
-			return res.sendStatus(409);
+			return res.json(new FoilCTF_Error("Conflict", 409));
 		}
 
 		const hashedPassword = await bcrypt.hash(password, 10);
@@ -40,10 +40,10 @@ export const route_auth_register = async (
 			totalpoints: 0,
 		});
 		console.log(`New user created: ${username}`);
-		res.sendStatus(201);
+		return res.json(new FoilCTF_Success("Created", 201));
 	} catch (err) {
 		console.error(err);
-		res.sendStatus(500);
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 };
 
@@ -62,8 +62,7 @@ export const route_auth_login = async (
 			user?.password ?? '$2b$10$dummyhashplaceholder'
 		);
 		if (user === undefined || !passwordIsValid) {
-			res.status(401).send('Invalid username or password');
-			return;
+			return res.json(new FoilCTF_Error("Invalid username or password", 401));
 		}
 
 		const accessToken = generateAccessToken(
@@ -85,10 +84,10 @@ export const route_auth_login = async (
 			sameSite: 'strict',
 			maxAge: duration,
 		});
-		res.json({ accessToken: accessToken, refreshToken: refreshToken });
+		return res.json({ accessToken: accessToken, refreshToken: refreshToken });
 	} catch (err) {
 		console.error(err);
-		res.sendStatus(500);
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 };
 
@@ -102,8 +101,7 @@ export const route_auth_refresh = async (req: Request, res: Response) => {
 			.from(sessions)
 			.where(eq(sessions.refreshtoken, token)); // delete the expired ones? or even limit number of devices connected to at a time
 		if (session === undefined) {
-			res.sendStatus(403);
-			return;
+			return res.json(new FoilCTF_Error("Forbidden", 403));
 		}
 
 		const [user] = await db
@@ -111,18 +109,17 @@ export const route_auth_refresh = async (req: Request, res: Response) => {
 			.from(users)
 			.where(eq(users.id, session.userId));
 		if (user === undefined) {
-			res.status(400).send();
-			return;
+			return res.json(new FoilCTF_Error("Bad Request", 400));
 		}
 		const newAccessToken = generateAccessToken(
 			user.username as string,
 			user.role,
 			user.id
 		);
-		res.json({ accessToken: newAccessToken });
+		return res.json({ accessToken: newAccessToken });
 	} catch (err) {
 		console.error(err);
-		return res.sendStatus(500);
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 };
 
@@ -139,9 +136,9 @@ export const route_auth_logout = async (req: Request, res: Response) => {
 			secure: true,
 			sameSite: 'strict',
 		});
-		return res.sendStatus(204);
+		return res.json(new FoilCTF_Success("No Content", 204));
 	} catch (err) {
 		console.error(err);
-		return res.sendStatus(500);
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 };

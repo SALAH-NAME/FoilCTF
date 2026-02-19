@@ -9,7 +9,7 @@ import jwt, { JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 import { AccessTokenSecret } from './utils/env';
 import { profiles, users } from './db/schema';
 import { db } from './utils/db';
-import { Profile, AuthRequest } from './utils/types';
+import { Profile, AuthRequest, FoilCTF_Error, FoilCTF_Success } from './utils/types';
 import {
 	isEmpty,
 	generateAccessToken,
@@ -43,13 +43,13 @@ export const authenticateTokenProfile = async (
 			.from(profiles)
 			.where(eq(profiles.username, requestedUsername));
 
-		if (!profile) return res.sendStatus(404);
+		if (!profile) return res.json(new FoilCTF_Error("Not Found", 404));
 		const { avatar, id, ...data } = profile;
 		return res.json(data);
 	} catch (err) {
 		if (err instanceof TokenExpiredError) return next();
 		console.error(err);
-		res.sendStatus(500);
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 };
 
@@ -62,7 +62,7 @@ export const getPublicProfile = async (req: Request, res: Response) => {
 			.from(profiles)
 			.where(eq(profiles.username, requestedUsername));
 
-		if (!profile) return res.sendStatus(404);
+		if (!profile) return res.json(new FoilCTF_Error("Not Found", 404));
 		const responseObject = {} as Profile;
 		responseObject.username = profile.username;
 		responseObject.challengessolved = profile.challengessolved;
@@ -77,7 +77,7 @@ export const getPublicProfile = async (req: Request, res: Response) => {
 		return res.json(responseObject);
 	} catch (err) {
 		console.log(err);
-		return res.sendStatus(500);
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 };
 
@@ -133,33 +133,33 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 	try {
 		const file = req.file;
 		if (!file) {
-			return res.sendStatus(400); // no file | file too large
+			return res.json(new FoilCTF_Error("File Too Large", 400));; // no file | file too large
 		}
 		console.log(`received ${file.filename}, size: ${file.size} bytes`);
 		const user = res.locals.user;
 		if (!user || user.id === undefined) {
-			return res.sendStatus(400);
+			return res.json(new FoilCTF_Error("Bad Request", 400));
 		}
 		const dbFilename = `/api/profiles/${user.username}/avatar/` + file.filename;
 		await db
 			.update(profiles)
 			.set({ avatar: dbFilename })
 			.where(eq(profiles.id, user.id));
-		return res.sendStatus(201);
+		return res.json(new FoilCTF_Success("Created", 201));
 	} catch (err) {
 		console.error(err);
-		res.sendStatus(500);
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 };
 
 export const updateProfile = async (req: Request, res: Response) => {
 	const profileData = req.body;
 	if (!profileData || !res.locals.user) {
-		return res.status(400).send();
+		return res.json(new FoilCTF_Error("Bad Request", 400));
 	}
 	if (res.locals.user?.username !== req.params?.username) {
 		// ownership check
-		return res.sendStatus(403);
+		return res.json(new FoilCTF_Error("Forbidden", 403));
 	}
 
 	if (!isEmpty(profileData)) {
@@ -168,7 +168,7 @@ export const updateProfile = async (req: Request, res: Response) => {
 			.set(profileData)
 			.where(eq(profiles.id, res.locals.user.id)); // "isprivate": "" to set the profile to private
 	}
-	res.status(200).send();
+	return res.json(new FoilCTF_Success("OK", 200));
 };
 
 export const updateUser = async (
@@ -177,18 +177,18 @@ export const updateUser = async (
 	next: NextFunction
 ) => {
 	if (!req.body || !res.locals.user) {
-		return res.status(400).send();
+		return res.json(new FoilCTF_Error("Bad Request", 400));
 	}
 	if (res.locals.user?.username !== req.params?.username) {
 		// ownership check
-		return res.sendStatus(403);
+		return res.json(new FoilCTF_Error("Forbidden", 403));
 	}
 
 	let { username, email, oldPassword, newPassword } = req.body;
 
 	const existingUser = await user_exists(username, email);
 	if (existingUser) {
-		return res.sendStatus(409);
+		return res.json(new FoilCTF_Error("Conflict", 409));
 	}
 
 	if (newPassword !== undefined) {
@@ -196,7 +196,7 @@ export const updateUser = async (
 			oldPassword,
 			res.locals.user.username
 		);
-		if (!passwordIsValid) return res.status(401).send('Invalid password');
+		if (!passwordIsValid) return res.json(new FoilCTF_Error("Invalid Password", 403));
 		newPassword = await bcrypt.hash(newPassword, 10);
 	}
 
@@ -248,7 +248,7 @@ export const updateTokens = async (
 		sameSite: 'strict',
 		maxAge: duration,
 	});
-	res.json({ accessToken: accessToken, refreshToken: refreshToken });
+	return res.json({ accessToken: accessToken, refreshToken: refreshToken });
 
 	next();
 };

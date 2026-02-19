@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { db } from './utils/db';
 import { eq, and, sql, ne, ilike } from 'drizzle-orm';
 import { users, teams, teamMembers, teamJoinRequests, notifications, notificationUsers } from './db/schema';
-import { FoilCTF_Error } from './utils/types';
+import { FoilCTF_Error, FoilCTF_Success } from './utils/types';
 
 export const createTeam = async(req: Request, res: Response) => {
 	const decodedUser = res.locals.user;
@@ -24,7 +24,7 @@ export const createTeam = async(req: Request, res: Response) => {
 						.from(teams)
 						.where(eq(teams.name, newTeamName));
 			if (existingTeam) {
-				throw new FoilCTF_Error('name already used', 409);
+				throw new FoilCTF_Error('Name Already Used', 409);
 			}
 
 			await tx
@@ -42,10 +42,12 @@ export const createTeam = async(req: Request, res: Response) => {
 			await tx.update(users).set({ teamName: newTeamName }).where(eq(users.id, decodedUser.id));
 		});
 
-		return res.status(201).send();
+		return res.json(new FoilCTF_Success("Created", 201));
 	} catch (err) {
+		if (err instanceof FoilCTF_Error)
+			return res.json(err);
 		console.error(err);
-		return res.status(500).send();
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
@@ -136,8 +138,10 @@ export const leaveTeam = async(req: Request, res: Response, next: NextFunction) 
 
 		return next();
 	} catch (err) {
+		if (err instanceof FoilCTF_Error)
+			return res.json(err);
 		console.error(err);
-		return res.status(500).send();
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
@@ -182,8 +186,10 @@ export const deleteMember = async(req: Request, res: Response, next: NextFunctio
 
 		return next();
 	} catch (err) {
+		if (err instanceof FoilCTF_Error)
+			return res.json(err);
 		console.error(err);
-		return res.status(500).send();
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
@@ -221,8 +227,10 @@ export const handOverLeadership = async(req: Request, res: Response, next: NextF
 
 		return next();
 	} catch (err) {
+		if (err instanceof FoilCTF_Error)
+			return res.json(err);
 		console.error(err);
-		return res.status(500).send();
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
@@ -276,8 +284,10 @@ export const sendJoinRequest = async(req: Request, res: Response, next: NextFunc
 	
 		return next();
 	} catch (err) {
+		if (err instanceof FoilCTF_Error)
+			return res.json(err);
 		console.error(err);
-		return res.status(500).send();
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
@@ -292,7 +302,7 @@ export const cancelJoinRequest = async(req: Request, res: Response) => {
 			)
 		);
 
-	return res.status(204).send();
+	return res.json(new FoilCTF_Success("No Content", 204));
 }
 
 export const acceptJoinRequest = async(req: Request, res: Response, next: NextFunction) => { // data race?
@@ -350,8 +360,10 @@ export const acceptJoinRequest = async(req: Request, res: Response, next: NextFu
 
 		return next();
 	} catch (err) { 
+		if (err instanceof FoilCTF_Error)
+			return res.json(err);
 		console.error(err);
-		return res.status(500).send();
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
@@ -377,11 +389,13 @@ export const declineJoinRequest = async(req: Request, res: Response) => {
 			);
 		});
 	} catch (err) {
+		if (err instanceof FoilCTF_Error)
+			return res.json(err);
 		console.error(err);
-		return res.status(500).send();
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 
-	return res.status(204).send();
+	return res.json(new FoilCTF_Success("No Content", 204));
 }
 
 export const getSentRequests = async(req: Request, res: Response) => {
@@ -446,10 +460,12 @@ export const notifyCaptain = async(res: Response) => {
 				.where(eq(notifications.id, insertedNotification.id));
 		});
 
-		return res.status(200).send();
+		return res.json(new FoilCTF_Success("OK", 200));
 	} catch (err) {
+		if (err instanceof FoilCTF_Error)
+			return res.json(err);
 		console.error(err);
-		return res.status(500).send();
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
@@ -494,10 +510,12 @@ export const notifyAllMembers = async(res: Response) => {
 				.where(eq(notifications.id, insertedNotification.id));
 		});
 
-		return res.status(200).send();
+		return res.json(new FoilCTF_Success("OK", 200));
 	} catch (err) {
+		if (err instanceof FoilCTF_Error)
+			return res.json(err);
 		console.error(err);
-		return res.status(500).send();
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
@@ -526,11 +544,13 @@ export const updateTeam = async(req: Request, res: Response, next: NextFunction)
 				.where(eq(teams.name, team.name));
 			}
 
-			return res.status(201).send();
+			return res.json(new FoilCTF_Success("Created", 201));
 		});
 	} catch (err) {
+		if (err instanceof FoilCTF_Error)
+			return res.json(err);
 		console.error(err);
-		return res.status(500).send();
+		return res.json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 

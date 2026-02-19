@@ -12,6 +12,7 @@ import {
 	teamCreationSchema,
 	updateTeamSchema,
 	transferLeadershipSchema,
+	FoilCTF_Success,
 } from './utils/types';
 import {
 	authenticateToken,
@@ -123,7 +124,7 @@ app.put(
 
 // SECTION: Health
 app.get('/health', (_req, res) => {
-	res.status(200).send('OK');
+	return res.json(new FoilCTF_Success("OK", 200));
 });
 
 // SECTION: Teams

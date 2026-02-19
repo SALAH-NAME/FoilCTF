@@ -1,6 +1,7 @@
 import { ZodError } from 'zod';
 import { MulterError } from 'multer';
 import type { Request, Response, NextFunction } from 'express';
+import { FoilCTF_Error } from './utils/types';
 
 export class UploadError extends Error {
 	status_code: number;
@@ -36,12 +37,12 @@ export function middleware_error(
 		err instanceof SyntaxError ||
 		err instanceof MulterError
 	) {
-		return res.status(400).send(err.message);
+		return res.json(new FoilCTF_Error("Bad Request", 400));
 	}
 	if (err instanceof UploadError) {
-		return res.status(err.status_code).send(err.message);
-	}
+		return res.json({statusCode: err.status_code, message: err.message});
+return res.json(new FoilCTF_Success("Created", 201));	}
 
 	console.error(err);
-	res.sendStatus(500);
+	return res.json(new FoilCTF_Error("Internal Server Error", 500));
 }
