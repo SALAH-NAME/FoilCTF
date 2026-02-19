@@ -3,12 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 func DbInit() (*gorm.DB, error) {
@@ -18,19 +15,8 @@ func DbInit() (*gorm.DB, error) {
 	dbName := GetEnv("DB_NAME", "foilctf")
 	dbPort := GetEnv("DB_PORT", "5432")
 
-	gormLogger := logger.New(
-		log.New(os.Stdout, "GORM - ", 0),
-		logger.Config{
-			LogLevel:                  logger.Info,
-			SlowThreshold:             2 * time.Second,
-			IgnoreRecordNotFoundError: true,
-			ParameterizedQueries:      true,
-			Colorful:                  false,
-		},
-	)
-
 	dns := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", dbHost, dbUser, dbPass, dbName, dbPort)
-	db, err := gorm.Open(postgres.Open(dns), &gorm.Config{Logger: gormLogger})
+	db, err := gorm.Open(postgres.Open(dns), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to database: %v", err)
 	}
