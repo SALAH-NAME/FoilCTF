@@ -15,13 +15,13 @@ export interface AuthRequest extends Request {
 	user?: User;
 }
 
-export class FoilCTF_error extends Error {
+export class FoilCTF_Error extends Error {
 	public statusCode: number;
 	constructor(message: string, statusCode: number) {
 		super(message);
 		this.statusCode = statusCode;
 
-		this.name = 'FoilCTF_error';
+		this.name = 'FoilCTF_Error';
 	}
 }
 
