@@ -199,7 +199,7 @@ app.get(
 	getTeams,
 );
 app.get(
-	'/api/teams/requests/shit/fuck/ikhan', // !!!!!!!!!!! conflicts with /api/teams/:teamName, getTeamDetails
+	'/api/teams/requests/sh*t/f*ck/ikhan', // !!!!!!!!!!! conflicts with /api/teams/:teamName, getTeamDetails
 	authenticateToken,
 	getReceivedRequests,
 );

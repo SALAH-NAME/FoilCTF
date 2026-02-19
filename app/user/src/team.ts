@@ -235,7 +235,7 @@ export const handOverLeadership = async(req: Request, res: Response, next: NextF
 }
 
 export const sendJoinRequest = async(req: Request, res: Response, next: NextFunction) => {
-	const	targetTeamName = req.params.teamName as string;
+	const targetTeamName = req.params.teamName as string;
 	const decodedUser = res.locals.user;
 
 	try {
@@ -429,10 +429,6 @@ export const notifyCaptain = async(req: Request, res: Response, next: NextFuncti
 	const captainName = res.locals?.captainName;
 	const contents = res.locals.contents;
 
-	console.log("contents:", contents);
-	if (true === true)
-		return res.status(200).send('all good but no notification');
-
 	try {
 		await db.transaction(async (tx) => {
 			const [captainUser] = await tx
@@ -445,12 +441,13 @@ export const notifyCaptain = async(req: Request, res: Response, next: NextFuncti
 
 			const [insertedNotification] = await tx
 				.insert(notifications)
-				.values(contents)
+				.values({
+					contents: contents
+				})
 				.returning();
 			if (!insertedNotification) {
 				throw new Error('Could not insert into DB');
 			}
-			console.log("inserted notification:", insertedNotification);
 
 			const notificationUserRow = {
 				notificationId: insertedNotification.id,
@@ -480,10 +477,6 @@ export const notifyAllMembers = async(req: Request, res: Response, next: NextFun
 	const exception = res.locals.exception;
 	const contents = res.locals.contents
 
-	console.log("contents:", contents);
-	if (true === true)
-		return res.status(200).send('all good but no notification');
-
 	try {
 		await db.transaction(async (tx) => {
 			const membersToNotify = await tx
@@ -501,7 +494,9 @@ export const notifyAllMembers = async(req: Request, res: Response, next: NextFun
 
 			const [insertedNotification] = await tx
 				.insert(notifications)
-				.values(contents)
+				.values({
+					contents: contents
+				})
 				.returning();
 			if (!insertedNotification) {
 				throw new Error('Could not insert into DB');
