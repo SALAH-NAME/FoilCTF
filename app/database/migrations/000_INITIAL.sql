@@ -83,9 +83,10 @@ CREATE TABLE IF NOT EXISTS friends (
   username_1 TEXT NOT NULL,
   username_2 TEXT NOT NULL,
 
-  PRIMARY KEY (username_1, username_2)
+  PRIMARY KEY (username_1, username_2),
 
-  -- CONSTRAINT order_check CHECK (user_id_1 < user_id_2)
+  CONSTRAINT no_self_friendship CHECK (username_1 <> username_2)
+  -- CONSTRAINT canonical_order CHECK (username_1 < username_2)
 );
 CREATE TABLE IF NOT EXISTS friend_requests (
   sender_name   TEXT NOT NULL,

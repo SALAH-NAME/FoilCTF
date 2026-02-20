@@ -86,15 +86,17 @@ export async function listReceivedFriendRequests(req: Request, res: Response, ne
 	if (search)
 		filters.push(ilike(friendRequests.senderName, `${search}%`));
 
-    const dbFriends = await db
+    const requests = await db
         .select()
         .from(friendRequests)
 		.where(and(...filters))
 		.limit(limit)
 		.offset(limit * (page - 1));
 
+	// filter receiver name before responding?
+
     return res.status(200).json({
-		data: dbFriends,
+		data: requests,
 		limit,
 		page,
 	});
@@ -104,9 +106,11 @@ export async function sendFriendRequest(req: Request, res: Response, next: NextF
     const target = req.params.username as string;
     const decodedUser = res.locals.user;
 
+	if (target === decodedUser.username)
+		return res.status(403).json(new FoilCTF_Error("No self requests allowed", 403));
+
 	try {
 		await db.transaction(async (tx) => {
-
 			const [dbUser] = await tx
 				.select()
 				.from(users)
@@ -114,7 +118,7 @@ export async function sendFriendRequest(req: Request, res: Response, next: NextF
 			if (!dbUser) {
 				throw new FoilCTF_Error('No such user', 403);
 			}
-		
+
 			const [existingRequest] = await tx
 				.select()
 				.from(friendRequests)
@@ -132,7 +136,7 @@ export async function sendFriendRequest(req: Request, res: Response, next: NextF
 			if (existingRequest) {
 				throw new FoilCTF_Error('Request already exists', 403);
 			}
-		
+
 			await tx
 				.insert(friendRequests)
 				.values({
@@ -166,7 +170,7 @@ export async function cancelFriendRequest(req: Request, res: Response, next: Nex
 			)
 		);
 
-	return res.status(204).json();
+	return res.status(200).json(new FoilCTF_Success("Request cancelled successfuly", 200));
 }
 
 export async function acceptFriendRequest(req: Request, res: Response, next: NextFunction) {

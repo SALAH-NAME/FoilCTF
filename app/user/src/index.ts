@@ -139,7 +139,7 @@ app.patch(
 	notifyUser,
 );
 app.delete(
-	'/api/friends/requests/pedning/:username',
+	'/api/friends/requests/pending/:username',
 	authenticateToken,
 	rejectFriendRequest,
 );
