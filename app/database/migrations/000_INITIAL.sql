@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS users (
   email		      TEXT DEFAULT NULL UNIQUE,
   username	      TEXT NOT NULL UNIQUE,
   role		      VARCHAR(64) NOT NULL DEFAULT 'user',
+  is_online     BOOLEAN NOT NULL DEFAULT false, -- SECTION: friends
 
   profile_id          INTEGER DEFAULT NULL
   -- CONSTRAINT profile  FOREIGN KEY (profile_id) REFERENCES profiles -- is this necessary??
@@ -77,7 +78,24 @@ CREATE TABLE IF NOT EXISTS team_members (
   CONSTRAINT constraint_team FOREIGN KEY (team_id) REFERENCES teams,
   CONSTRAINT constraint_member FOREIGN KEY (member_id) REFERENCES users
 );
+-- SECTION: friends
+CREATE TABLE IF NOT EXISTS friends (
+  username_1 TEXT NOT NULL,
+  username_2 TEXT NOT NULL,
 
+  PRIMARY KEY (username_1, username_2)
+
+  -- CONSTRAINT order_check CHECK (user_id_1 < user_id_2)
+);
+CREATE TABLE IF NOT EXISTS friend_requests (
+  sender_name   TEXT NOT NULL,
+  receiver_name TEXT NOT NULL,
+
+  PRIMARY KEY (sender_name, receiver_name),
+
+  CONSTRAINT no_self_request CHECK (sender_name <> receiver_name)
+);
+-- SECTION: friends
 CREATE TABLE IF NOT EXISTS attachments (
   id        SERIAL PRIMARY KEY,
   contents  JSON NOT NULL

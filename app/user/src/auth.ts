@@ -13,7 +13,7 @@ import {
 	generateRefreshToken,
 	user_exists,
 } from './utils/utils';
-import { loginSchema, registerSchema } from './utils/types';
+import { loginSchema, registerSchema, User } from './utils/types';
 
 export const route_auth_register = async (
 	req: Request<any, any, zod.infer<typeof registerSchema>['body']>,
@@ -74,17 +74,20 @@ export const route_auth_login = async (
 		const refreshToken = generateRefreshToken(user.username as any, user.id);
 		const duration = ms(RefreshTokenExpiry as StringValue);
 		const expiryDate = new Date(Date.now() + duration);
-		await db.insert(sessions).values({
-			refreshtoken: refreshToken,
-			expiry: expiryDate.toISOString(),
-			userId: user.id,
-		});
-		res.cookie('jwt', refreshToken, {
-			httpOnly: true,
-			secure: true,
-			sameSite: 'strict',
-			maxAge: duration,
-		});
+		await db.transaction(async (tx)=> { // SECTION: friends
+			await tx.insert(sessions).values({
+				refreshtoken: refreshToken,
+				expiry: expiryDate.toISOString(),
+				userId: user.id,
+			});
+			await tx.update(users).set({isOnline: true}).where(eq(users.username, username)); // SECTION: friends
+			res.cookie('jwt', refreshToken, {
+				httpOnly: true,
+				secure: true,
+				sameSite: 'strict',
+				maxAge: duration,
+			});
+		})
 		res.json({ accessToken: accessToken, refreshToken: refreshToken });
 	} catch (err) {
 		console.error(err);
@@ -128,9 +131,13 @@ export const route_auth_refresh = async (req: Request, res: Response) => {
 
 export const route_auth_logout = async (req: Request, res: Response) => {
 	try {
-		const token = req.cookies?.jwt; // cookie for refresh token
+		const token = req.cookies?.jwt;
 		if (token) {
-			await db.delete(sessions).where(eq(sessions.refreshtoken, token));
+			const decoded = jwt.verify(token, RefreshTokenSecret) as User; // SECTION: friends
+			await db.transaction(async (tx) => { // SECTION: friends
+				await tx.update(users).set({isOnline: false}).where(eq(users.username, decoded.username)); // SECTION: friends
+				await tx.delete(sessions).where(eq(sessions.refreshtoken, token));
+			});
 			console.log('user session got deleted');
 		}
 

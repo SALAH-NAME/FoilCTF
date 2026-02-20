@@ -67,3 +67,13 @@ const profileBody = z.object({
 export const updateProfileSchema = z.object({
 	body: profileBody.partial(),
 });
+
+export const sendFriendRequestSchema = z.object({ // SECTION: friends
+	body: z.object({
+		username: z
+			.string()
+			.min(3)
+			.max(15)
+			.regex(/^[a-zA-Z0-9_-]+$/),
+	})
+})

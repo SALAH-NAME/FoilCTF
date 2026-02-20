@@ -9,6 +9,7 @@ import {
 	loginSchema,
 	updateProfileSchema,
 	updateUserSchema,
+	sendFriendRequestSchema, // SECTION: friends
 } from './utils/types';
 import {
 	authenticateToken,
@@ -33,6 +34,21 @@ import {
 	route_auth_logout,
 } from './auth';
 import { route_user_me } from './user';
+import {
+	sendFriendRequest,
+	acceptFriendRequest,
+	rejectFriendRequest,
+	listFriends,
+	listReceivedFriendRequests,
+	removeFriend,
+	cancelFriendRequest,
+	notifyUser
+} from './friend';
+import {
+	deleteUser,
+	listUsers,
+	updateUserRole
+} from './admin'; // SECTION: admin
 
 const app = express();
 app.use(middleware_logger);
@@ -99,6 +115,67 @@ app.put(
 	updateUser,
 	updateTokens
 );
+
+// SECTION: admin
+app.get(
+	'/api/users',
+	listUsers,
+);
+app.patch(
+	'/api/users/:username',
+	updateUserRole,
+);
+// app.put(
+// 	'/api/users/:username',
+// 	// banUser,
+// );
+app.delete(
+	'/api/users/:username',
+	deleteUser,
+);
+
+// SECTION: friends
+app.get(
+	'/api/friends',
+	authenticateToken,
+	listFriends,
+);
+app.get(
+	'/api/friends/requests',
+	authenticateToken,
+	listReceivedFriendRequests,
+);
+app.post(
+	'/api/friends/requests/:username', // which one? param or body?
+	// middleware_schema_validate(sendFriendRequestSchema),
+	authenticateToken,
+	sendFriendRequest,
+	notifyUser,
+);
+app.delete(
+	'/api/friends/:id/requests/:requestID', // avoid for now
+	authenticateToken,
+	cancelFriendRequest,
+);
+app.patch(
+	'/api/friends/requests/:username',
+	authenticateToken,
+	acceptFriendRequest,
+	notifyUser,
+);
+app.delete(
+	'/api/friends/requests/:username',
+	authenticateToken,
+	rejectFriendRequest,
+);
+app.delete(
+	'/api/friends/:username',
+	authenticateToken,
+	removeFriend,
+);
+
+
+
 
 // SECTION: Health
 app.get('/health', (_req, res) => {
