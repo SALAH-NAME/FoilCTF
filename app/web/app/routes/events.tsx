@@ -5,6 +5,9 @@ import EventCard from '~/components/EventCard';
 import SearchInput from '~/components/SearchInput';
 import FilterTabs from '~/components/FilterTabs';
 import Pagination from '~/components/Pagination';
+import Button from '~/components/Button';
+import Icon from '~/components/Icon';
+import AdminEventModal from '~/components/AdminEventModal';
 import type { Route } from './+types/events';
 
 type EventStatus = 'upcoming' | 'active' | 'ended';
@@ -114,6 +117,7 @@ export function meta({}: Route.MetaArgs) {
 export default function Events() {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [searchQuery, setSearchQuery] = useState('');
+	const [showCreateModal, setShowCreateModal] = useState(false);
 
 	const filterParam = searchParams.get('filter') as
 		| 'upcoming'
@@ -188,7 +192,18 @@ export default function Events() {
 
 	return (
 		<>
-			<PageHeader title="Events" />
+			<PageHeader
+				title="Events"
+				action={
+					<Button
+						onClick={() => setShowCreateModal(true)}
+						aria-label="Create a new event"
+					>
+						<Icon name="add" className="size-4" aria-hidden={true} />
+						New Event
+					</Button>
+				}
+			/>
 			<div className="flex flex-col gap-4 md:gap-6 min-w-0 w-full max-w-7xl mx-auto  px-4 py-8">
 				<div className="b-6">
 					<SearchInput
@@ -252,6 +267,11 @@ export default function Events() {
 					</>
 				)}
 			</div>
+
+			<AdminEventModal
+				isOpen={showCreateModal}
+				onClose={() => setShowCreateModal(false)}
+			/>
 		</>
 	);
 }

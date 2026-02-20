@@ -7,7 +7,7 @@ interface ModalProps {
 	title: string;
 	children: ReactNode;
 	footer?: ReactNode;
-	size?: 'sm' | 'md' | 'lg';
+	size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
 export default function Modal({
@@ -16,7 +16,7 @@ export default function Modal({
 	title,
 	children,
 	footer,
-	size = 'md',
+	size = 'md' as const,
 }: ModalProps) {
 	const modalRef = useRef<HTMLDivElement>(null);
 	const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -88,6 +88,7 @@ export default function Modal({
 		sm: 'max-w-md',
 		md: 'max-w-lg',
 		lg: 'max-w-2xl',
+		xl: 'max-w-4xl',
 	};
 
 	return (

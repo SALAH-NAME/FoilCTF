@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { useToast } from '~/contexts/ToastContext';
 import Button from '~/components/Button';
 import Icon from '~/components/Icon';
 import EventStatCard from '~/components/EventStatCard';
@@ -7,7 +8,9 @@ import PageSection from '~/components/PageSection';
 import CountdownCard from '~/components/CountdownCard';
 import InfoText from '~/components/InfoText';
 import Modal from '~/components/Modal';
+import AdminEventModal from '~/components/AdminEventModal';
 import PageHeader from '~/components/PageHeader';
+import BackLink from '~/components/BackLink';
 
 interface RouteParams {
 	params: {
@@ -25,6 +28,9 @@ export function meta({ params }: RouteParams) {
 export default function EventDetail({ params }: RouteParams) {
 	const [isRegistered, setIsRegistered] = useState(false);
 	const [showUnregisterModal, setShowUnregisterModal] = useState(false);
+	const [showEditModal, setShowEditModal] = useState(false);
+
+	const { addToast } = useToast();
 
 	// Mock event data
 	const event = {
@@ -52,6 +58,11 @@ export default function EventDetail({ params }: RouteParams) {
 			setShowUnregisterModal(true);
 		} else {
 			setIsRegistered(true);
+			addToast({
+				variant: 'success',
+				title: 'Registration confirmed',
+				message: `You are now registered for ${event.name}.`,
+			});
 		}
 	};
 
@@ -59,6 +70,11 @@ export default function EventDetail({ params }: RouteParams) {
 		// TODO: unregister
 		setIsRegistered(false);
 		setShowUnregisterModal(false);
+		addToast({
+			variant: 'warning',
+			title: 'Unregistered',
+			message: `You have been removed from ${event.name}.`,
+		});
 	};
 
 	const handleCancelUnregister = () => {
@@ -88,8 +104,23 @@ export default function EventDetail({ params }: RouteParams) {
 
 	return (
 		<div className="flex flex-col gap-4">
-			{/* <BackLink to="/events">Back to Events</BackLink> */}
-			<PageHeader title={event.name} className="mb-4" />
+			<BackLink to="/events">Back to Events</BackLink>
+
+			<PageHeader
+				title={event.name}
+				className="mb-4"
+				action={
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => setShowEditModal(true)}
+						aria-label="Edit this event"
+					>
+						<Icon name="edit" className="size-4" aria-hidden={true} />
+						Edit Event
+					</Button>
+				}
+			/>
 
 			<section aria-labelledby="event-title ">
 				<div className="bg-surface border border-neutral-300 rounded-md overflow-hidden">
@@ -372,6 +403,21 @@ export default function EventDetail({ params }: RouteParams) {
 					</div>
 				</div>
 			</Modal>
+
+			<AdminEventModal
+				isOpen={showEditModal}
+				onClose={() => setShowEditModal(false)}
+				eventId={params.id}
+				initialData={{
+					name: event.name,
+					description: event.description,
+					organizer: event.organizer,
+					startDate: event.startDate.slice(0, 16),
+					endDate: event.endDate.slice(0, 16),
+					registrationOpen: event.registrationOpen,
+					linkedChallenges: [],
+				}}
+			/>
 		</div>
 	);
 }
