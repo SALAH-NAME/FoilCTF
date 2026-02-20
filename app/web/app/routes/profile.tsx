@@ -1,15 +1,18 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
+
 import type { Route } from './+types/profile';
-import Button from '../components/Button';
-import StatsCard from '../components/StatsCard';
-import AvatarUpload from '../components/AvatarUpload';
-import ProfileField from '../components/ProfileField';
-import PrivacyToggle from '../components/PrivacyToggle';
-import Modal from '../components/Modal';
-import FormInput from '../components/FormInput';
-import { useFormValidation } from '../hooks/useFormValidation';
-import { validationRules } from '../utils/validation';
+import { UserContext } from '~/contexts/UserContext';
+import { validationRules } from '~/utils/validation';
+import { useFormValidation } from '~/hooks/useFormValidation';
+
 import Icon from '~/components/Icon';
+import Modal from '~/components/Modal';
+import Button from '~/components/Button';
+import FormInput from '~/components/FormInput';
+import StatsCard from '~/components/StatsCard';
+import AvatarUpload from '~/components/AvatarUpload';
+import ProfileField from '~/components/ProfileField';
+import PrivacyToggle from '~/components/PrivacyToggle';
 
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Profile' }];
@@ -21,6 +24,8 @@ export default function Page() {
 	const [showEmailModal, setShowEmailModal] = useState(false);
 	const [showPasswordModal, setShowPasswordModal] = useState(false);
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+	const { logoutUserState } = useContext(UserContext)!;
 
 	const [profileData, setProfileData] = useState({
 		username: 'John_Doe',
@@ -366,7 +371,7 @@ export default function Page() {
 						Account Settings
 					</h2>
 					<div className="space-y-4">
-						<div className="flex flex-row pb-4  items-center justify-between border-b border-dark/10">
+						<div className="flex flex-row pb-4 items-center justify-between border-b border-dark/10">
 							<div className="h-5 flex flex-col pr-4 gap-2 justify-left">
 								<h3 className="text-sm font-semibold text-dark leading-0">
 									Email
@@ -377,7 +382,7 @@ export default function Page() {
 								variant="secondary"
 								size="sm"
 								type="button"
-								className="w-22"
+								className="w-24"
 								onClick={() => setShowEmailModal(true)}
 							>
 								Change
@@ -391,10 +396,22 @@ export default function Page() {
 								variant="secondary"
 								size="sm"
 								type="button"
-								className="w-22"
+								className="w-24"
 								onClick={() => setShowPasswordModal(true)}
 							>
 								Change
+							</Button>
+						</div>
+						<div className="flex flex-row pb-4 items-center justify-between border-b border-dark/10">
+							<span></span>
+							<Button
+								variant="secondary"
+								size="sm"
+								type="button"
+								className="w-24"
+								onClick={logoutUserState}
+							>
+								Sign out
 							</Button>
 						</div>
 						<div className="flex flex-row items-center justify-between">
@@ -405,7 +422,7 @@ export default function Page() {
 								variant="danger"
 								size="sm"
 								type="button"
-								className="w-22"
+								className="w-24"
 								onClick={() => setShowDeleteModal(true)}
 							>
 								Delete

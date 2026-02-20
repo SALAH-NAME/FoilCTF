@@ -1,9 +1,11 @@
+import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router';
-import { useSidebar } from '../contexts/SidebarContext';
+
+import { useSidebar } from '~/contexts/SidebarContext';
+
 import Icon from './Icon';
 import Logo from './Logo';
 import { NavGroup, type NavItemConfig } from './NavLink';
-import { useEffect } from 'react';
 
 const navItems: NavItemConfig[] = [
 	{ to: '/', label: 'Home', icon: 'home' },
@@ -50,14 +52,13 @@ const navItems: NavItemConfig[] = [
 export default function Sidebar() {
 	const { isExpanded, toggleExpanded, isMobileOpen, closeMobile } =
 		useSidebar();
-	const location = useLocation();
 
+	const location = useLocation();
 	const isActive = location.pathname == '/profile';
 
 	useEffect(() => {
 		closeMobile();
 	}, [location.pathname, closeMobile]);
-
 	useEffect(() => {
 		if (isMobileOpen) {
 			document.body.style.overflow = 'hidden';
@@ -68,7 +69,6 @@ export default function Sidebar() {
 			document.body.style.overflow = 'unset';
 		};
 	}, [isMobileOpen]);
-
 	useEffect(() => {
 		const handleEscape = (e: KeyboardEvent) => {
 			if (e.key === 'Escape' && isMobileOpen) {

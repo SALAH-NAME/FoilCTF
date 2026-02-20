@@ -1,18 +1,23 @@
-import { Link } from 'react-router';
-import { useState, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router';
+import { useState, type SubmitEvent } from 'react';
+
 import type { Route } from './+types/signin';
+
+import Button from '../components/Button';
 import FormInput from '../components/FormInput';
 import FormDivider from '../components/FormDivider';
 import OAuthButton from '../components/OAuthButton';
-import Button from '../components/Button';
-import { useFormValidation } from '../hooks/useFormValidation';
+
 import { validationRules } from '../utils/validation';
+import { useFormValidation } from '../hooks/useFormValidation';
 
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Sign In' }];
 }
 
 export default function Page() {
+	const navigate = useNavigate();
+
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
 
@@ -27,17 +32,32 @@ export default function Page() {
 		return !usernameError && !passwordError;
 	};
 
-	const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-		e.preventDefault();
-		if (validateForm()) {
-			// TODO: Submit form
-			alert(`Form submitted:\nusername: ${username},\npass: ${password}`);
-		}
+	const handleOAuth = async () => {
+		const location = window.location;
+		const location_search = new URLSearchParams(location.search);
+
+		const uri_redirect = new URL(
+			'/oauth/42',
+			location.protocol + '//' + location.host
+		);
+		const uri_redirect_prev = location_search.get('redirect_uri');
+		if (uri_redirect_prev)
+			uri_redirect.searchParams.set('redirect_uri', uri_redirect_prev);
+
+		const origin =
+			import.meta.env.VITE_REST_USER_ORIGIN ?? 'http://localhost:3001';
+		const uri_oauth = new URL('/api/oauth/42/connect', origin);
+		uri_oauth.searchParams.set('redirect_uri', uri_redirect.toString());
+
+		window.location.href = uri_oauth.toString();
 	};
 
-	const handleOAuth = () => {
-		// TODO: OAuth implementation
-		alert('OAuth sign in');
+	const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
+		e.preventDefault();
+		if (!validateForm()) return;
+
+		// const credentials = { username, password };
+		// TODO(xenobas): Implement login via email/password
 	};
 
 	return (
