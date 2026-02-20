@@ -67,3 +67,12 @@ const profileBody = z.object({
 export const updateProfileSchema = z.object({
 	body: profileBody.partial(),
 });
+
+export const updateUserRoleSchema = z.object({
+	body: z.object({
+		newRole: z
+			.string()
+			.min(1)
+	})
+});
+

@@ -9,6 +9,7 @@ import {
 	loginSchema,
 	updateProfileSchema,
 	updateUserSchema,
+	updateUserRoleSchema,
 } from './utils/types';
 import {
 	authenticateToken,
@@ -33,6 +34,11 @@ import {
 	route_auth_logout,
 } from './auth';
 import { route_user_me } from './user';
+import {
+	deleteUser,
+	listUsers,
+	updateUserRole
+} from './admin';
 
 const app = express();
 app.use(middleware_logger);
@@ -98,6 +104,21 @@ app.put(
 	authenticateToken,
 	updateUser,
 	updateTokens
+);
+
+// SECTION: admin
+app.get(
+    '/api/users',
+    listUsers,
+);
+app.patch(
+    '/api/users/:username',
+	middleware_schema_validate(updateUserRoleSchema),
+    updateUserRole,
+);
+app.delete(
+    '/api/users/:username',
+    deleteUser,
 );
 
 // SECTION: Health
