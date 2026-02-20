@@ -14,6 +14,7 @@ import {
 	generateRefreshToken,
 	user_exists,
 } from './utils/utils';
+import { JWT_verify } from './jwt';
 
 export const route_auth_register = async (
 	req: Request<any, any, zod.infer<typeof registerSchema>['body']>,
@@ -52,78 +53,59 @@ export const route_auth_login = async (
 	res: Response
 ) => {
 	const { username, password } = req.body;
-	try {
-		const [user] = await db
-			.select()
-			.from(users)
-			.where(eq(users.username, username));
-		const passwordIsValid = await bcrypt.compare(
-			password,
-			user?.password ?? '$2b$10$dummyhashplaceholder'
-		);
-		if (user === undefined || !passwordIsValid) {
-			res.status(401).send('Invalid username or password');
-			return;
-		}
+	const [user] = await db
+		.select()
+		.from(users)
+		.where(eq(users.username, username));
 
-		const accessToken = generateAccessToken(
-			user.username as any,
-			user.role,
-			user.id
-		);
-		const refreshToken = generateRefreshToken(user.username as any, user.id);
-		const duration = ms(RefreshTokenExpiry as StringValue);
-		const expiryDate = new Date(Date.now() + duration);
-		await db.insert(table_sessions).values({
-			refreshtoken: refreshToken,
-			expiry: expiryDate.toISOString(),
-			userId: user.id,
-		});
-		res.cookie('jwt', refreshToken, {
-			httpOnly: true,
-			secure: true,
-			sameSite: 'strict',
-			maxAge: duration,
-		});
-		res.json({ accessToken: accessToken, refreshToken: refreshToken });
-	} catch (err) {
-		console.error(err);
-		res.sendStatus(500);
-	}
+	const password_value = user?.password ?? '$2b$10$dummyhashplaceholder';
+	const passwords_match = await bcrypt.compare(password, password_value);
+	if (!user || !passwords_match)
+		return res
+			.status(401)
+			.json({ error: 'Incorrect username and/or password' })
+			.end();
+
+	const token_access = generateAccessToken(user.username, user.role, user.id);
+	const token_refresh = generateRefreshToken(user.username, user.id);
+	const expiry_date = new Date(
+		Date.now() + ms(RefreshTokenExpiry as StringValue)
+	);
+	await db.insert(table_sessions).values({
+		refreshtoken: token_refresh,
+		expiry: expiry_date.toISOString(),
+		userId: user.id,
+	});
+
+	return res
+		.status(200)
+		.json({ token_access, token_refresh, expiry: expiry_date.toISOString() })
+		.end();
 };
 
 export const route_auth_refresh = async (req: Request, res: Response) => {
-	try {
-		const token = req.cookies?.jwt ?? ''; // cookie for refresh token
-		jwt.verify(token, RefreshTokenSecret) as JwtPayload;
+	const token = req.query['token'];
+	if (typeof token !== 'string')
+		return res.status(400).json({ error: 'Missing required query parameter `token`' }).end();
+	if (!JWT_verify(token, RefreshTokenSecret))
+		return res.status(401).json({ error: 'Could not verify token' }).end();
 
-		const [session] = await db
-			.select()
-			.from(table_sessions)
-			.where(eq(table_sessions.refreshtoken, token)); // delete the expired ones? or even limit number of devices connected to at a time
-		if (session === undefined) {
-			res.sendStatus(403);
-			return;
-		}
+	const [session] = await db
+		.select()
+		.from(table_sessions)
+		.where(eq(table_sessions.refreshtoken, token)); // delete the expired ones? or even limit number of devices connected to at a time
+	if (!session)
+		return res.sendStatus(403);
 
-		const [user] = await db
-			.select()
-			.from(users)
-			.where(eq(users.id, session.userId));
-		if (user === undefined) {
-			res.status(400).send();
-			return;
-		}
-		const newAccessToken = generateAccessToken(
-			user.username as string,
-			user.role,
-			user.id
-		);
-		res.json({ accessToken: newAccessToken });
-	} catch (err) {
-		console.error(err);
-		return res.sendStatus(500);
-	}
+	const [user] = await db
+		.select()
+		.from(users)
+		.where(eq(users.id, session.userId));
+	if (!user)
+		return res.sendStatus(400);
+
+	const token_access = generateAccessToken(user.username, user.role, user.id);
+	res.json({ token_access });
 };
 
 export const route_auth_logout = async (req: Request, res: Response) => {

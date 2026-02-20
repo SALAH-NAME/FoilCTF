@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import jwt from 'jsonwebtoken';
+import { ZodObject } from 'zod';
 import { Request, Response, NextFunction } from 'express';
+
 import { User, AuthRequest } from './types';
 import {
 	AccessTokenSecret,
@@ -8,28 +10,20 @@ import {
 	RefreshTokenSecret,
 	RefreshTokenExpiry,
 } from './env';
-import { ZodObject, ZodType } from 'zod';
 import { db } from './db';
 import { eq, or } from 'drizzle-orm';
 import { users } from '../db/schema';
 import bcrypt from 'bcrypt';
+import { JWT_sign, JWT_verify } from '../jwt';
 
-export function generateAccessToken(
-	username: string,
-	role: string,
-	id: number
-): string {
-	return jwt.sign(
-		{ username: username, role: role, id: id },
-		AccessTokenSecret,
-		{ expiresIn: AccessTokenExpiry as any }
-	);
+export function generateAccessToken(username: string, role: string, id: number): string {
+	const payload = { username, role, id };
+	return JWT_sign(payload, AccessTokenSecret, { expiresIn: AccessTokenExpiry });
 }
 
 export function generateRefreshToken(username: string, id: number): string {
-	return jwt.sign({ username: username, id: id }, RefreshTokenSecret, {
-		expiresIn: RefreshTokenExpiry as any,
-	});
+	const payload = { username, id };
+	return JWT_sign(payload, RefreshTokenSecret, { expiresIn: RefreshTokenExpiry });
 }
 
 export const parseNonExistingParam = async (
@@ -66,13 +60,13 @@ export function authenticateToken(
 		token = query_value;
 	}
 
-	try {
-		req.user = jwt.verify(token, AccessTokenSecret) as User;
-		res.locals.user = req.user!;
-	} catch (err) {
-		return res.sendStatus(403);
-	}
-	return next();
+	const user = JWT_verify<User>(token, AccessTokenSecret);
+	if (!user)
+		return next(new Error('Unauthorized'));
+
+	req.user = user;
+	res.locals.user = user;
+	next();
 }
 
 export function middleware_schema_validate(schema: ZodObject) {

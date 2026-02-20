@@ -1,15 +1,18 @@
+import ms from 'ms';
 import path from 'node:path';
 import bcrypt from 'bcrypt';
 import { eq } from 'drizzle-orm';
-import ms, { StringValue } from 'ms';
 import multer, { FileFilterCallback } from 'multer';
 import { Request, Response, NextFunction } from 'express';
-import jwt, { JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 
-import { AccessTokenSecret } from './utils/env';
-import { profiles, users } from './db/schema';
 import { db } from './utils/db';
-import { Profile, AuthRequest } from './utils/types';
+import { sessions } from './db/schema';
+import { UploadError } from './error';
+import { profiles, users } from './db/schema';
+import { AuthRequest, User } from './utils/types';
+import { AccessTokenSecret } from './utils/env';
+import { JWT_Payload, JWT_verify } from './jwt';
+import { AvatarsDir, MaxFileSize, RefreshTokenExpiry } from './utils/env';
 import {
 	isEmpty,
 	generateAccessToken,
@@ -17,68 +20,67 @@ import {
 	user_exists,
 	generateRefreshToken,
 } from './utils/utils';
-import { AvatarsDir, MaxFileSize, RefreshTokenExpiry } from './utils/env';
-import { sessions } from './db/schema';
-import { UploadError } from './error';
 
 export const authenticateTokenProfile = async (
 	req: Request,
 	res: Response,
 	next: NextFunction
 ) => {
-	try {
-		const authHeader = req.get('authorization');
-		if (authHeader === undefined) return next();
-		const [bearer, ...tokens] = authHeader?.split(' ') ?? '';
-		if (bearer !== 'Bearer' || tokens.length != 1) return next();
+	const authHeader = req.get('authorization');
+	if (authHeader === undefined)
+		return next();
 
-		const decoded = jwt.verify(
-			tokens[0] ?? '',
-			AccessTokenSecret
-		) as JwtPayload;
-		const requestedUsername = req.params?.username as string;
-		if (decoded.username !== requestedUsername) return next(); // ownership check
-		const [profile] = await db
-			.select()
-			.from(profiles)
-			.where(eq(profiles.username, requestedUsername));
+	const [bearer, ...tokens] = authHeader?.split(' ') ?? '';
+	if (bearer !== 'Bearer' || tokens.length !== 1)
+		return next();
 
-		if (!profile) return res.sendStatus(404);
-		const { avatar, id, ...data } = profile;
-		return res.json(data);
-	} catch (err) {
-		if (err instanceof TokenExpiredError) return next();
-		console.error(err);
-		res.sendStatus(500);
-	}
+	const token = tokens.join(' ');
+	const token_user = JWT_verify<JWT_Payload>(token, AccessTokenSecret);
+	if (!token_user)
+		return next();
+
+	const req_username = req.params.username;
+	if (typeof req_username !== 'string' || !req_username)
+		return res.sendStatus(404);
+
+	if (req_username !== token_user.username)
+		return next(); // ownership check
+
+	const [profile] = await db
+		.select()
+		.from(profiles)
+		.where(eq(profiles.username, req_username));
+	if (!profile)
+		return res.sendStatus(404);
+
+	const { avatar, id, ...profile_sanitized } = profile;
+	return res.json(profile_sanitized);
 };
 
 export const getPublicProfile = async (req: Request, res: Response) => {
-	try {
-		const requestedUsername = req.params?.username as string;
+	const req_username = req.params.username;
+	if (typeof req_username !== 'string' || !req_username)
+		return res.sendStatus(404);
 
-		const [profile] = await db
-			.select()
-			.from(profiles)
-			.where(eq(profiles.username, requestedUsername));
+	const [profile] = await db
+		.select()
+		.from(profiles)
+		.where(eq(profiles.username, req_username));
+	if (!profile)
+		return res.sendStatus(404);
 
-		if (!profile) return res.sendStatus(404);
-		const responseObject = {} as Profile;
-		responseObject.username = profile.username;
-		responseObject.challengessolved = profile.challengessolved;
-		responseObject.eventsparticipated = profile.eventsparticipated;
-		responseObject.totalpoints = profile.totalpoints;
-		if (profile.isprivate === false) {
-			// public profile
-			responseObject.bio = profile.bio;
-			responseObject.location = profile.location;
-			responseObject.socialmedialinks = profile.socialmedialinks;
-		}
-		return res.json(responseObject);
-	} catch (err) {
-		console.log(err);
-		return res.sendStatus(500);
-	}
+	const res_data = {
+		username: profile.username,
+
+		challenges_solved: profile.challengessolved,
+		events_participated: profile.eventsparticipated,
+		total_points: profile.totalpoints,
+
+		bio: profile.isprivate ? undefined : profile.bio,
+		location: profile.isprivate ? undefined : profile.location,
+		social_media_links: profile.isprivate ? undefined : profile.socialmedialinks,
+	};
+	return res.json(res_data);
 };
 
 const storage = multer.diskStorage({
@@ -213,42 +215,23 @@ export const updateUser = async (
 	next();
 };
 
-export const updateTokens = async (
-	_req: Request,
-	res: Response,
-	next: NextFunction
-) => {
-	res.clearCookie('jwt', {
-		httpOnly: true,
-		secure: true,
-		sameSite: 'strict',
-	});
+export const updateTokens = async (_req: Request, res: Response<any, { user: User }>) => {
+	const { username, role, id } = res.locals.user;
 
-	const user = res.locals?.user;
-	const accessToken = generateAccessToken(
-		user.username as any,
-		user.role,
-		user.id
-	);
-	const refreshToken = generateRefreshToken(user.username as any, user.id);
-	const duration = ms(RefreshTokenExpiry as StringValue);
-	const expiryDate = new Date(Date.now() + duration);
+	const token_access = generateAccessToken(username, role, id);
+	const token_refresh = generateRefreshToken(username, id);
+	const expiry_date = new Date(Date.now() + ms(RefreshTokenExpiry));
 
 	await db
 		.update(sessions)
 		.set({
-			refreshtoken: refreshToken,
-			expiry: expiryDate.toISOString(),
+			refreshtoken: token_refresh,
+			expiry: expiry_date.toISOString(),
 		})
-		.where(eq(sessions.userId, user.id));
+		.where(eq(sessions.userId, id));
 
-	res.cookie('jwt', refreshToken, {
-		httpOnly: true,
-		secure: true,
-		sameSite: 'strict',
-		maxAge: duration,
-	});
-	res.json({ accessToken: accessToken, refreshToken: refreshToken });
-
-	next();
+	return res
+		.status(200)
+		.json({ token_access, token_refresh, expiry: expiry_date.toISOString() })
+		.end();
 };

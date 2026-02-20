@@ -1,5 +1,4 @@
 import middleware_cors from 'cors';
-import middleware_cookies from 'cookie-parser';
 import express, { json as middleware_json } from 'express';
 import path from 'node:path';
 
@@ -46,7 +45,6 @@ const app = express();
 app.use(middleware_cors());
 app.use(middleware_logger);
 app.use(middleware_json());
-app.use(middleware_cookies());
 
 // SECTION: Authentication
 app.post(

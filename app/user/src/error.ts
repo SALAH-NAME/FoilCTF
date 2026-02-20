@@ -36,12 +36,12 @@ export function middleware_error(
 		err instanceof SyntaxError ||
 		err instanceof MulterError
 	) {
-		return res.status(400).send(err.message);
+		return res.status(400).json({ error: err.message });
 	}
 	if (err instanceof UploadError) {
-		return res.status(err.status_code).send(err.message);
+		return res.status(err.status_code).json({ error: err.message });
 	}
 
 	console.error(err);
-	res.sendStatus(500);
+	res.status(500).json({ error: ((err instanceof Error) ? err.message : err?.toString()) ?? 'An internal server error has occurred' });
 }
