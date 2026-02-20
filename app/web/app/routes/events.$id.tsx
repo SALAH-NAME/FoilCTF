@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { useToast } from '~/contexts/ToastContext';
 import Button from '~/components/Button';
 import Icon from '~/components/Icon';
 import EventStatCard from '~/components/EventStatCard';
@@ -29,6 +30,8 @@ export default function EventDetail({ params }: RouteParams) {
 	const [showUnregisterModal, setShowUnregisterModal] = useState(false);
 	const [showEditModal, setShowEditModal] = useState(false);
 
+	const { addToast } = useToast();
+
 	// Mock event data
 	const event = {
 		id: params.id,
@@ -55,6 +58,11 @@ export default function EventDetail({ params }: RouteParams) {
 			setShowUnregisterModal(true);
 		} else {
 			setIsRegistered(true);
+			addToast({
+				variant: 'success',
+				title: 'Registration confirmed',
+				message: `You are now registered for ${event.name}.`,
+			});
 		}
 	};
 
@@ -62,6 +70,11 @@ export default function EventDetail({ params }: RouteParams) {
 		// TODO: unregister
 		setIsRegistered(false);
 		setShowUnregisterModal(false);
+		addToast({
+			variant: 'warning',
+			title: 'Unregistered',
+			message: `You have been removed from ${event.name}.`,
+		});
 	};
 
 	const handleCancelUnregister = () => {
