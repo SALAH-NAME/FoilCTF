@@ -5,6 +5,6 @@ import type { SessionUser } from '~/session.server';
 export type UserContextValue = {
 	userState: SessionUser;
 	setUserState: Dispatch<SetStateAction<SessionUser>>;
-	logoutUserState: () => Promise<void>;
+	logoutUserState: () => void;
 };
 export const UserContext = createContext<UserContextValue | null>(null);

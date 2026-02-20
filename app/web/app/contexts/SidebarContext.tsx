@@ -63,9 +63,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 		closeMobile,
 	};
 
-	return (
-		<SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>
-	);
+	return <SidebarContext value={value}>{children}</SidebarContext>;
 }
 
 export function useSidebar() {

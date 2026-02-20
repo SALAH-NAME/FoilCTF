@@ -1,22 +1,120 @@
-import { Link, useNavigate } from 'react-router';
-import { useState, type SubmitEvent } from 'react';
+import { data, Form, Link, redirect } from 'react-router';
+import { useEffect, useState, type SubmitEvent } from 'react';
 
 import type { Route } from './+types/signin';
 
-import Button from '../components/Button';
-import FormInput from '../components/FormInput';
-import FormDivider from '../components/FormDivider';
-import OAuthButton from '../components/OAuthButton';
+import { useToast } from '~/contexts/ToastContext';
+import { validationRules } from '~/utils/validation';
+import { useFormValidation } from '~/hooks/useFormValidation';
+import { commitSession, request_session } from '~/session.server';
 
-import { validationRules } from '../utils/validation';
-import { useFormValidation } from '../hooks/useFormValidation';
+import Button from '~/components/Button';
+import FormInput from '~/components/FormInput';
+import FormDivider from '~/components/FormDivider';
+import OAuthButton from '~/components/OAuthButton';
+
+type Credentials = { username: string; password: string };
+async function fetch_tokens(credentials: Credentials) {
+	const url = new URL('/api/auth/login', import.meta.env.VITE_REST_USER_ORIGIN);
+	const res = await fetch(url, {
+		method: 'POST',
+		headers: new Headers({
+			'Content-Type': 'application/json',
+		}),
+		body: JSON.stringify(credentials),
+	});
+
+	const json = await res.json();
+	if (!res.ok) {
+		const { error } = json as { error: string };
+		throw new Error(error);
+	}
+
+	type JSONData_Tokens = {
+		token_access: string;
+		token_refresh: string;
+		expiry: string;
+	};
+	return json as JSONData_Tokens;
+}
+async function fetch_user(token: string) {
+	const url = new URL('/api/users/me', import.meta.env.VITE_REST_USER_ORIGIN);
+	const res = await fetch(url, {
+		headers: new Headers({
+			Authorization: `Bearer ${token}`,
+		}),
+	});
+
+	const json = await res.json();
+	if (!res.ok) {
+		const { error } = json as { error: string };
+		throw new Error(error);
+	}
+
+	type JSONData_User = {
+		id: number;
+		createdAt: string;
+		bannedUntil: string | null;
+		email: string | null;
+		username: string;
+		role: 'admin' | 'user';
+		profileId: number | null;
+		oauth42_login: string | null;
+	};
+	return json as JSONData_User;
+}
 
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Sign In' }];
 }
 
-export default function Page() {
-	const navigate = useNavigate();
+export async function action({ request }: Route.ActionArgs) {
+	try {
+		const session = await request_session(request);
+		const form_data = await request.formData();
+
+		const username = form_data.get('username');
+		const password = form_data.get('password');
+
+		if (typeof username !== 'string')
+			return data({ error: 'Invalid username', timestamp: Date.now() });
+		if (typeof password !== 'string')
+			return data({ error: 'Invalid password', timestamp: Date.now() });
+
+		const { token_access, expiry, token_refresh } = await fetch_tokens({
+			username,
+			password,
+		});
+
+		const user = await fetch_user(token_access);
+		session.set('user', {
+			expiry,
+			token_access,
+			token_refresh,
+
+			id: user.id,
+			role: user.role,
+			username: user.username,
+		});
+
+		const request_uri = new URL(request.url);
+		const redirect_uri = request_uri.searchParams.get('redirect_uri') ?? '/';
+		return redirect(redirect_uri, {
+			headers: new Headers({ 'Set-Cookie': await commitSession(session) }),
+		});
+	} catch (err) {
+		console.error(err);
+		return data({
+			error:
+				(err instanceof Error ? err.message : err?.toString()) ??
+				'An internal server error has occurred',
+			timestamp: Date.now(),
+		});
+	}
+}
+
+export default function Page({ actionData }: Route.ComponentProps) {
+	const { addToast } = useToast();
 
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
@@ -51,14 +149,20 @@ export default function Page() {
 
 		window.location.href = uri_oauth.toString();
 	};
-
 	const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
-		e.preventDefault();
-		if (!validateForm()) return;
-
-		// const credentials = { username, password };
-		// TODO(xenobas): Implement login via email/password
+		if (!validateForm()) e.preventDefault();
+		// NOTE(xenobas): If the form is valid then it goes through the action
 	};
+
+	useEffect(() => {
+		if (!actionData?.error) return;
+
+		addToast({
+			variant: 'error',
+			title: 'Sign in Error',
+			message: actionData.error,
+		});
+	}, [actionData?.error, actionData?.timestamp]);
 
 	return (
 		<div className="h-full bg-background flex items-center justify-center px-4">
@@ -68,7 +172,12 @@ export default function Page() {
 					<p className="text-dark/60">Welcome back to FoilCTF</p>
 				</div>
 
-				<form onSubmit={handleSubmit} className="space-y-4">
+				<Form
+					onSubmit={handleSubmit}
+					action="/signin"
+					method="POST"
+					className="space-y-4"
+				>
 					<FormInput
 						id="username"
 						name="username"
@@ -107,7 +216,7 @@ export default function Page() {
 					</Button>
 					<FormDivider />
 					<OAuthButton text="Sign in with" onClick={handleOAuth} />
-				</form>
+				</Form>
 
 				<p className="text-center text-dark/60 text-sm mt-6">
 					Don't have an account?{' '}

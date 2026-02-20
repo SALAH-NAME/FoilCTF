@@ -81,13 +81,11 @@ export default function Page() {
 		newEmail: '',
 		password: '',
 	});
-
 	const [passwordForm, setPasswordForm] = useState({
 		currentPassword: '',
 		newPassword: '',
 		confirmPassword: '',
 	});
-
 	const [deleteForm, setDeleteForm] = useState({
 		confirmation: '',
 		password: '',
@@ -112,7 +110,6 @@ export default function Page() {
 			setIsEditing(false);
 		}
 	};
-
 	const handleCancel = () => {
 		// TODO: Reset to original data
 		setIsEditing(false);
@@ -129,7 +126,6 @@ export default function Page() {
 			});
 		}
 	};
-
 	const handleFieldBlur = (field: string) => {
 		const value = profileData[field as keyof typeof profileData];
 		if (typeof value === 'string') {
@@ -146,7 +142,6 @@ export default function Page() {
 		// TODO: Avatar file upload
 		console.log('Avatar changed:', file);
 	};
-
 	const handleEmailFormChange = (e: React.FormEvent) => {
 		e.preventDefault();
 		const emailError = validationRules.email(emailForm.newEmail);
@@ -158,7 +153,6 @@ export default function Page() {
 			setEmailForm({ newEmail: '', password: '' });
 		}
 	};
-
 	const handlePasswordFormChange = (e: React.FormEvent) => {
 		e.preventDefault();
 		const currentPasswordError = validationRules.password(

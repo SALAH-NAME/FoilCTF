@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 
 export default function Component() {
 	return (
-		<footer className="flex flex-col sm:flex-row items-center justify-between border-t p-2 px-4 gap-2">
+		<footer className="flex flex-col sm:flex-row items-center justify-between border-t border-dark/10 p-2 px-4 gap-2">
 			<p className="font-bold text-sm sm:text-base">FoilCTF - Kodaic</p>
 			<span className="flex flex-wrap gap-3 justify-center">
 				<Link

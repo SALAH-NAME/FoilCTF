@@ -3,26 +3,12 @@ import { useMutation } from '@tanstack/react-query';
 import { data, redirect, Outlet, useNavigate } from 'react-router';
 
 import type { Route } from './+types/auth';
+
+import { useToast } from '~/contexts/ToastContext';
 import { request_session_user } from '~/session.server';
 import { UserContext, type UserContextValue } from '~/contexts/UserContext';
 
-export async function loader({ request }: Route.LoaderArgs) {
-	const user = await request_session_user(request);
-	if (!user) {
-		const uri_original = new URL(request.url);
-		const uri_redirect = new URL(
-			'/signin',
-			uri_original.protocol + '//' + uri_original.host
-		);
-		uri_redirect.searchParams.set('redirect_uri', uri_original.toString());
-
-		return redirect(uri_redirect.toString());
-	}
-
-	return data({ user });
-}
-
-async function api_auth_logout(token: string) {
+async function fetch_signout(token: string) {
 	try {
 		const url = new URL(
 			'/api/auth/logout',
@@ -40,24 +26,47 @@ async function api_auth_logout(token: string) {
 	}
 }
 
-export default function Layout({ loaderData }: Route.ComponentProps) {
-	const { user } = loaderData;
+export async function loader({ request }: Route.LoaderArgs) {
+	const user = await request_session_user(request);
+	if (!user) {
+		const uri_original = new URL(request.url);
+		const uri_redirect = new URL(
+			'/signin',
+			uri_original.protocol + '//' + uri_original.host
+		);
+		uri_redirect.searchParams.set('redirect_uri', uri_original.toString());
 
-	// TODO(xenobas): Show logging out banner...
+		return redirect(uri_redirect.toString());
+	}
+
+	return data({ user });
+}
+
+export default function Layout({ loaderData }: Route.ComponentProps) {
 	const navigate = useNavigate();
-	const mutLogout = useMutation<unknown, Error, string>({
-		async mutationFn(token: string) {
-			await api_auth_logout(token);
-		},
-	});
+	const { addToast } = useToast();
+
+	const { user } = loaderData;
 	const [userState, setUserState] =
 		useState<UserContextValue['userState']>(user);
-	const logoutUserState = async () => {
-		console.log('logoutUserState');
 
-		await mutLogout.mutateAsync(user.token_refresh);
-		await navigate('/signout');
-	};
+	// TODO(xenobas): Show some sort of overlay during logout
+	const mutLogout = useMutation<unknown, Error, string, unknown>({
+		async mutationFn(token: string) {
+			await fetch_signout(token);
+		},
+		async onSuccess() {
+			await navigate('/signout');
+		},
+		async onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Sign out Error',
+				message: err.message,
+			});
+		},
+	});
+	const logoutUserState = () => mutLogout.mutate(user.token_refresh);
 
 	return (
 		<UserContext value={{ userState, setUserState, logoutUserState }}>
