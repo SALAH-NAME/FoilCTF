@@ -9,7 +9,6 @@ import {
 	loginSchema,
 	updateProfileSchema,
 	updateUserSchema,
-	sendFriendRequestSchema, // SECTION: friends
 } from './utils/types';
 import {
 	authenticateToken,
@@ -44,11 +43,6 @@ import {
 	cancelFriendRequest,
 	notifyUser
 } from './friend';
-import {
-	deleteUser,
-	listUsers,
-	updateUserRole
-} from './admin'; // SECTION: admin
 
 const app = express();
 app.use(middleware_logger);
@@ -116,24 +110,6 @@ app.put(
 	updateTokens
 );
 
-// SECTION: admin
-app.get(
-	'/api/users',
-	listUsers,
-);
-app.patch(
-	'/api/users/:username',
-	updateUserRole,
-);
-// app.put(
-// 	'/api/users/:username',
-// 	// banUser,
-// );
-app.delete(
-	'/api/users/:username',
-	deleteUser,
-);
-
 // SECTION: friends
 app.get(
 	'/api/friends',
@@ -146,8 +122,7 @@ app.get(
 	listReceivedFriendRequests,
 );
 app.post(
-	'/api/friends/requests/:username', // which one? param or body?
-	// middleware_schema_validate(sendFriendRequestSchema),
+	'/api/friends/requests/:username',
 	authenticateToken,
 	sendFriendRequest,
 	notifyUser,
@@ -173,9 +148,6 @@ app.delete(
 	authenticateToken,
 	removeFriend,
 );
-
-
-
 
 // SECTION: Health
 app.get('/health', (_req, res) => {

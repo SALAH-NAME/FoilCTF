@@ -213,7 +213,7 @@ export async function acceptFriendRequest(req: Request, res: Response, next: Nex
 			});
 
 			res.locals.userNameToNotify = target;
-			res.locals.contents = { title: "New Friend", message: `you can start your legendary conversation with ${decodedUser.username}` };
+			res.locals.contents = { title: "New Friend", message: `you can start your conversation with ${decodedUser.username}` };
 		});
 
 		return next();
