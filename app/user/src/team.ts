@@ -580,7 +580,11 @@ export const getTeams = async(req: Request, res: Response) => {
 		isLocked: team.isLocked,
 	}));
 
-	return res.status(200).json(dbTeamsPublicData);
+	return res.status(200).json({
+		data: dbTeamsPublicData,
+		page,
+		limit,
+	});
 }
 
 export const getReceivedRequests = async(req: Request, res: Response) => {

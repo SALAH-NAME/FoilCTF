@@ -189,17 +189,17 @@ app.get(
 	getSentRequests,
 );
 app.put(
-	'/api/teams/',
+	'/api/teams',
 	middleware_schema_validate(updateTeamSchema),
 	authenticateToken,
 	updateTeam,
 );
 app.get(
-	'/api/teams/',
+	'/api/teams',
 	getTeams,
 );
 app.get(
-	'/api/teams/requests/sh*t/f*ck/ikhan', // !!!!!!!!!!! conflicts with /api/teams/:teamName, getTeamDetails
+	'/api/requests', // !!!!!!!!!!! conflicts with /api/teams/:teamName, getTeamDetails
 	authenticateToken,
 	getReceivedRequests,
 );
