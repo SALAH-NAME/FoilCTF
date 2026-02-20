@@ -128,18 +128,18 @@ app.post(
 	notifyUser,
 );
 app.delete(
-	'/api/friends/:id/requests/:requestID', // avoid for now
+	'/api/friends/requests/:username',
 	authenticateToken,
 	cancelFriendRequest,
 );
 app.patch(
-	'/api/friends/requests/:username',
+	'/api/friends/requests/pending/:username',
 	authenticateToken,
 	acceptFriendRequest,
 	notifyUser,
 );
 app.delete(
-	'/api/friends/requests/:username',
+	'/api/friends/requests/pedning/:username',
 	authenticateToken,
 	rejectFriendRequest,
 );

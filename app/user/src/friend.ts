@@ -155,17 +155,18 @@ export async function sendFriendRequest(req: Request, res: Response, next: NextF
 }
 
 export async function cancelFriendRequest(req: Request, res: Response, next: NextFunction) {
-//     const decodedUser = res.locals.user;
+    const decodedUser = res.locals.user;
+	const target = req.params.username as string;
 
-// 	await db
-// 		.delete(friendRequests)
-// 		.where(and(
-// 			eq(friendRequests.senderName, decodedUser.username),
-// 			// eq(friendRequests.receiverName, req.params.username as string) // NO param !!!!
-// 			)
-// 		);
+	await db
+		.delete(friendRequests)
+		.where(and(
+			eq(friendRequests.senderName, decodedUser.username),
+			eq(friendRequests.receiverName, target)
+			)
+		);
 
-// 	return res.status(204).json();
+	return res.status(204).json();
 }
 
 export async function acceptFriendRequest(req: Request, res: Response, next: NextFunction) {
