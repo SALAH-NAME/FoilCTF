@@ -181,3 +181,99 @@ export async function api_attachment_create(challId: string | number) {
 	}
 	return await response.json();
 }
+
+export async function api_challenge_inspect(id: string | number) {
+	const endpoint = api_endpoint_challenges(id);
+	const response = await fetch(endpoint);
+
+	if (!response.ok) {
+		if (response.headers.get('Content-Type') === 'application/json')
+			throw await response.json();
+		throw new Error(await response.text());
+	}
+
+	return await response.json();
+}
+
+export async function api_challenge_update(
+	id: string | number,
+	payload: {
+		is_published?: boolean;
+		name?: string;
+		description?: string;
+		reward?: number;
+		reward_min?: number;
+		reward_first_blood?: number;
+		reward_decrements?: boolean;
+	}
+) {
+	const endpoint = api_endpoint_challenges(id);
+	const response = await fetch(endpoint, {
+		method: 'PUT',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify(payload),
+	});
+
+	if (!response.ok) {
+		if (response.headers.get('Content-Type') === 'application/json')
+			throw await response.json();
+		throw new Error(await response.text());
+	}
+}
+
+export async function api_challenge_delete(id: string | number) {
+	const endpoint = api_endpoint_challenges(id);
+	const response = await fetch(endpoint, {
+		method: 'DELETE',
+	});
+
+	if (!response.ok) {
+		if (response.headers.get('Content-Type') === 'application/json')
+			throw await response.json();
+		throw new Error(await response.text());
+	}
+}
+
+export async function api_attachment_upload(
+	challId: string | number,
+	payload: { name: string; contents: Record<string, unknown> }
+) {
+	const endpoint = api_endpoint_challenges(challId, 'attachments');
+	const response = await fetch(endpoint, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify(payload),
+	});
+
+	if (!response.ok) {
+		if (response.headers.get('content-type') === 'application/json')
+			throw await response.json();
+		throw new Error(await response.text());
+	}
+
+	return await response.json();
+}
+
+export async function api_attachment_remove(
+	challId: string | number,
+	attachmentId: string | number
+) {
+	const endpoint = api_endpoint_challenges(
+		challId,
+		'attachments',
+		attachmentId
+	);
+	const response = await fetch(endpoint, {
+		method: 'DELETE',
+	});
+
+	if (!response.ok) {
+		if (response.headers.get('content-type') === 'application/json')
+			throw await response.json();
+		throw new Error(await response.text());
+	}
+}

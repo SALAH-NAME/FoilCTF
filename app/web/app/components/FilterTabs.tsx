@@ -35,16 +35,6 @@ export default function FilterTabs({
 					}`}
 				>
 					{tab.label}
-					{tab.count !== undefined && (
-						<span
-							aria-label={`${tab.count} items`}
-							className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-								activeTab === tab.value ? 'bg-white/20' : 'bg-dark/10'
-							}`}
-						>
-							{tab.count}
-						</span>
-					)}
 				</button>
 			))}
 		</div>

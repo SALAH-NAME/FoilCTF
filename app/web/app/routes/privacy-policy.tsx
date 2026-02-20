@@ -311,11 +311,6 @@ export default function Page() {
 						If you have questions, concerns, or requests regarding this Privacy
 						Policy or our data practices, please contact us.
 					</p>
-					{/* <div className="bg-background p-4 rounded-md border border-dark/10">
-						<p className="text-dark/80">
-							<strong>Email:</strong> privacy@foilctf.com
-						</p>
-					</div> */}
 				</section>
 			</div>
 		</div>

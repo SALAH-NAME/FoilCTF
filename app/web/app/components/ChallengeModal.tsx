@@ -88,11 +88,9 @@ export default function ChallengeModal({
 					aria-label="Challenge information"
 				>
 					<div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full">
-						{/* <Icon name="trophy" className="w-4 h-4" aria-hidden={true} /> */}
 						<span className="font-semibold">{challenge.points} points</span>
 					</div>
 					<div className="inline-flex items-center gap-2 bg-neutral-100 text-dark px-3 py-1 rounded-full">
-						{/* <Icon name="user" className="w-4 h-4" aria-hidden={true} /> */}
 						<span className="text-sm">{challenge.solves} solves</span>
 					</div>
 					<div
@@ -109,7 +107,6 @@ export default function ChallengeModal({
 					</div>
 					{challenge.solved && (
 						<div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-3 py-1 rounded-full">
-							{/* <Icon name="trophy" className="w-4 h-4" aria-hidden={true} /> */}
 							<span className="text-sm font-semibold">Solved</span>
 						</div>
 					)}
