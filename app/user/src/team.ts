@@ -11,18 +11,16 @@ export const createTeam = async(req: Request, res: Response, next: NextFunction)
 	try {
 		await db.transaction(async (tx) => {
 			
-			const [dbUser] = await db
+			const [dbUser] = await tx
 						.select()
 						.from(users)
 						.where(eq(users.id, decodedUser.id));
-			if (!dbUser || dbUser.teamName) {
-				throw new FoilCTF_Error('Forbidden', 403);
-			}
-		
-			const [existingTeam] = await db
-						.select()
-						.from(teams)
-						.where(eq(teams.name, newTeamName));
+				if (!dbUser || dbUser.teamName) {
+					throw new FoilCTF_Error('Forbidden', 403);
+				}
+			
+				const [existingTeam] = await tx						.select()
+						.from(teams)						.where(eq(teams.name, newTeamName));
 			if (existingTeam) {
 				throw new FoilCTF_Error('Name Already Used', 409);
 			}
@@ -90,8 +88,8 @@ export const getTeamMembers = async(req: Request, res: Response, next: NextFunct
 				.limit(limit)
 				.offset(limit * (page - 1));
 
-	if (!members || members.length === 0)
-		return res.status(404).json(new FoilCTF_Error('Not Found', 404));
+	// if (!members || members.length === 0)
+	// 	return res.status(404).json(new FoilCTF_Error('Not Found', 404));
 
 	const	membersNames = members.map( ({ memberName }) => memberName );
 
@@ -113,18 +111,35 @@ export const leaveTeam = async(req: Request, res: Response, next: NextFunction) 
 						.from(teams)
 						.where(eq(teams.name, req.params.teamName as string));
 			if (!team) {
-				throw new FoilCTF_Error('Forbidden', 403);
-			}
-			if (team.captainName === decodedUser.username && team.membersCount != 1) {
-				throw new FoilCTF_Error('Forbidden', 403);
-			}
+					throw new FoilCTF_Error('Not Found', 404);
+				}
 
-			await tx.delete(teamMembers).where(eq(teamMembers.memberName, decodedUser.username));
+				const [membership] = await tx
+						.select()
+						.from(teamMembers)
+						.where(and(
+							eq(teamMembers.teamName, team.name),
+							eq(teamMembers.memberName, decodedUser.username)
+						));
+				if (!membership) {
+					throw new FoilCTF_Error('Forbidden', 403);
+				}
 
-			const [updatedTeam] = await tx.update(teams).set({ membersCount: sql`${teams.membersCount} - 1` }).where(eq(teams.name, team.name)).returning();
-			if (!updatedTeam)
-				throw new Error('Could not insert into DB');
+				if (team.captainName === decodedUser.username && team.membersCount != 1) {
+					throw new FoilCTF_Error('Forbidden', 403);
+				}
 
+				await tx.delete(teamMembers).where(and(
+					eq(teamMembers.teamName, team.name),
+					eq(teamMembers.memberName, decodedUser.username)
+				));
+				const [updatedTeam] = await tx
+					.update(teams)
+					.set({ membersCount: sql`${teams.membersCount} - 1` })
+					.where(eq(teams.name, team.name))
+					.returning();
+				if (!updatedTeam)
+					throw new Error('Could not update DB');
 			await tx.update(users).set({ teamName: null }).where(eq(users.username, decodedUser.username));
 			if (updatedTeam.membersCount === 0) { // last member of the team
 				await tx.delete(teamJoinRequests).where(eq(teamJoinRequests.teamName, team.name));
@@ -175,12 +190,15 @@ export const deleteMember = async(req: Request, res: Response, next: NextFunctio
 				throw new FoilCTF_Error('Forbidden', 403);
 			}
 
-			await tx.delete(teamMembers).where(eq(teamMembers.memberName, targetUsername));
-			await tx.update(teams).set({ membersCount: sql`${teams.membersCount} - 1` }).where(eq(teams.name, team.name));
-			await tx.update(users).set({ teamName: null }).where(eq(users.username, targetUsername));
+			await tx.delete(teamMembers).where(and(
+					eq(teamMembers.teamName, targetTeamName),
+					eq(teamMembers.memberName, targetUsername)
+				));
+				await tx.update(teams).set({ membersCount: sql`${teams.membersCount} - 1` }).where(eq(teams.name, team.name));
+				await tx.update(users).set({ teamName: null }).where(eq(users.username, targetUsername));
 
-			res.locals.teamName = team.name;
-			res.locals.contents = { title: "Member Has Been Deleted", message: `${decodedUser.username} has been deleted` };
+				res.locals.teamName = team.name;
+				res.locals.contents = { title: "Member Has Been Deleted", message: `${targetUsername} has been deleted` };
 			res.locals.exception = decodedUser.username;
 		});
 
