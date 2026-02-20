@@ -1,6 +1,6 @@
 import middleware_cors from 'cors';
 import middleware_cookies from 'cookie-parser';
-import express, { json as middleware_json, } from 'express';
+import express, { json as middleware_json } from 'express';
 import path from 'node:path';
 
 import { middleware_error } from './error';
@@ -25,7 +25,7 @@ import {
 	updateProfile,
 	uploadAvatar,
 	upload,
-    updateTokens,
+	updateTokens,
 } from './profile';
 
 import {
@@ -101,11 +101,7 @@ app.get('/api/oauth/42/connect', route_oauth_42_connect);
 app.get('/api/oauth/42/connect/verify', route_oauth_42_verify('connect'));
 
 // SECTION: Users
-app.get(
-	'/api/users/me',
-	authenticateToken,
-	route_user_me,
-)
+app.get('/api/users/me', authenticateToken, route_user_me);
 app.put(
 	'/api/users/:username',
 	parseNonExistingParam,

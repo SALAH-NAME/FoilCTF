@@ -6,14 +6,14 @@ import jwt, { type JwtPayload } from 'jsonwebtoken';
 import { type Request, type Response } from 'express';
 
 import { db } from './utils/db';
-import { users, sessions, profiles } from './db/schema';
+import { loginSchema, registerSchema } from './utils/types';
 import { RefreshTokenSecret, RefreshTokenExpiry } from './utils/env';
+import { users, sessions as table_sessions, profiles } from './db/schema';
 import {
 	generateAccessToken,
 	generateRefreshToken,
 	user_exists,
 } from './utils/utils';
-import { loginSchema, registerSchema } from './utils/types';
 
 export const route_auth_register = async (
 	req: Request<any, any, zod.infer<typeof registerSchema>['body']>,
@@ -74,7 +74,7 @@ export const route_auth_login = async (
 		const refreshToken = generateRefreshToken(user.username as any, user.id);
 		const duration = ms(RefreshTokenExpiry as StringValue);
 		const expiryDate = new Date(Date.now() + duration);
-		await db.insert(sessions).values({
+		await db.insert(table_sessions).values({
 			refreshtoken: refreshToken,
 			expiry: expiryDate.toISOString(),
 			userId: user.id,
@@ -99,8 +99,8 @@ export const route_auth_refresh = async (req: Request, res: Response) => {
 
 		const [session] = await db
 			.select()
-			.from(sessions)
-			.where(eq(sessions.refreshtoken, token)); // delete the expired ones? or even limit number of devices connected to at a time
+			.from(table_sessions)
+			.where(eq(table_sessions.refreshtoken, token)); // delete the expired ones? or even limit number of devices connected to at a time
 		if (session === undefined) {
 			res.sendStatus(403);
 			return;
@@ -127,21 +127,14 @@ export const route_auth_refresh = async (req: Request, res: Response) => {
 };
 
 export const route_auth_logout = async (req: Request, res: Response) => {
-	try {
-		const token = req.cookies?.jwt; // cookie for refresh token
-		if (token) {
-			await db.delete(sessions).where(eq(sessions.refreshtoken, token));
-			console.log('user session got deleted');
-		}
-
-		res.clearCookie('jwt', {
-			httpOnly: true,
-			secure: true,
-			sameSite: 'strict',
-		});
-		return res.sendStatus(204);
-	} catch (err) {
-		console.error(err);
-		return res.sendStatus(500);
+	// DANGER(xenobas): This implies that if any one gets access to your refresh token they can log you out remotely.
+	const token_refresh = req.query['token'];
+	if (typeof token_refresh !== 'string' || !token_refresh) {
+		return res.sendStatus(400);
 	}
+
+	const cond = eq(table_sessions.refreshtoken, token_refresh);
+	await db.delete(table_sessions).where(cond);
+
+	return res.sendStatus(204);
 };

@@ -56,21 +56,19 @@ export function authenticateToken(
 ) {
 	const header_value = req.get('authorization');
 	const query_value = req.query.token;
-	if (!header_value && !query_value)
-		return res.sendStatus(400);
+	if (!header_value && !query_value) return res.sendStatus(400);
 
-	let token = "";
+	let token = '';
 	if (header_value) {
-		if (!header_value.startsWith("Bearer "))
-			return res.sendStatus(401);
-		token = header_value.slice(("Bearer ").length);
-	} else if (typeof query_value === "string") {
+		if (!header_value.startsWith('Bearer ')) return res.sendStatus(401);
+		token = header_value.slice('Bearer '.length);
+	} else if (typeof query_value === 'string') {
 		token = query_value;
 	}
 
 	try {
 		req.user = jwt.verify(token, AccessTokenSecret) as User;
-		res.locals.user = req.user!
+		res.locals.user = req.user!;
 	} catch (err) {
 		return res.sendStatus(403);
 	}
