@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'foilctf'
+    environment: 'production'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'gateway'
+    static_configs:
+      - targets: ['gateway:443']
+    metrics_path: '/metrics'

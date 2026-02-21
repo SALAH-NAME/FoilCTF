@@ -136,4 +136,30 @@ var ServiceRegistry = []ServiceConfig{
 			},
 		},
 	},
+
+	{
+		Name:    "prometheus",
+		BaseURL: getEnv("GATEWAY_PROMETHEUS_URL", "http://prometheus:9090"),
+		Routes: []RouteConfig{
+			{
+				Prefix:      "/monitoring/prometheus",
+				Protected:   false,
+				WebSocket:   false,
+				StripPrefix: false,
+			},
+		},
+	},
+
+	{
+		Name:    "grafana",
+		BaseURL: getEnv("GATEWAY_GRAFANA_URL", "http://grafana:9091"),
+		Routes: []RouteConfig{
+			{
+				Prefix:      "/monitoring/grafana",
+				Protected:   false,
+				WebSocket:   false,
+				StripPrefix: false,
+			},
+		},
+	},
 }
