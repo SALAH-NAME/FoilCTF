@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-
-	// "fmt"
 	"log"
 	"net/http"
 	"time"
@@ -232,7 +230,7 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		if event.MaxTeams <= int(currentPanticipants) {
+		if event.MaxTeams != nil && *event.MaxTeams <= int(currentPanticipants) {
 			return errors.New("event is full")
 		}
 		if team.TeamSize < event.TeamMembersMin || team.TeamSize > event.TeamMembersMax {
@@ -252,7 +250,7 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 
 		roomInstance = ChatRoom{
 			CtfID:     event.ID,
-			TeamID:    teamID,
+			TeamID:    &teamID,
 			Room_Type: "team",
 		}
 		err = tx.Table("chat_rooms").Create(&roomInstance).Error
@@ -260,11 +258,11 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		err = tx.Table("chat_rooms").Select("id").
-			Where("ctf_id = ? AND room_type = 'global", event.ID).
-			First(&globalChatRoomID).
+		err = tx.Table("chat_rooms").
+			Where("ctf_id = ? AND room_type = 'global'", event.ID).
+			Pluck("id", &globalChatRoomID).
 			Error
-		if err != nil {
+		if err != nil || globalChatRoomID == 0 {
 			return errors.New("ctf chat room not found")
 		}
 		return nil

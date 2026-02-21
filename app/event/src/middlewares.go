@@ -148,7 +148,7 @@ func (h *Hub) PlayerAuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), eventKey, event)
-		ctx = context.WithValue(r.Context(), teamIDKey, teamID)
+		ctx = context.WithValue(ctx, teamIDKey, teamID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

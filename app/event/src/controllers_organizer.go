@@ -39,6 +39,11 @@ func (h *Hub) ListAllEvents(w http.ResponseWriter, r *http.Request) {
 
 func (h *Hub) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	userID, _, err := GetUserInfo(r)
+	if err != nil {
+		log.Printf("ERROR - HTTP - Unauthorized: %v", err)
+		JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	var req EventRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("ERROR - HTTP - Invalid request format: %v", err)
@@ -53,7 +58,7 @@ func (h *Hub) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		MetaData:       req.MetaData,
 		StartTime:      req.StartTime,
 		EndTime:        req.EndTime,
-		MaxTeams:       req.MaxTeams,
+		MaxTeams:       intPtrOrNil(req.MaxTeams),
 		Status:         "draft",
 	}
 	err = h.Db.Transaction(func(tx *gorm.DB) error {
@@ -98,7 +103,7 @@ func (h *Hub) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 		TeamMembersMax: req.TeamMembersMax,
 		MetaData:       req.MetaData,
 		EndTime:        req.EndTime,
-		MaxTeams:       req.MaxTeams,
+		MaxTeams:       intPtrOrNil(req.MaxTeams),
 	}
 	if currentEvent.Status == "draft" {
 		updatedEvent.StartTime = req.StartTime
@@ -237,7 +242,7 @@ func (h *Hub) UnlinkChallenge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	JSONResponse(w, nil, http.StatusCreated)
+	JSONResponse(w, nil, http.StatusNoContent)
 }
 
 func (h *Hub) StartEvent(w http.ResponseWriter, r *http.Request) {
@@ -337,5 +342,5 @@ func (h *Hub) StopEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	JSONResponse(w, nil, http.StatusCreated)
+	JSONResponse(w, nil, http.StatusOK)
 }

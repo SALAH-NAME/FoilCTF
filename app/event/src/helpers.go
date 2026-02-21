@@ -13,6 +13,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// Returns a pointer to v, or nil when v == 0 ("not set").
+func intPtrOrNil(v int) *int {
+	if v == 0 {
+		return nil
+	}
+	return &v
+}
 func GetUserInfo(r *http.Request) (*int, string, error) {
 	userID, okID := r.Context().Value(userIDKey).(*int)
 	userRole, okRole := r.Context().Value(userRoleKey).(string)
@@ -125,7 +132,7 @@ func (h *Hub) Notify(title, message string, eventID int) error {
 		var userIDs []int
 		err = tx.Table("participations").
 			Select("DISTINCT team_members.member_id").
-			Joins("team_members ON participations.team_id = team_members.team_id").
+			Joins("JOIN team_members ON participations.team_id = team_members.team_id").
 			Where("participations.ctf_id = ?", eventID).
 			Pluck("team_members.member_id", &userIDs).Error
 		if err != nil {
@@ -176,7 +183,7 @@ func (h *Hub) UpdateScoreBoard(eventID int, w http.ResponseWriter) error {
 }
 
 func (h *Hub) IsChallengeUnlocked(link CtfsChallenge, teamID *int) (bool, error) {
-	if link.IsHidden != nil {
+	if link.IsHidden != nil && *link.IsHidden {
 		return false, nil
 	}
 	if link.ReleasedAt != nil && link.ReleasedAt.After(time.Now()) {

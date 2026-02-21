@@ -27,7 +27,7 @@ type Ctf struct {
 	EndTime        time.Time      `json:"end_time" gorm:"column:end_time"`
 	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index"`
 	Status         string         `json:"status" gorm:"column:status"`
-	MaxTeams       int            `json:"max_teams" gorm:"column:max_teams"`
+	MaxTeams       *int           `json:"max_teams" gorm:"column:max_teams"`
 }
 
 type CtfOrganizers struct {
@@ -41,23 +41,23 @@ type CtfsChallenge struct {
 	Reward              int            `json:"reward" gorm:"column:reward;default:500"`
 	InitialReward       int            `json:"initial_reward" gorm:"column:initial_reward;default:500"`
 	Flag                map[string]any `json:"flag" gorm:"column:flag;serializer:json"`
-	RewardFirstBlood    int            `gorm:"column:reward_first_blood;default:0"`
-	RewardDecrements    bool           `gorm:"column:reward_decrements;default:true"`
-	RewardMin           int            `gorm:"column:reward_min;default:350;"`
-	Decay               int            `json:"decay" gorm:"decay;default:30"`
+	RewardFirstBlood    int            `json:"reward_first_blood" gorm:"column:reward_first_blood;default:0"`
+	RewardDecrements    bool           `json:"reward_decrements" gorm:"column:reward_decrements;default:true"`
+	RewardMin           int            `json:"reward_min" gorm:"column:reward_min;default:350"`
+	Decay               int            `json:"decay" gorm:"column:decay;default:30"`
 	Attempts            int            `json:"attempts" gorm:"column:attempts"`
 	Solves              int            `json:"solves" gorm:"column:solves"`
 	FirstBloodAt        *time.Time     `json:"first_blood_at" gorm:"column:first_blood_at"`
 	FirstbloodId        *int           `json:"first_blood_id" gorm:"column:first_blood_id"`
 	ContainerLimits     map[string]any `json:"container_limits" gorm:"column:container_limits;serializer:json"`
-	ReleasedAt          *time.Time     `gorm:"column:released_at"`
-	RequiresChallengeId *int           `gorm:"column:requires_challenge_id"`
-	IsHidden            *bool          `gorm:"column:is_hidden"`
+	ReleasedAt          *time.Time     `json:"released_at" gorm:"column:released_at"`
+	RequiresChallengeId *int           `json:"requires_challenge_id" gorm:"column:requires_challenge_id"`
+	IsHidden            *bool          `json:"is_hidden" gorm:"column:is_hidden"`
 }
 
 type Participation struct {
 	ID            int        `gorm:"primaryKey;autoIncrement"`
-	TeamID        int        `gorm:"team_id"`
+	TeamID        int        `gorm:"column:team_id"`
 	Score         int        `gorm:"column:score"`
 	CtfID         int        `gorm:"column:ctf_id"`
 	Solves        int        `gorm:"column:solves"`
@@ -66,7 +66,7 @@ type Participation struct {
 
 type Team struct {
 	ID       int `gorm:"primaryKey"`
-	TeamSize int `gorm:"team_size"`
+	TeamSize int `gorm:"column:team_size"`
 }
 
 type FlagRequest struct {
@@ -95,10 +95,10 @@ type NotificationUsers struct {
 }
 
 type TeamData struct {
-	Rank          int        `json:"id"`
-	TeamName      string     `json:"team_id"`
+	Rank          int        `json:"rank"`
+	TeamName      string     `json:"team_name"`
 	Score         int        `json:"score"`
-	Solves        int        `json:"solves" `
+	Solves        int        `json:"solves"`
 	LastAttemptAt *time.Time `json:"last_attempt_at"`
 }
 
@@ -111,7 +111,7 @@ type WsEvent struct {
 type ChatRoom struct {
 	ID        int    `gorm:"primaryKey"`
 	CtfID     int    `gorm:"column:ctf_id"`
-	TeamID    int    `gorm:"column:team_id"`
+	TeamID    *int   `gorm:"column:team_id"`
 	Room_Type string `gorm:"column:room_type"`
 }
 
@@ -139,12 +139,12 @@ type UserStatus struct {
 }
 
 type PlayerChallengeView struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Category    string `json:"category"`
-	Reward      string `json:"reward"`
-	Solves      string `json:"solves"`
+	ID          int    `json:"id" gorm:"column:id"`
+	Name        string `json:"name" gorm:"column:name"`
+	Description string `json:"description" gorm:"column:description"`
+	Category    string `json:"category" gorm:"column:category"`
+	Reward      int    `json:"reward" gorm:"column:reward"`
+	Solves      int    `json:"solves" gorm:"column:solves"`
 	IsSolved    bool   `json:"is_solved"`
 }
 
