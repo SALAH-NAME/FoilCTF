@@ -20,15 +20,17 @@ CREATE TABLE IF NOT EXISTS users (
   id                  SERIAL PRIMARY KEY,
   password            VARCHAR(256) NOT NULL,
 
-  created_at          TIMESTAMP DEFAULT now() NOT NULL,
-  banned_until        TIMESTAMP DEFAULT NULL,
+  created_at	TIMESTAMP DEFAULT now() NOT NULL,
+  banned_until	TIMESTAMP DEFAULT NULL,
 
-  email		      TEXT DEFAULT NULL UNIQUE,
-  username	      TEXT NOT NULL UNIQUE,
-  role		      VARCHAR(64) NOT NULL DEFAULT 'user',
+  email			TEXT DEFAULT NULL UNIQUE,
+  username		TEXT NOT NULL UNIQUE,
+  role			VARCHAR(64) NOT NULL DEFAULT 'user',
 
-  profile_id          INTEGER DEFAULT NULL
-  -- CONSTRAINT profile  FOREIGN KEY (profile_id) REFERENCES profiles -- is this necessary??
+  oauth42_login	TEXT DEFAULT NULL UNIQUE,
+
+  profile_id    INTEGER DEFAULT NULL,
+  CONSTRAINT profile  FOREIGN KEY (profile_id) REFERENCES profiles
 );
 
 ALTER TABLE profiles 

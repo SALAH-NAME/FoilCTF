@@ -1,9 +1,10 @@
-import express, { json as middleware_json } from 'express';
+import middleware_cors from 'cors';
 import middleware_cookies from 'cookie-parser';
-import path from 'path';
+import express, { json as middleware_json, } from 'express';
+import path from 'node:path';
 
-import { AvatarsDir, PORT } from './utils/env';
 import { middleware_error } from './error';
+import { AvatarsDir, PORT } from './utils/env';
 import {
 	registerSchema,
 	loginSchema,
@@ -24,8 +25,15 @@ import {
 	updateProfile,
 	uploadAvatar,
 	upload,
-	updateTokens,
+    updateTokens,
 } from './profile';
+
+import {
+	route_oauth_42_connect,
+	route_oauth_42_link,
+	route_oauth_42_verify,
+} from './routes/oauth';
+
 import {
 	route_auth_register,
 	route_auth_login,
@@ -35,6 +43,7 @@ import {
 import { route_user_me } from './user';
 
 const app = express();
+app.use(middleware_cors());
 app.use(middleware_logger);
 app.use(middleware_json());
 app.use(middleware_cookies());
@@ -84,6 +93,12 @@ app.put(
 	authenticateToken,
 	updateProfile
 );
+
+// SECTION: OAuth
+app.get('/api/oauth/42/link', authenticateToken, route_oauth_42_link);
+app.get('/api/oauth/42/link/verify', route_oauth_42_verify('link'));
+app.get('/api/oauth/42/connect', route_oauth_42_connect);
+app.get('/api/oauth/42/connect/verify', route_oauth_42_verify('connect'));
 
 // SECTION: Users
 app.get(
