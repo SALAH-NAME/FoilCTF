@@ -1,6 +1,10 @@
 import { Request } from 'express';
 import { users, sessions, profiles } from '../db/schema';
-import { z } from 'zod';
+import { boolean, object, z } from 'zod';
+import {
+	PASSWORD_MIN_CHARACTERS,
+	PASSWORD_MAX_CHARACTERS,
+} from './env'
 
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
@@ -15,8 +19,41 @@ export interface AuthRequest extends Request {
 	user?: User;
 }
 
-const PASSWORD_MIN_CHARACTERS = 8;
-const PASSWORD_MAX_CHARACTERS = 64;
+export class FoilCTF_Error extends Error {
+	public statusCode: number;
+	constructor(message: string, statusCode: number) {
+		super(message);
+		this.statusCode = statusCode;
+
+		this.name = 'FoilCTF_Error';
+	}
+
+	toJSON() {
+		return {
+			error: true,
+			message: this.message,
+			status: this.statusCode
+		}
+	}
+}
+
+export class FoilCTF_Success {
+	public statusCode: number;
+	public message: string;
+
+	constructor(message: string, statusCode: number) {
+		this.statusCode = statusCode;
+		this.message = message
+	}
+
+	toJSON() {
+		return {
+			message: this.message,
+			status: this.statusCode
+		}
+	}
+}
+
 
 export const registerSchema = z.object({
 	body: z.object({
@@ -67,3 +104,36 @@ const profileBody = z.object({
 export const updateProfileSchema = z.object({
 	body: profileBody.partial(),
 });
+
+export const teamCreationSchema = z.object({
+	body: z.object({
+		newTeamName: z
+			.string()
+			.min(3)
+			.max(15)
+			.regex(/^[a-zA-Z0-9_-]+$/),
+		maxMembers: z
+			.coerce
+			.number()
+			.min(1)
+			.optional()
+	}),
+});
+
+export const updateTeamSchema = z.object({
+	body: z.object({
+		isLocked: z.coerce.boolean().optional(),
+		description: z.string().max(500).optional(),
+		maxMembers: z.coerce.number().min(1).optional(),
+	}),
+});
+
+export const transferLeadershipSchema = z.object({
+	body: z.object({
+		username: z
+		.string()
+		.min(3)
+		.max(15)
+		.regex(/^[a-zA-Z0-9_-]+$/),
+	}),
+})

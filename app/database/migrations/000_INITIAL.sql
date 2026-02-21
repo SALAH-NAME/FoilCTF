@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS users (
   username	      TEXT NOT NULL UNIQUE,
   role		      VARCHAR(64) NOT NULL DEFAULT 'user',
 
-  profile_id          INTEGER DEFAULT NULL
+  profile_id          INTEGER DEFAULT NULL, -- unused !!
+  team_name           TEXT DEFAULT NULL
   -- CONSTRAINT profile  FOREIGN KEY (profile_id) REFERENCES profiles -- is this necessary??
 );
 
@@ -72,20 +73,43 @@ CREATE TABLE IF NOT EXISTS ctf_organizers (
 );
 
 CREATE TABLE IF NOT EXISTS teams (
+
+  id              SERIAL PRIMARY KEY,
+  name            TEXT NOT NULL UNIQUE,
+
+  captain_name    TEXT NOT NULL,
+  max_members     INTEGER NOT NULL DEFAULT 1,
+
+  members_count   INTEGER NOT NULL DEFAULT 1,
+
+  description     TEXT DEFAULT NULL,
+  is_locked       BOOLEAN DEFAULT FALSE,
+
+  CONSTRAINT constraint_captain_name FOREIGN KEY (captain_name) REFERENCES users(username) ON UPDATE CASCADE
+
   id			SERIAL PRIMARY KEY,
   name			TEXT NOT NULL,
   team_size		INTEGER NOT NULL DEFAULT 0,
 
   profile_id	INTEGER,
   CONSTRAINT constraint_profile FOREIGN KEY (profile_id) REFERENCES profiles
+
 );
 CREATE TABLE IF NOT EXISTS team_members (
-  team_id    INTEGER NOT NULL,
-  member_id  INTEGER NOT NULL,
-  PRIMARY KEY (team_id, member_id),
+  team_name    TEXT NOT NULL,
+  member_name  TEXT NOT NULL,
 
-  CONSTRAINT constraint_team FOREIGN KEY (team_id) REFERENCES teams,
-  CONSTRAINT constraint_member FOREIGN KEY (member_id) REFERENCES users
+  PRIMARY KEY  (team_name, member_name),
+
+  CONSTRAINT constraint_team FOREIGN KEY (team_name) REFERENCES teams(name) ON DELETE CASCADE,
+  CONSTRAINT constraint_member FOREIGN KEY (member_name) REFERENCES users(username) ON UPDATE CASCADE
+);
+CREATE TABLE IF NOT EXISTS team_join_requests (
+  team_name    TEXT NOT NULL,
+  username     TEXT NOT NULL,
+
+  CONSTRAINT constraint_team FOREIGN KEY (team_name) REFERENCES teams(name) ON UPDATE CASCADE,
+  CONSTRAINT constraint_member FOREIGN KEY (username) REFERENCES users(username) ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS attachments (
