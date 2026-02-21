@@ -17,6 +17,8 @@ build/
 node_modules/
 .cache/
 
+certs/
+
 subject*.pdf
 
 *.so
