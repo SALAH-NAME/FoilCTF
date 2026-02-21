@@ -1,5 +1,18 @@
-import { pgTable, unique, serial, varchar, timestamp, text, integer, foreignKey, boolean, check, json, primaryKey } from "drizzle-orm/pg-core"
-import { sql } from "drizzle-orm"
+import {
+	pgTable,
+	unique,
+	serial,
+	varchar,
+	timestamp,
+	text,
+	boolean,
+	integer,
+	foreignKey,
+	check,
+	json,
+	primaryKey,
+} from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 
 
@@ -207,8 +220,8 @@ export const containers = pgTable("containers", {
 export const notifications = pgTable("notifications", {
 	id: serial().primaryKey().notNull(),
 	contents: json().notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-	isPublished: boolean("is_published").default(false),
+	createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+	isPublished: boolean('is_published').default(false),
 });
 
 export const reports = pgTable("reports", {
@@ -225,23 +238,116 @@ export const reports = pgTable("reports", {
 		}),
 ]);
 
-export const challengesAttachments = pgTable("challenges_attachments", {
-	challengeId: integer("challenge_id").notNull(),
-	attachmentId: integer("attachment_id").notNull(),
-	name: text().notNull(),
-}, (table) => [
-	foreignKey({
+export const teamMembers = pgTable(
+	'team_members',
+	{
+		teamId: integer('team_id').notNull(),
+		memberId: integer('member_id').notNull(),
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.teamId],
+			foreignColumns: [teams.id],
+			name: 'constraint_team',
+		}),
+		foreignKey({
+			columns: [table.memberId],
+			foreignColumns: [users.id],
+			name: 'constraint_member',
+		}),
+		primaryKey({
+			columns: [table.teamId, table.memberId],
+			name: 'team_members_pkey',
+		}),
+	]
+);
+
+export const friends = pgTable(
+	'friends',
+	{
+		username1: text('username_1').notNull(),
+		username2: text('username_2').notNull(),
+	},
+	(table) => [
+		primaryKey({
+			columns: [table.username2, table.username1],
+			name: 'friends_pkey',
+		}),
+		check('no_self_friendship', sql`username_1 <> username_2`),
+		foreignKey({
+			columns: [table.username1],
+			foreignColumns: [users.username],
+			name: 'fk_friends_username1',
+		})
+			.onDelete('cascade')
+			.onUpdate('cascade'),
+		foreignKey({
+			columns: [table.username2],
+			foreignColumns: [users.username],
+			name: 'fk_friends_username2',
+		})
+			.onDelete('cascade')
+			.onUpdate('cascade'),
+	]
+);
+
+export const friendRequests = pgTable(
+	'friend_requests',
+	{
+		senderName: text('sender_name').notNull(),
+		receiverName: text('receiver_name').notNull(),
+	},
+	(table) => [
+		primaryKey({
+			columns: [table.senderName, table.receiverName],
+			name: 'friend_requests_pkey',
+		}),
+		check('no_self_request', sql`sender_name <> receiver_name`),
+		foreignKey({
+			columns: [table.senderName],
+			foreignColumns: [users.username],
+			name: 'fk_friend_requests_sender',
+		})
+			.onDelete('cascade')
+			.onUpdate('cascade'),
+		foreignKey({
+			columns: [table.receiverName],
+			foreignColumns: [users.username],
+			name: 'fk_friend_requests_receiver',
+		})
+			.onDelete('cascade')
+			.onUpdate('cascade'),
+	]
+);
+
+export const challengesAttachments = pgTable(
+	'challenges_attachments',
+	{
+		challengeId: integer('challenge_id').notNull(),
+		attachmentId: integer('attachment_id').notNull(),
+		name: text().notNull(),
+	},
+	(table) => [
+		foreignKey({
 			columns: [table.challengeId],
 			foreignColumns: [challenges.id],
-			name: "constraint_challenge"
-		}).onUpdate("cascade").onDelete("cascade"),
-	foreignKey({
+			name: 'constraint_challenge',
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
 			columns: [table.attachmentId],
 			foreignColumns: [attachments.id],
-			name: "constraint_attachment"
-		}).onUpdate("cascade").onDelete("cascade"),
-	primaryKey({ columns: [table.challengeId, table.attachmentId], name: "challenges_attachments_pkey"}),
-]);
+			name: 'constraint_attachment',
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		primaryKey({
+			columns: [table.challengeId, table.attachmentId],
+			name: 'challenges_attachments_pkey',
+		}),
+	]
+);
 
 export const notificationUsers = pgTable("notification_users", {
 	notificationId: integer("notification_id").notNull(),
@@ -253,15 +359,19 @@ export const notificationUsers = pgTable("notification_users", {
 	foreignKey({
 			columns: [table.userId],
 			foreignColumns: [users.id],
-			name: "constraint_user"
-		}).onDelete("cascade"),
-	foreignKey({
+			name: 'constraint_user',
+		}).onDelete('cascade'),
+		foreignKey({
 			columns: [table.notificationId],
 			foreignColumns: [notifications.id],
-			name: "constraint_notification"
-		}).onDelete("cascade"),
-	primaryKey({ columns: [table.userId, table.notificationId], name: "notification_users_pkey"}),
-]);
+			name: 'constraint_notification',
+		}).onDelete('cascade'),
+		primaryKey({
+			columns: [table.userId, table.notificationId],
+			name: 'notification_users_pkey',
+		}),
+	]
+);
 
 export const messages = pgTable("messages", {
 	id: serial().notNull(),

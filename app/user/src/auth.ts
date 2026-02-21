@@ -127,7 +127,7 @@ export const route_auth_refresh = async (req: Request, res: Response) => {
 
 export const route_auth_logout = async (req: Request, res: Response) => {
 	try {
-		const token = req.cookies?.jwt; // cookie for refresh token
+		const token = req.cookies?.jwt;
 		if (token) {
 			await db.delete(sessions).where(eq(sessions.refreshtoken, token));
 			console.log('user session got deleted');

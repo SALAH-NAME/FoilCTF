@@ -63,7 +63,10 @@ export const registerSchema = z.object({
 			.max(15)
 			.regex(/^[a-zA-Z0-9_-]+$/), // add '-', so yait-nas is valid
 		email: z.email(),
-		password: z.string().min(PASSWORD_MIN_CHARACTERS).max(PASSWORD_MAX_CHARACTERS),
+		password: z
+			.string()
+			.min(PASSWORD_MIN_CHARACTERS)
+			.max(PASSWORD_MAX_CHARACTERS),
 	}),
 });
 
@@ -86,7 +89,10 @@ const userBody = z.object({
 		.max(15)
 		.regex(/^[a-zA-Z0-9_-]+$/), // add '-', so yait-nas is valid
 	email: z.email(),
-	newPassword: z.string().min(PASSWORD_MIN_CHARACTERS).max(PASSWORD_MAX_CHARACTERS),
+	newPassword: z
+		.string()
+		.min(PASSWORD_MIN_CHARACTERS)
+		.max(PASSWORD_MAX_CHARACTERS),
 	oldPassword: z.string(),
 });
 
