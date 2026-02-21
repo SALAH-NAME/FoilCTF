@@ -59,6 +59,43 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  challenge:
+    container_name: foilctf_challenge
+    build:
+      tags:
+        - "foilctf/challenge:latest"
+      context: ./app/challenge/
+      dockerfile: Containerfile
+    environment:
+      - API_PORT=${CHALLENGE_PORT:-3002}
+      - API_HOST=0.0.0.0
+      - API_ORIGINS_WHITELIST=${API_ORIGINS_WHITELIST:-http://localhost:3000,http://127.0.0.1:3000}
+      - DATABASE_HOST=database
+      - DATABASE_PORT=5432
+      - DATABASE_USER=${DATABASE_DEVELOPER_USER:?DATABASE_DEVELOPER_USER must be set}
+      - DATABASE_PASS=${DATABASE_DEVELOPER_PASS:?DATABASE_DEVELOPER_PASS must be set}
+      - DATABASE_NAME=${DATABASE_NAME:-foilctf}
+    networks:
+      - foilctf_net
+    ports:
+      - "3002:3002" # For development access
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3002/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
+        ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
   # PostgreSQL Database Service
   # REFERENCE: https://github.com/docker-library/docs/blob/master/postgres/README.md
   database:
