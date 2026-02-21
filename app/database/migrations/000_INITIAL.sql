@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS users (
   email		      TEXT DEFAULT NULL UNIQUE,
   username	      TEXT NOT NULL UNIQUE,
   role		      VARCHAR(64) NOT NULL DEFAULT 'user',
-  is_online     BOOLEAN NOT NULL DEFAULT false, -- SECTION: friends
 
   profile_id          INTEGER DEFAULT NULL
   -- CONSTRAINT profile  FOREIGN KEY (profile_id) REFERENCES profiles -- is this necessary??
@@ -85,8 +84,9 @@ CREATE TABLE IF NOT EXISTS friends (
 
   PRIMARY KEY (username_1, username_2),
 
-  CONSTRAINT no_self_friendship CHECK (username_1 <> username_2)
-  -- CONSTRAINT canonical_order CHECK (username_1 < username_2)
+  CONSTRAINT no_self_friendship CHECK (username_1 <> username_2),
+  CONSTRAINT fk_friends_username1 FOREIGN KEY (username_1) REFERENCES users (username) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_friends_username2 FOREIGN KEY (username_2) REFERENCES users (username) ON DELETE CASCADE ON UPDATE CASCADE
 );
 CREATE TABLE IF NOT EXISTS friend_requests (
   sender_name   TEXT NOT NULL,
@@ -94,7 +94,9 @@ CREATE TABLE IF NOT EXISTS friend_requests (
 
   PRIMARY KEY (sender_name, receiver_name),
 
-  CONSTRAINT no_self_request CHECK (sender_name <> receiver_name)
+  CONSTRAINT no_self_request   CHECK (sender_name <> receiver_name),
+  CONSTRAINT fk_friend_requests_sender   FOREIGN KEY (sender_name)   REFERENCES users (username) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_friend_requests_receiver FOREIGN KEY (receiver_name) REFERENCES users (username) ON DELETE CASCADE ON UPDATE CASCADE
 );
 -- SECTION: friends
 CREATE TABLE IF NOT EXISTS attachments (

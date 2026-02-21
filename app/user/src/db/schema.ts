@@ -11,7 +11,6 @@ export const users = pgTable("users", {
 	email: text(),
 	username: text().notNull(),
 	role: varchar({ length: 64 }).default('user').notNull(),
-	isOnline: boolean("is_online").default(false).notNull(),
 	profileId: integer("profile_id"),
 }, (table) => [
 	unique("users_email_key").on(table.email),
@@ -209,6 +208,17 @@ export const friends = pgTable("friends", {
 	username2: text("username_2").notNull(),
 }, (table) => [
 	primaryKey({ columns: [table.username2, table.username1], name: "friends_pkey"}),
+	check("no_self_friendship", sql`username_1 <> username_2`),
+	foreignKey({
+		columns: [table.username1],
+		foreignColumns: [users.username],
+		name: "fk_friends_username1",
+	}).onDelete("cascade").onUpdate("cascade"),
+	foreignKey({
+		columns: [table.username2],
+		foreignColumns: [users.username],
+		name: "fk_friends_username2",
+	}).onDelete("cascade").onUpdate("cascade"),
 ]);
 
 export const friendRequests = pgTable("friend_requests", {
@@ -217,6 +227,16 @@ export const friendRequests = pgTable("friend_requests", {
 }, (table) => [
 	primaryKey({ columns: [table.senderName, table.receiverName], name: "friend_requests_pkey"}),
 	check("no_self_request", sql`sender_name <> receiver_name`),
+	foreignKey({
+		columns: [table.senderName],
+		foreignColumns: [users.username],
+		name: "fk_friend_requests_sender",
+	}).onDelete("cascade").onUpdate("cascade"),
+	foreignKey({
+		columns: [table.receiverName],
+		foreignColumns: [users.username],
+		name: "fk_friend_requests_receiver",
+	}).onDelete("cascade").onUpdate("cascade"),
 ]);
 
 export const challengesAttachments = pgTable("challenges_attachments", {

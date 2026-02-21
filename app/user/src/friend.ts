@@ -46,21 +46,24 @@ export async function listFriends(req: Request, res: Response, next: NextFunctio
 
 	const searchFilter = search
 		? or(
-			ilike(friends.username1, `${search}%`),
-			ilike(friends.username2, `${search}%`)
+			and(
+				eq(friends.username1, decodedUser.username),
+				ilike(friends.username2, `${search}%`)
+			),
+			and(
+				eq(friends.username2, decodedUser.username),
+				ilike(friends.username1, `${search}%`)
+			)
 		)
-		: undefined;
+		: or(
+			eq(friends.username1, decodedUser.username),
+			eq(friends.username2, decodedUser.username),
+		);
 
     const dbFriends = await db
         .select()
         .from(friends)
-		.where(and(
-			or(
-				eq(friends.username1, decodedUser.username),
-				eq(friends.username2, decodedUser.username),
-			),
-			searchFilter
-        ))
+		.where(searchFilter)
 		.limit(limit)
 		.offset(limit * (page - 1));
 
@@ -162,15 +165,19 @@ export async function cancelFriendRequest(req: Request, res: Response, next: Nex
     const decodedUser = res.locals.user;
 	const target = req.params.username as string;
 
-	await db
-		.delete(friendRequests)
-		.where(and(
-			eq(friendRequests.senderName, decodedUser.username),
-			eq(friendRequests.receiverName, target)
-			)
-		);
+	try {
+		await db
+			.delete(friendRequests)
+			.where(and(
+				eq(friendRequests.senderName, decodedUser.username),
+				eq(friendRequests.receiverName, target)
+			));
 
-	return res.status(200).json(new FoilCTF_Success("Request cancelled successfuly", 200));
+		return res.status(200).json(new FoilCTF_Success("Request cancelled successfully", 200));
+	} catch (err) {
+		console.error(err);
+		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
+	}
 }
 
 export async function acceptFriendRequest(req: Request, res: Response, next: NextFunction) {
@@ -270,7 +277,7 @@ export async function removeFriend(req: Request, res: Response, next: NextFuncti
 				)
 			);
 
-		return res.status(204).json(new FoilCTF_Success("No Content", 204));
+		return res.status(200).json(new FoilCTF_Success("Friend removed", 200));
 	} catch (err) {
 		console.error(err);
 		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
