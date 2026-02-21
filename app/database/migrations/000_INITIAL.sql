@@ -48,8 +48,16 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS ctfs (
   id                SERIAL PRIMARY KEY,
 
+  name				TEXT NOT NULL DEFAULT 'New Event',
+  status			TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'active', 'ended')),
+
+  start_time		TIMESTAMP NOT NULL DEFAULT now(),
+  end_time			TIMESTAMP NOT NULL DEFAULT now(),
+  deleted_at		TIMESTAMP DEFAULT NULL,
+
   team_members_min  INTEGER DEFAULT 1 NOT NULL,
   team_members_max  INTEGER NULL,
+  max_teams			INTEGER CHECK (max_teams > 0),
 
   metadata          JSON NULL,
 
@@ -65,6 +73,7 @@ CREATE TABLE IF NOT EXISTS ctf_organizers (
 );
 
 CREATE TABLE IF NOT EXISTS teams (
+
   id              SERIAL PRIMARY KEY,
   name            TEXT NOT NULL UNIQUE,
 
@@ -77,6 +86,14 @@ CREATE TABLE IF NOT EXISTS teams (
   is_locked       BOOLEAN DEFAULT FALSE,
 
   CONSTRAINT constraint_captain_name FOREIGN KEY (captain_name) REFERENCES users(username) ON UPDATE CASCADE
+
+  id			SERIAL PRIMARY KEY,
+  name			TEXT NOT NULL,
+  team_size		INTEGER NOT NULL DEFAULT 0,
+
+  profile_id	INTEGER,
+  CONSTRAINT constraint_profile FOREIGN KEY (profile_id) REFERENCES profiles
+
 );
 CREATE TABLE IF NOT EXISTS team_members (
   team_name    TEXT NOT NULL,
@@ -102,25 +119,27 @@ CREATE TABLE IF NOT EXISTS attachments (
 
 -- NOTE: Recipes of the challenges
 CREATE TABLE IF NOT EXISTS challenges (
-  id                  SERIAL PRIMARY KEY,
-  is_published        BOOLEAN DEFAULT false NOT NULL,
+  id					SERIAL PRIMARY KEY,
+  is_published			BOOLEAN DEFAULT false NOT NULL,
 
-  name                TEXT DEFAULT 'Unnamed challenge' NOT NULL,
-  description         TEXT DEFAULT 'No description'    NOT NULL,
+  name					TEXT DEFAULT 'Unnamed challenge' NOT NULL,
+  description			TEXT DEFAULT 'No description'    NOT NULL,
+  category				TEXT NOT NULL,
 
-  reward              INTEGER DEFAULT 500  NOT NULL,
-  reward_min          INTEGER DEFAULT 350  NOT NULL,
-  reward_first_blood  INTEGER DEFAULT 0    NOT NULL,
-  reward_decrements   BOOLEAN DEFAULT TRUE NOT NULL,
+  reward				INTEGER DEFAULT 500  NOT NULL,
+  reward_min			INTEGER DEFAULT 350  NOT NULL,
+  reward_first_blood	INTEGER DEFAULT 0    NOT NULL,
+  reward_decrements		BOOLEAN DEFAULT TRUE NOT NULL,
 
-  author_id           INTEGER NOT NULL,
-  created_at          TIMESTAMP DEFAULT now() NOT NULL,
-  updated_at          TIMESTAMP DEFAULT now() NOT NULL,
+  author_id				INTEGER NOT NULL,
+  created_at			TIMESTAMP DEFAULT now() NOT NULL,
+  updated_at			TIMESTAMP DEFAULT now() NOT NULL,
 
   CONSTRAINT constraint_reward CHECK (reward >= reward_min),
   CONSTRAINT constraint_reward_min CHECK (reward_min >= 0),
   CONSTRAINT constraint_author FOREIGN KEY (author_id) REFERENCES users
 );
+
 CREATE TABLE IF NOT EXISTS challenges_attachments (
   challenge_id   INTEGER NOT NULL,
   attachment_id  INTEGER NOT NULL,
@@ -148,37 +167,66 @@ CREATE TABLE IF NOT EXISTS hints (
 
 -- Participations (Instance of the Team in the Challenge)
 CREATE TABLE IF NOT EXISTS participations (
-  id               SERIAL PRIMARY KEY,
-  score            INTEGER DEFAULT 0 NOT NULL,
+  id				SERIAL PRIMARY KEY,
+  score				INTEGER NOT NULL DEFAULT 0,
+  solves			INTEGER NOT NULL DEFAULT 0,
 
-  team_id          INTEGER NOT NULL,
-  challenge_id     INTEGER NOT NULL,
+  team_id			INTEGER NOT NULL,
+  ctf_id			INTEGER NOT NULL,
 
-  last_attempt_at  TIMESTAMP NULL,
+  last_attempt_at	TIMESTAMP NULL,
+
+  CONSTRAINT unique_participation UNIQUE (team_id, ctf_id),
 
   CONSTRAINT constraint_team FOREIGN KEY (team_id) REFERENCES teams,
-  CONSTRAINT constraint_challenge FOREIGN KEY (challenge_id) REFERENCES challenges
+  CONSTRAINT constraint_ctfs FOREIGN KEY (ctf_id) REFERENCES ctfs
 );
 
 -- CTF instantiation of the Challenges
 CREATE TABLE IF NOT EXISTS ctfs_challenges (
-  ctf_id            INTEGER NOT NULL,
-  challenge_id      INTEGER NOT NULL,
+  ctf_id				INTEGER NOT NULL,
+  challenge_id			INTEGER NOT NULL,
   PRIMARY KEY (ctf_id, challenge_id),
 
-  reward            INTEGER DEFAULT 500 NOT NULL,
-  attempts          INTEGER DEFAULT 0 NOT NULL,
-  solves            INTEGER DEFAULT 0 NOT NULL,
+  reward				INTEGER DEFAULT 500 NOT NULL,
+  attempts				INTEGER DEFAULT 0 NOT NULL,
+  solves				INTEGER DEFAULT 0 NOT NULL,
 
-  first_blood_at    TIMESTAMP NULL,
-  first_blood_id    INTEGER NULL,
+  released_at			TIMESTAMP NULL,
+  is_hidden				BOOLEAN DEFAULT false,
 
-  container_limits  JSON NULL,
-  flag              JSON NOT NULL,
+  first_blood_at		TIMESTAMP NULL,
+  first_blood_id		INTEGER NULL,
+
+  container_limits		JSON NULL,
+  flag					JSON NOT NULL,
+
+  requires_challenge_id	INTEGER NULL,
+
+  decay					INTEGER DEFAULT 50 NOT NULL,
+  reward_min			INTEGER DEFAULT 100 NOT NULL,
+  reward_first_blood	INTEGER DEFAULT 0 NOT NULL,
+  reward_decrements		BOOLEAN DEFAULT TRUE NOT NULL,
+  initial_reward		INTEGER DEFAULT 500  NOT NULL,
 
   CONSTRAINT constraint_ctf FOREIGN KEY (ctf_id) REFERENCES ctfs,
   CONSTRAINT constraint_challenge FOREIGN KEY (challenge_id) REFERENCES challenges,
-  CONSTRAINT constraint_first_blood FOREIGN KEY (first_blood_id) REFERENCES participations
+  CONSTRAINT constraint_first_blood FOREIGN KEY (first_blood_id) REFERENCES teams,
+  CONSTRAINT constraint_decay_positive CHECK (decay > 0)
+);
+
+CREATE TABLE IF NOT EXISTS solves (
+  id			SERIAL PRIMARY KEY,
+  ctf_id		INTEGER NOT NULL,
+  team_id		INTEGER NOT NULL,
+  chall_id		INTEGER NOT NULL,
+  score			INTEGER NOT NULL,
+  created_at	TIMESTAMP DEFAULT now() NOT NULL,
+  
+  CONSTRAINT unique_team_solve UNIQUE(ctf_id, team_id, chall_id),
+  CONSTRAINT fk_solves_ctf FOREIGN KEY (ctf_id) REFERENCES ctfs(id),
+  CONSTRAINT fk_solves_challenge FOREIGN KEY (chall_id) REFERENCES challenges(id),
+  CONSTRAINT fk_solves_team FOREIGN KEY (team_id) REFERENCES teams(id)
 );
 
 -- Containers (Actual instances of the Challenges)
@@ -228,6 +276,15 @@ CREATE TABLE IF NOT EXISTS notification_users (
   CONSTRAINT constraint_notification  FOREIGN KEY (notification_id) REFERENCES notifications ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS chat_rooms (
+  id		SERIAL PRIMARY KEY,
+  ctf_id	INTEGER NOT NULL,
+  team_id	INTEGER NULL,
+  room_type	VARCHAR(20) DEFAULT 'team' CHECK (room_type IN ('global', 'team', 'admin')),
+  
+  CONSTRAINT fk_chat_room_ctf FOREIGN KEY (ctf_id) REFERENCES ctfs(id)
+);
+
 CREATE TABLE IF NOT EXISTS messages (
   id           SERIAL,
   chatroom_id  INTEGER NOT NULL,
@@ -241,7 +298,7 @@ CREATE TABLE IF NOT EXISTS messages (
   writer_id    INTEGER, -- NOTE: NULL means System message
 
   CONSTRAINT constraint_writer FOREIGN KEY (writer_id) REFERENCES users,
-  CONSTRAINT constraint_chatroom FOREIGN KEY (chatroom_id) REFERENCES ctfs
+  CONSTRAINT constraint_room Foreign Key (chatroom_id) REFERENCES chat_rooms(id)
 );
 
 -- NOTE: Bugs, Feature Requests
