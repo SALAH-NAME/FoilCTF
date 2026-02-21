@@ -41,7 +41,7 @@ import {
 	listReceivedFriendRequests,
 	removeFriend,
 	cancelFriendRequest,
-	notifyUser
+	notifyUser,
 } from './friend';
 
 const app = express();
@@ -96,11 +96,7 @@ app.put(
 );
 
 // SECTION: Users
-app.get(
-	'/api/users/me',
-	authenticateToken,
-	route_user_me,
-)
+app.get('/api/users/me', authenticateToken, route_user_me);
 app.put(
 	'/api/users/:username',
 	parseNonExistingParam,
@@ -111,43 +107,31 @@ app.put(
 );
 
 // SECTION: friends
-app.get(
-	'/api/friends',
-	authenticateToken,
-	listFriends,
-);
-app.get(
-	'/api/friends/requests',
-	authenticateToken,
-	listReceivedFriendRequests,
-);
+app.get('/api/friends', authenticateToken, listFriends);
+app.get('/api/friends/requests', authenticateToken, listReceivedFriendRequests);
 app.post(
 	'/api/friends/requests/:username',
 	authenticateToken,
 	sendFriendRequest,
-	notifyUser,
+	notifyUser
 );
 app.delete(
 	'/api/friends/requests/:username',
 	authenticateToken,
-	cancelFriendRequest,
+	cancelFriendRequest
 );
 app.patch(
 	'/api/friends/requests/pending/:username',
 	authenticateToken,
 	acceptFriendRequest,
-	notifyUser,
+	notifyUser
 );
 app.delete(
 	'/api/friends/requests/pending/:username',
 	authenticateToken,
-	rejectFriendRequest,
+	rejectFriendRequest
 );
-app.delete(
-	'/api/friends/:username',
-	authenticateToken,
-	removeFriend,
-);
+app.delete('/api/friends/:username', authenticateToken, removeFriend);
 
 // SECTION: Health
 app.get('/health', (_req, res) => {
