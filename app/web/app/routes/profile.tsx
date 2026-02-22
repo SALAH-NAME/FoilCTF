@@ -224,8 +224,6 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 		setProfileData(newProfileData);
 	}, [queryProfile.dataUpdatedAt, queryProfile.status]);
 
-	const [isEditing, setIsEditing] = useState(false);
-
 	const [showEmailModal, setShowEmailModal] = useState(false);
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
 	const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -268,13 +266,6 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 		});
 	}, [actionData?.error, actionData?.timestamp]);
 
-	const { errors, touched, handleBlur, handleChange } = useFormValidation({
-		username: validationRules.username,
-		bio: validationRules.bio,
-		location: validationRules.location,
-		link: validationRules.link,
-	});
-
 	const {
 		errors: emailErrors,
 		touched: emailTouched,
@@ -304,53 +295,6 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 	} = useFormValidation({
 		confirmation: validationRules.deleteConfirmation,
 	});
-
-	const handleEditToggle = () => {
-		setIsEditing(!isEditing);
-
-		if (isEditing) {
-			// TODO: Reset to original
-		}
-	};
-
-	const handleSave = () => {
-		const usernameError = validationRules.username(profileData.username);
-		const bioError = validationRules.bio(profileData.bio ?? '');
-		const locationError = validationRules.location(profileData.location ?? '');
-		const linkError = validationRules.link(profileData.link ?? '');
-
-		if (!usernameError && !bioError && !locationError && !linkError) {
-			// TODO: Send updated data
-			setIsEditing(false);
-		}
-	};
-	const handleCancel = () => {
-		// TODO: Reset to original data
-		setIsEditing(false);
-	};
-
-	const handleFieldChange = (field: string, value: string | boolean) => {
-		setProfileData((prev) => ({ ...prev, [field]: value }));
-		if (typeof value === 'string') {
-			handleChange(field, value, {
-				username: profileData.username,
-				bio: profileData.bio ?? '',
-				location: profileData.location ?? '',
-				link: profileData.link ?? '',
-			});
-		}
-	};
-	const handleFieldBlur = (field: string) => {
-		const value = profileData[field as keyof typeof profileData];
-		if (typeof value === 'string') {
-			handleBlur(field, value, {
-				username: profileData.username,
-				bio: profileData.bio ?? '',
-				location: profileData.location ?? '',
-				link: profileData.link ?? '',
-			});
-		}
-	};
 
 	const handleAvatarChange = (file: File | null) => {
 		// TODO: Avatar file upload
@@ -444,8 +388,6 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 		socialmedialinks: profileData.link,
 		location: profileData.location,
 	};
-	console.log(JSON.stringify(fields.socialmedialinks));
-
 	return (
 		<div className="h-full bg-background p-4">
 			<div className="max-w-4xl mx-auto space-y-6">
@@ -1035,7 +977,6 @@ function SectionProfileInfo({ credentials, fields, errors }: ProfileInfoProps) {
 			variables[key] = editedFields[key] as any;
 		}
 
-		console.log(variables);
 		mutUpdate.mutate(variables);
 	};
 
@@ -1057,9 +998,10 @@ function SectionProfileInfo({ credentials, fields, errors }: ProfileInfoProps) {
 			});
 		};
 	}
-	function blurField(field: keyof FieldValueMapping) {
+	function blurField(_field: keyof FieldValueMapping) {
 		// TODO(xenobas): This stuff ain't it.
-		return (): void => {};
+		return (): void => {
+		};
 	}
 
 	return (

@@ -1,5 +1,7 @@
-import { data, redirect } from 'react-router';
+import { redirect } from 'react-router';
+
 import type { Route } from './+types/oauth42';
+
 import { commitSession, request_session } from '~/session.server';
 
 type TokenData = {
