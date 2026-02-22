@@ -26,25 +26,42 @@ export const authRegistries = new client.Counter({
     help: "Current number of authenticated registries",
 });
 
+export const httpRequestDuration = new client.Histogram({
+    name: "http_request_duration",
+    help: "HTTP request duration in seconds",
+    labelNames: ['method', 'route', 'status_code'],
+    buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5]
+});
+
 register.registerMetric(teamCreations);
 register.registerMetric(activeTeamJoinRequests);
 register.registerMetric(activeFriendRequests);
 register.registerMetric(authRegistries);
 
+register.registerMetric(httpRequestDuration);
+
 export async function user_metrics(req: Request, res: Response, next: NextFunction) {
 	try {
-		const counter = await register.metrics();
+		const metrics_string = await register.metrics();
 
 		res.set('Content-Type', register.contentType);
-		res
-            .status(200)
-            .json({
-                data: counter,
-            })
-            .end(); // check if this is ok !!
+		res.status(200).send(metrics_string);
 	} catch (err) {
         console.log(err);
 		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
 	}
 }
 
+export function metricsMiddleware(req: Request, res: Response, next: NextFunction) {
+    const end = httpRequestDuration.startTimer();
+
+    res.on('finish', () => {
+        end({
+            method: req.method,
+            route: req.route ? req.route.path : req.path,
+            status_code : res.statusCode,
+        });
+    });
+
+    next();
+}

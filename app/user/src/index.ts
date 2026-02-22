@@ -66,11 +66,13 @@ import {
 	notifyUser,
 } from './friend';
 import { user_metrics } from './utils/metrics';
+import { metricsMiddleware } from './utils/metrics';
 
 const app = express();
 app.use(middleware_logger);
 app.use(middleware_json());
 app.use(middleware_cookies());
+app.use(metricsMiddleware);
 
 // SECTION: Authentication
 app.post(
@@ -239,7 +241,8 @@ app.get(
 );
 
 // SECTION: Metrics
-app.get( // whitelist of ip address to protect this endpoint?
+// whitelist of ip address to protect this endpoint?
+app.get(
 	'/user/metrics',
 	user_metrics
 );
