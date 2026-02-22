@@ -1,4 +1,4 @@
-import { data, redirect, Form } from 'react-router';
+import { data, Form } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useContext, useEffect, useState, type SubmitEvent } from 'react';
 
@@ -18,16 +18,6 @@ import StatsCard from '~/components/StatsCard';
 import AvatarUpload from '~/components/AvatarUpload';
 import ProfileField from '~/components/ProfileField';
 import PrivacyToggle from '~/components/PrivacyToggle';
-
-export function meta({}: Route.MetaArgs) {
-	return [{ title: 'FoilCTF - Profile' }];
-}
-export async function loader({ request }: Route.LoaderArgs) {
-	const session = await request_session(request);
-
-	const user = session.get('user')!;
-	return user;
-}
 
 async function update_email(
 	token: string,
@@ -99,68 +89,6 @@ async function update_password(
 	};
 	return json as JSONData_Session;
 }
-export async function action({ request }: Route.ActionArgs) {
-	const session = await request_session(request);
-	const user_active = session.get('user')!;
-
-	try {
-		const form_data = await request.formData();
-		const input_password = form_data.get('password');
-
-		if (typeof input_password !== 'string' || !input_password)
-			throw new Error('Invalid password');
-
-		let result = {
-			token_access: user_active.token_access,
-			token_refresh: user_active.token_refresh,
-			expiry: user_active.expiry,
-		};
-		let timestamp: number | null = null;
-		if (form_data.get('kind') === 'email') {
-			const input_email = form_data.get('email');
-			if (typeof input_email !== 'string' || !input_email)
-				throw new Error('Invalid email');
-			result = await update_email(
-				user_active.token_access,
-				user_active.username,
-				input_password,
-				input_email
-			);
-
-			timestamp = Date.now();
-		} else if (form_data.get('kind') === 'password') {
-			const input_password_new = form_data.get('password_new');
-			if (typeof input_password_new !== 'string' || !input_password_new)
-				throw new Error('Invalid passsword');
-			result = await update_password(
-				user_active.token_access,
-				user_active.username,
-				input_password,
-				input_password_new
-			);
-
-			timestamp = Date.now();
-		} else {
-			throw new Error('Invalid action request data');
-		}
-		session.set('user', { ...user_active, ...result });
-
-		return data(
-			{ error: undefined, timestamp },
-			{
-				headers: new Headers({ 'Set-Cookie': await commitSession(session) }),
-			}
-		);
-	} catch (err) {
-		return data({
-			error:
-				(err instanceof Error ? err.message : err?.toString()) ??
-				'Internal server error',
-			timestamp: Date.now(),
-		});
-	}
-}
-
 async function update_profile_information(
 	token: string,
 	username: string,
@@ -190,6 +118,61 @@ async function update_profile_information(
 		throw new Error(json.error ?? 'Internal server error');
 	}
 }
+
+async function fetch_profile(token: string, username: string) {
+	const uri = new URL(
+		`/api/profiles/${username}`,
+		import.meta.env.VITE_REST_USER_ORIGIN
+	);
+	const res = await fetch(uri, {
+		headers: new Headers({ Authorization: `Bearer ${token}` }),
+	});
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (!res.ok || content_type !== 'application/json') return null;
+
+	const json = await res.json();
+	type JSONData_Profile = {
+		avatar: string;
+		username: string;
+
+		challenges_solved: number | null;
+		events_participated: number | null;
+		total_points: number | null;
+
+		bio: string | null | undefined;
+		location: string | null | undefined;
+		social_media_links: string | null | undefined;
+	};
+	return json as JSONData_Profile;
+}
+async function fetch_user(token: string) {
+	const uri = new URL(`/api/users/me`, import.meta.env.VITE_REST_USER_ORIGIN);
+	const res = await fetch(uri, {
+		headers: new Headers({ Authorization: `Bearer ${token}` }),
+	});
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (!res.ok || content_type !== 'application/json') return null;
+
+	const json = await res.json();
+	type JSONData_User = {
+		id: number;
+		email: string | null;
+		username: string;
+		role: string;
+
+		profileId: number | null;
+		oauth42_login: string | null;
+
+		createdAt: string;
+		bannedUntil: string | null;
+	};
+	return json as JSONData_User;
+}
+
 interface ProfileInfoProps {
 	fields: {
 		username: string;
@@ -392,59 +375,77 @@ function SectionProfileInfo({ credentials, fields, errors }: ProfileInfoProps) {
 	);
 }
 
-async function fetch_profile(token: string, username: string) {
-	const uri = new URL(
-		`/api/profiles/${username}`,
-		import.meta.env.VITE_REST_USER_ORIGIN
-	);
-	const res = await fetch(uri, {
-		headers: new Headers({ Authorization: `Bearer ${token}` }),
-	});
-
-	const content_type =
-		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
-	if (!res.ok || content_type !== 'application/json') return null;
-
-	const json = await res.json();
-	type JSONData_Profile = {
-		avatar: string;
-		username: string;
-
-		challenges_solved: number | null;
-		events_participated: number | null;
-		total_points: number | null;
-
-		bio: string | null | undefined;
-		location: string | null | undefined;
-		social_media_links: string | null | undefined;
-	};
-	return json as JSONData_Profile;
+export function meta({}: Route.MetaArgs) {
+	return [{ title: 'FoilCTF - Profile' }];
 }
-async function fetch_user(token: string) {
-	const uri = new URL(`/api/users/me`, import.meta.env.VITE_REST_USER_ORIGIN);
-	const res = await fetch(uri, {
-		headers: new Headers({ Authorization: `Bearer ${token}` }),
-	});
+export async function loader({ request }: Route.LoaderArgs) {
+	const session = await request_session(request);
 
-	const content_type =
-		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
-	if (!res.ok || content_type !== 'application/json') return null;
-
-	const json = await res.json();
-	type JSONData_User = {
-		id: number;
-		email: string | null;
-		username: string;
-		role: string;
-
-		profileId: number | null;
-		oauth42_login: string | null;
-
-		createdAt: string;
-		bannedUntil: string | null;
-	};
-	return json as JSONData_User;
+	const user = session.get('user')!;
+	return user;
 }
+export async function action({ request }: Route.ActionArgs) {
+	const session = await request_session(request);
+	const user_active = session.get('user')!;
+
+	try {
+		const form_data = await request.formData();
+		const input_password = form_data.get('password');
+
+		if (typeof input_password !== 'string' || !input_password)
+			throw new Error('Invalid password');
+
+		let result = {
+			token_access: user_active.token_access,
+			token_refresh: user_active.token_refresh,
+			expiry: user_active.expiry,
+		};
+		let timestamp: number | null = null;
+		if (form_data.get('kind') === 'email') {
+			const input_email = form_data.get('email');
+			if (typeof input_email !== 'string' || !input_email)
+				throw new Error('Invalid email');
+			result = await update_email(
+				user_active.token_access,
+				user_active.username,
+				input_password,
+				input_email
+			);
+
+			timestamp = Date.now();
+		} else if (form_data.get('kind') === 'password') {
+			const input_password_new = form_data.get('password_new');
+			if (typeof input_password_new !== 'string' || !input_password_new)
+				throw new Error('Invalid passsword');
+			result = await update_password(
+				user_active.token_access,
+				user_active.username,
+				input_password,
+				input_password_new
+			);
+
+			timestamp = Date.now();
+		} else {
+			throw new Error('Invalid action request data');
+		}
+		session.set('user', { ...user_active, ...result });
+
+		return data(
+			{ error: undefined, timestamp },
+			{
+				headers: new Headers({ 'Set-Cookie': await commitSession(session) }),
+			}
+		);
+	} catch (err) {
+		return data({
+			error:
+				(err instanceof Error ? err.message : err?.toString()) ??
+				'Internal server error',
+			timestamp: Date.now(),
+		});
+	}
+}
+
 export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 	const { addToast } = useToast();
 	const { username, token_access } = loaderData;

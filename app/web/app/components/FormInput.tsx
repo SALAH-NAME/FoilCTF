@@ -1,4 +1,4 @@
-import { type ChangeEvent, type FocusEvent } from 'react';
+import { type ChangeEvent } from 'react';
 
 interface FormInputProps {
 	id?: string;
