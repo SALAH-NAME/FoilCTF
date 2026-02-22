@@ -27,7 +27,7 @@ import {
 	updateProfile,
 	uploadAvatar,
 	upload,
-	updateTokens,
+    updateTokens,
 } from './profile';
 
 import {

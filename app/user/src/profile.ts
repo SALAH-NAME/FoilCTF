@@ -156,6 +156,30 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 	return res.status(201).json({ ok: true }).end()
 };
 
+export const updateTokens = async (
+	_req: Request,
+	res: Response<any, { user: User }>
+) => {
+	const { username, role, id } = res.locals.user;
+
+	const token_access = generateAccessToken(username, role, id);
+	const token_refresh = generateRefreshToken(username, id);
+	const expiry_date = new Date(Date.now() + ms(RefreshTokenExpiry));
+
+	await db
+		.update(sessions)
+		.set({
+			refreshtoken: token_refresh,
+			expiry: expiry_date.toISOString(),
+		})
+		.where(eq(sessions.user_id, id));
+
+	return res
+		.status(200)
+		.json({ token_access, token_refresh, expiry: expiry_date.toISOString() })
+		.end();
+};
+
 export const updateProfile = async (
 	req: Request,
 	res: Response<any, { user?: User }>

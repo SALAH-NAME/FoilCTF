@@ -161,6 +161,11 @@ export async function fetch_42_profile(
 	return schema_42_profile.parse(data);
 }
 
+function base64_encode(value: unknown): string {
+	if (typeof value === 'object')
+		return Buffer.from(JSON.stringify(value), 'ascii').toString('base64');
+	return Buffer.from(value?.toString() ?? '', 'ascii').toString('base64');
+}
 async function query_oauth_user(login: string) {
 	try {
 		const [user]: (Omit<User, 'password'> & { password?: string })[] = await db
@@ -175,12 +180,6 @@ async function query_oauth_user(login: string) {
 		console.error(err);
 		return null;
 	}
-}
-
-function base64_encode(value: unknown): string {
-	if (typeof value === 'object')
-		return Buffer.from(JSON.stringify(value), 'ascii').toString('base64');
-	return Buffer.from(value?.toString() ?? '', 'ascii').toString('base64');
 }
 
 export function route_oauth_42_verify(route_origin: 'connect' | 'link') {
@@ -293,7 +292,7 @@ export function route_oauth_42_verify(route_origin: 'connect' | 'link') {
 							await db.insert(table_sessions).values({
 								refreshtoken: token_refresh,
 								expiry,
-								userId: user.id,
+								user_id: user.id,
 							});
 						} catch (error) {
 							const uri = new URL(redirect_uri);

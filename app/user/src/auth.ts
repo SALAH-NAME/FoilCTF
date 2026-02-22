@@ -5,16 +5,12 @@ import ms, { StringValue } from 'ms';
 import { type Request, type Response } from 'express';
 
 import { db } from './utils/db';
-import { RefreshTokenSecret, RefreshTokenExpiry } from './utils/env';
-import { users, sessions as table_sessions, profiles } from './db/schema';
-import {
-	generateAccessToken,
-	generateRefreshToken,
-	user_exists,
-} from './utils/utils';
-import { FoilCTF_Error, FoilCTF_Success, loginSchema, registerSchema } from './utils/types';
 import { JWT_verify } from './jwt';
 import { fetch_42_profile } from './routes/oauth';
+import { loginSchema, registerSchema } from './utils/types';
+import { RefreshTokenSecret, RefreshTokenExpiry } from './utils/env';
+import { users, sessions as table_sessions, profiles } from './db/schema';
+import { generateAccessToken, generateRefreshToken, user_exists } from './utils/utils';
 
 export const SALT_ROUNDS = 10;
 const request_token = (req: Request): string | null => {
@@ -94,7 +90,7 @@ export const route_auth_login = async (
 	await db.insert(table_sessions).values({
 		refreshtoken: token_refresh,
 		expiry: expiry_date.toISOString(),
-		userId: user.id,
+		user_id: user.id,
 	});
 
 	return res
@@ -122,7 +118,7 @@ export const route_auth_refresh = async (req: Request, res: Response) => {
 	const [user] = await db
 		.select()
 		.from(users)
-		.where(eq(users.id, session.userId));
+		.where(eq(users.id, session.user_id));
 	if (!user)
 		return res.status(400).json({ error: 'Token user no longer exists' }).end();
 

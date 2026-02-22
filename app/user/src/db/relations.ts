@@ -1,184 +1,259 @@
 import { relations } from "drizzle-orm/relations";
-import { users, profiles, sessions, ctfs, ctfOrganizers, teams, teamMembers, teamJoinRequests, challenges, hints, participations, containers, ctfsChallenges, reports, challengesAttachments, attachments, notificationUsers, notifications, messages } from "./schema";
+import { users, profiles, sessions, ctfs, ctf_organizers, teams, team_members, team_join_requests, friends, friend_requests, challenges, challenges_attachments, attachments, hints, participations, ctfs_challenges, solves, containers, notification_users, notifications, chat_rooms, messages, reports } from "./schema";
 
-export const profilesRelations = relations(profiles, ({one}) => ({
+export const profilesRelations = relations(profiles, ({one, many}) => ({
 	user: one(users, {
 		fields: [profiles.username],
-		references: [users.username]
+		references: [users.username],
+		relationName: "profiles_username_users_username"
+	}),
+	users: many(users, {
+		relationName: "users_profile_id_profiles_id"
 	}),
 }));
 
-export const usersRelations = relations(users, ({many}) => ({
-	profiles: many(profiles),
+export const usersRelations = relations(users, ({one, many}) => ({
+	profiles: many(profiles, {
+		relationName: "profiles_username_users_username"
+	}),
+	profile: one(profiles, {
+		fields: [users.profile_id],
+		references: [profiles.id],
+		relationName: "users_profile_id_profiles_id"
+	}),
 	sessions: many(sessions),
-	ctfOrganizers: many(ctfOrganizers),
+	ctf_organizers: many(ctf_organizers),
 	teams: many(teams),
-	teamMembers: many(teamMembers),
-	teamJoinRequests: many(teamJoinRequests),
+	team_members: many(team_members),
+	team_join_requests: many(team_join_requests),
+	friends_username_1: many(friends, {
+		relationName: "friends_username_1_users_username"
+	}),
+	friends_username_2: many(friends, {
+		relationName: "friends_username_2_users_username"
+	}),
+	friend_requests_sender_name: many(friend_requests, {
+		relationName: "friend_requests_sender_name_users_username"
+	}),
+	friend_requests_receiver_name: many(friend_requests, {
+		relationName: "friend_requests_receiver_name_users_username"
+	}),
 	challenges: many(challenges),
-	reports: many(reports),
-	notificationUsers: many(notificationUsers),
+	notification_users: many(notification_users),
 	messages: many(messages),
+	reports: many(reports),
 }));
 
 export const sessionsRelations = relations(sessions, ({one}) => ({
 	user: one(users, {
-		fields: [sessions.userId],
+		fields: [sessions.user_id],
 		references: [users.id]
 	}),
 }));
 
-export const ctfOrganizersRelations = relations(ctfOrganizers, ({one}) => ({
+export const ctf_organizersRelations = relations(ctf_organizers, ({one}) => ({
 	ctf: one(ctfs, {
-		fields: [ctfOrganizers.ctfId],
+		fields: [ctf_organizers.ctf_id],
 		references: [ctfs.id]
 	}),
 	user: one(users, {
-		fields: [ctfOrganizers.organizerId],
+		fields: [ctf_organizers.organizer_id],
 		references: [users.id]
 	}),
 }));
 
 export const ctfsRelations = relations(ctfs, ({many}) => ({
-	ctfOrganizers: many(ctfOrganizers),
-	messages: many(messages),
-	ctfsChallenges: many(ctfsChallenges),
+	ctf_organizers: many(ctf_organizers),
+	participations: many(participations),
+	ctfs_challenges: many(ctfs_challenges),
+	solves: many(solves),
+	chat_rooms: many(chat_rooms),
 }));
 
 export const teamsRelations = relations(teams, ({one, many}) => ({
 	user: one(users, {
-		fields: [teams.captainName],
+		fields: [teams.captain_name],
 		references: [users.username]
 	}),
-	teamMembers: many(teamMembers),
-	teamJoinRequests: many(teamJoinRequests),
+	team_members: many(team_members),
+	team_join_requests: many(team_join_requests),
 	participations: many(participations),
+	ctfs_challenges: many(ctfs_challenges),
+	solves: many(solves),
 }));
 
-export const teamMembersRelations = relations(teamMembers, ({one}) => ({
+export const team_membersRelations = relations(team_members, ({one}) => ({
 	team: one(teams, {
-		fields: [teamMembers.teamName],
+		fields: [team_members.team_name],
 		references: [teams.name]
 	}),
 	user: one(users, {
-		fields: [teamMembers.memberName],
+		fields: [team_members.member_name],
 		references: [users.username]
 	}),
 }));
 
-export const teamJoinRequestsRelations = relations(teamJoinRequests, ({one}) => ({
+export const team_join_requestsRelations = relations(team_join_requests, ({one}) => ({
 	team: one(teams, {
-		fields: [teamJoinRequests.teamName],
+		fields: [team_join_requests.team_name],
 		references: [teams.name]
 	}),
 	user: one(users, {
-		fields: [teamJoinRequests.username],
+		fields: [team_join_requests.username],
 		references: [users.username]
+	}),
+}));
+
+export const friendsRelations = relations(friends, ({one}) => ({
+	user_username_1: one(users, {
+		fields: [friends.username_1],
+		references: [users.username],
+		relationName: "friends_username_1_users_username"
+	}),
+	user_username_2: one(users, {
+		fields: [friends.username_2],
+		references: [users.username],
+		relationName: "friends_username_2_users_username"
+	}),
+}));
+
+export const friend_requestsRelations = relations(friend_requests, ({one}) => ({
+	user_sender_name: one(users, {
+		fields: [friend_requests.sender_name],
+		references: [users.username],
+		relationName: "friend_requests_sender_name_users_username"
+	}),
+	user_receiver_name: one(users, {
+		fields: [friend_requests.receiver_name],
+		references: [users.username],
+		relationName: "friend_requests_receiver_name_users_username"
 	}),
 }));
 
 export const challengesRelations = relations(challenges, ({one, many}) => ({
 	user: one(users, {
-		fields: [challenges.authorId],
+		fields: [challenges.author_id],
 		references: [users.id]
 	}),
+	challenges_attachments: many(challenges_attachments),
 	hints: many(hints),
-	participations: many(participations),
-	challengesAttachments: many(challengesAttachments),
-	ctfsChallenges: many(ctfsChallenges),
+	ctfs_challenges: many(ctfs_challenges),
+	solves: many(solves),
+}));
+
+export const challenges_attachmentsRelations = relations(challenges_attachments, ({one}) => ({
+	challenge: one(challenges, {
+		fields: [challenges_attachments.challenge_id],
+		references: [challenges.id]
+	}),
+	attachment: one(attachments, {
+		fields: [challenges_attachments.attachment_id],
+		references: [attachments.id]
+	}),
+}));
+
+export const attachmentsRelations = relations(attachments, ({many}) => ({
+	challenges_attachments: many(challenges_attachments),
 }));
 
 export const hintsRelations = relations(hints, ({one}) => ({
 	challenge: one(challenges, {
-		fields: [hints.challengeId],
+		fields: [hints.challenge_id],
 		references: [challenges.id]
 	}),
 }));
 
 export const participationsRelations = relations(participations, ({one, many}) => ({
 	team: one(teams, {
-		fields: [participations.teamId],
+		fields: [participations.team_id],
 		references: [teams.id]
 	}),
-	challenge: one(challenges, {
-		fields: [participations.challengeId],
-		references: [challenges.id]
+	ctf: one(ctfs, {
+		fields: [participations.ctf_id],
+		references: [ctfs.id]
 	}),
 	containers: many(containers),
-	ctfsChallenges: many(ctfsChallenges),
+}));
+
+export const ctfs_challengesRelations = relations(ctfs_challenges, ({one, many}) => ({
+	ctf: one(ctfs, {
+		fields: [ctfs_challenges.ctf_id],
+		references: [ctfs.id]
+	}),
+	challenge: one(challenges, {
+		fields: [ctfs_challenges.challenge_id],
+		references: [challenges.id]
+	}),
+	team: one(teams, {
+		fields: [ctfs_challenges.first_blood_id],
+		references: [teams.id]
+	}),
+	containers: many(containers),
+}));
+
+export const solvesRelations = relations(solves, ({one}) => ({
+	ctf: one(ctfs, {
+		fields: [solves.ctf_id],
+		references: [ctfs.id]
+	}),
+	challenge: one(challenges, {
+		fields: [solves.chall_id],
+		references: [challenges.id]
+	}),
+	team: one(teams, {
+		fields: [solves.team_id],
+		references: [teams.id]
+	}),
 }));
 
 export const containersRelations = relations(containers, ({one}) => ({
 	participation: one(participations, {
-		fields: [containers.participationId],
+		fields: [containers.participation_id],
 		references: [participations.id]
 	}),
-	ctfsChallenge: one(ctfsChallenges, {
-		fields: [containers.ctfId],
-		references: [ctfsChallenges.challengeId]
+	ctfs_challenge: one(ctfs_challenges, {
+		fields: [containers.ctf_id],
+		references: [ctfs_challenges.challenge_id]
 	}),
 }));
 
-export const ctfsChallengesRelations = relations(ctfsChallenges, ({one, many}) => ({
-	containers: many(containers),
-	ctf: one(ctfs, {
-		fields: [ctfsChallenges.ctfId],
-		references: [ctfs.id]
-	}),
-	challenge: one(challenges, {
-		fields: [ctfsChallenges.challengeId],
-		references: [challenges.id]
-	}),
-	participation: one(participations, {
-		fields: [ctfsChallenges.firstBloodId],
-		references: [participations.id]
-	}),
-}));
-
-export const reportsRelations = relations(reports, ({one}) => ({
+export const notification_usersRelations = relations(notification_users, ({one}) => ({
 	user: one(users, {
-		fields: [reports.issuerId],
-		references: [users.id]
-	}),
-}));
-
-export const challengesAttachmentsRelations = relations(challengesAttachments, ({one}) => ({
-	challenge: one(challenges, {
-		fields: [challengesAttachments.challengeId],
-		references: [challenges.id]
-	}),
-	attachment: one(attachments, {
-		fields: [challengesAttachments.attachmentId],
-		references: [attachments.id]
-	}),
-}));
-
-export const attachmentsRelations = relations(attachments, ({many}) => ({
-	challengesAttachments: many(challengesAttachments),
-}));
-
-export const notificationUsersRelations = relations(notificationUsers, ({one}) => ({
-	user: one(users, {
-		fields: [notificationUsers.userId],
+		fields: [notification_users.user_id],
 		references: [users.id]
 	}),
 	notification: one(notifications, {
-		fields: [notificationUsers.notificationId],
+		fields: [notification_users.notification_id],
 		references: [notifications.id]
 	}),
 }));
 
 export const notificationsRelations = relations(notifications, ({many}) => ({
-	notificationUsers: many(notificationUsers),
+	notification_users: many(notification_users),
+}));
+
+export const chat_roomsRelations = relations(chat_rooms, ({one, many}) => ({
+	ctf: one(ctfs, {
+		fields: [chat_rooms.ctf_id],
+		references: [ctfs.id]
+	}),
+	messages: many(messages),
 }));
 
 export const messagesRelations = relations(messages, ({one}) => ({
 	user: one(users, {
-		fields: [messages.writerId],
+		fields: [messages.writer_id],
 		references: [users.id]
 	}),
-	ctf: one(ctfs, {
-		fields: [messages.chatroomId],
-		references: [ctfs.id]
+	chat_room: one(chat_rooms, {
+		fields: [messages.chatroom_id],
+		references: [chat_rooms.id]
+	}),
+}));
+
+export const reportsRelations = relations(reports, ({one}) => ({
+	user: one(users, {
+		fields: [reports.issuer_id],
+		references: [users.id]
 	}),
 }));

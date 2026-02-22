@@ -31,9 +31,8 @@ export class FoilCTF_Error extends Error {
 
 	toJSON() {
 		return {
-			error: true,
-			message: this.message,
-			status: this.statusCode
+			ok: false,
+			error: this.message,
 		}
 	}
 }
@@ -49,8 +48,8 @@ export class FoilCTF_Success {
 
 	toJSON() {
 		return {
+			ok: true,
 			message: this.message,
-			status: this.statusCode
 		}
 	}
 }

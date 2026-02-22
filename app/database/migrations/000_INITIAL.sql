@@ -38,12 +38,12 @@ ALTER TABLE profiles
   ADD CONSTRAINT fk_username FOREIGN KEY (username) REFERENCES users (username) ON UPDATE CASCADE; -- update username on user's username update
 
 CREATE TABLE IF NOT EXISTS sessions (
-  id               SERIAL PRIMARY KEY,
-  expiry           TIMESTAMP NOT NULL,
+  id				SERIAL PRIMARY KEY,
+  expiry			TIMESTAMP NOT NULL,
 
-  refreshtoken	   TEXT NOT NULL,
-  user_id	   INTEGER NOT NULL,
-  created_at	   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  refreshtoken		TEXT NOT NULL,
+  user_id			INTEGER NOT NULL,
+  created_at		TIMESTAMP DEFAULT now() NOT NULL,
   CONSTRAINT fk_id FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE -- delete session on user delete !!
 );
 
@@ -87,13 +87,6 @@ CREATE TABLE IF NOT EXISTS teams (
   is_locked       BOOLEAN DEFAULT FALSE,
 
   CONSTRAINT constraint_captain_name FOREIGN KEY (captain_name) REFERENCES users(username) ON UPDATE CASCADE
-
-  id			SERIAL PRIMARY KEY,
-  name			TEXT NOT NULL,
-  team_size		INTEGER NOT NULL DEFAULT 0,
-
-  profile_id	INTEGER,
-  CONSTRAINT constraint_profile FOREIGN KEY (profile_id) REFERENCES profiles
 );
 CREATE TABLE IF NOT EXISTS team_members (
   team_name    TEXT NOT NULL,
