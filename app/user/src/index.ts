@@ -9,6 +9,7 @@ import {
 	loginSchema,
 	updateProfileSchema,
 	updateUserSchema,
+	updateUserRoleSchema,
 	teamCreationSchema,
 	updateTeamSchema,
 	transferLeadershipSchema,
@@ -55,6 +56,11 @@ import {
 	getReceivedRequests,
 } from './team';
 import { route_user_me } from './user';
+import {
+	deleteUser,
+	listUsers,
+	updateUserRole
+} from './admin';
 import {
 	sendFriendRequest,
 	acceptFriendRequest,
@@ -126,6 +132,21 @@ app.put(
 	authenticateToken,
 	updateUser,
 	updateTokens
+);
+
+// SECTION: admin
+app.get(
+    '/api/users',
+    listUsers,
+);
+app.patch(
+    '/api/users/:username',
+	middleware_schema_validate(updateUserRoleSchema),
+    updateUserRole,
+);
+app.delete(
+    '/api/users/:username',
+    deleteUser,
 );
 
 // SECTION: friends
