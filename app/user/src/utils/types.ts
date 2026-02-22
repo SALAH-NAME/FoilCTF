@@ -30,6 +30,10 @@ export const registerSchema = z.object({
 			.string()
 			.min(PASSWORD_MIN_CHARACTERS)
 			.max(PASSWORD_MAX_CHARACTERS),
+		oauth42: z.optional(z.object({
+			login: z.string().min(1),
+			token: z.string().min(1),
+		})),
 	}),
 });
 

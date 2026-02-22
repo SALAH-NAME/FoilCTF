@@ -199,29 +199,33 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 		const user = queryUser.data;
 		if (!queryUser.isSuccess || !user) return;
 
-		const newProfileData = {
-			...profileData,
+		setProfileData((oldProfileData) => {
+			const newProfileData = {
+				...oldProfileData,
 
-			username: user.username,
-			email: user.email ?? 'No Email',
-			['42login']: user.oauth42_login,
-		};
-		setProfileData(newProfileData);
+				username: user.username,
+				email: user.email ?? 'No Email',
+				['42login']: user.oauth42_login,
+			};
+			return newProfileData;
+		});
 	}, [queryUser.dataUpdatedAt, queryUser.status]);
 	useEffect(() => {
 		const profile = queryProfile.data;
 		if (!queryProfile.isSuccess || !profile) return;
 
-		const newProfileData = {
-			...profileData,
+		setProfileData((oldProfileData) => {
+			const newProfileData = {
+				...oldProfileData,
 
-			avatar: profile.avatar ?? '',
+				avatar: profile.avatar ?? '',
 
-			bio: profile.bio ?? '',
-			location: profile.location ?? '',
-			link: profile.social_media_links ?? '',
-		};
-		setProfileData(newProfileData);
+				bio: profile.bio ?? '',
+				location: profile.location ?? '',
+				link: profile.social_media_links ?? '',
+			};
+			return newProfileData;
+		});
 	}, [queryProfile.dataUpdatedAt, queryProfile.status]);
 
 	const [showEmailModal, setShowEmailModal] = useState(false);

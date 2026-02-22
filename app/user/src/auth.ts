@@ -15,6 +15,7 @@ import {
 	user_exists,
 } from './utils/utils';
 import { JWT_verify } from './jwt';
+import { fetch_42_profile } from './routes/oauth';
 
 export const SALT_ROUNDS = 10;
 const request_token = (req: Request): string | null => {
@@ -32,7 +33,7 @@ export const route_auth_register = async (
 	req: Request<any, any, zod.infer<typeof registerSchema>['body']>,
 	res: Response
 ) => {
-	const { username, email, password } = req.body;
+	const { username, email, password, oauth42 } = req.body;
 	const user_existing = await user_exists(username, email);
 	if (user_existing)
 		return res
@@ -40,11 +41,23 @@ export const route_auth_register = async (
 			.json({ error: 'Email and/or Username is already reserved' })
 			.end();
 
+	const oauth42_login = oauth42?.login ?? null;
+	if (oauth42) {
+		const profile = await fetch_42_profile(oauth42.token);
+		if (!profile)
+			return res.status(401).json({ error: '42OAuth token is either invalid, or has expired' }).end();
+		if (profile.login !== oauth42.login)
+			return res.status(401).json({ error: 'Token does not belong to requested 42Network member' }).end();
+		console.log("Creating account with 42login: %s", oauth42_login);
+	}
+
 	const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+
 	await db.transaction(async (tx) => {
 		await tx.insert(users).values({
 			username,
 			email,
+			oauth42_login,
 			password: password_hash,
 		});
 		await tx.insert(profiles).values({

@@ -148,7 +148,7 @@ const schema_42_profile = zod.object({
 	['alumni?']: zod.boolean(),
 	['active?']: zod.boolean(),
 });
-async function fetch_42_profile(
+export async function fetch_42_profile(
 	token: string
 ): Promise<zod.infer<typeof schema_42_profile> | null> {
 	const uri = new URL('/v2/me', 'https://api.intra.42.fr');
@@ -308,7 +308,7 @@ export function route_oauth_42_verify(route_origin: 'connect' | 'link') {
 					} else {
 						uri.searchParams.set(
 							'data',
-							base64_encode({ did_authenticate: false, profile })
+							base64_encode({ did_authenticate: false, profile, oauth_token: token })
 						);
 					}
 				}

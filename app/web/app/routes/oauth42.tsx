@@ -36,7 +36,7 @@ type ProfileData = {
 	'pool_month'?: string | undefined;
 	'pool_year'?: string | undefined;
 };
-type Data = TokenData | { did_authenticate: false; profile: ProfileData };
+type Data = TokenData | { did_authenticate: false; profile: ProfileData, oauth_token: string };
 
 export async function loader({ request }: Route.LoaderArgs) {
 	let redirect_fallback = '/';
@@ -49,6 +49,16 @@ export async function loader({ request }: Route.LoaderArgs) {
 			Buffer.from(query_data, 'base64').toString('ascii')
 		) as Data;
 		switch (auth_data.did_authenticate) {
+			case false:
+				{
+				const { profile, oauth_token } = auth_data;
+				session.flash('oauth', {
+					login: profile.login,
+					token: oauth_token,
+				});
+
+				return redirect('/register', { headers: { 'Set-Cookie': await commitSession(session) } });
+			} ;
 			case true:
 				{
 					const { user, token_access, token_refresh, expiry } = auth_data;
@@ -61,24 +71,11 @@ export async function loader({ request }: Route.LoaderArgs) {
 						token_refresh,
 						expiry,
 					});
-					// session.set('token_access', token_access);
 				}
 				break;
-			case false: {
-				// NOTE(xenobas): Thoughts
-				// + '/register' requires email, username, password while the OAuth Profile contains different stuff
-				//	- This means we will need a dedicated register for 42 users where they are only prompted with the username
-				//	- That could be right here.
-				//
-				//  - We could also create said account on the backend, but that throws us back into the username issue
-				// const { profile } = auth_data;
-				return redirect('/register');
-			}
-			default:
-				{
-					// NOTE(xenobas): This means we got an unexpected response, which in turn is just an error and go to somewhere else.
-				}
-				break;
+			default: {
+				session.flash('error', 'Unknown response from authentication service');
+			} break ;
 		}
 	} else {
 		const error = url.searchParams.get('error');
@@ -96,10 +93,4 @@ export async function loader({ request }: Route.LoaderArgs) {
 	return redirect(query_redirect_uri, {
 		headers: { 'Set-Cookie': await commitSession(session) },
 	});
-	// return data({ query: { query_redirect_uri } }, { headers: { 'Set-Cookie': await commitSession(session) } });
-}
-
-export default function Page({ loaderData }: Route.ComponentProps) {
-	const { query } = loaderData;
-	return <>{JSON.stringify(query)}</>;
 }

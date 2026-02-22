@@ -1,23 +1,30 @@
-import { Link, useNavigate } from 'react-router';
 import { useMutation } from '@tanstack/react-query';
+import { data, Link, useNavigate } from 'react-router';
 import { useState, type SubmitEvent } from 'react';
 
 import type { Route } from './+types/register';
 
+import { useToast } from '~/contexts/ToastContext';
 import { validationRules } from '~/utils/validation';
 import { useFormValidation } from '~/hooks/useFormValidation';
+import { commitSession, request_session } from '~/session.server';
 
 import Button from '~/components/Button';
 import FormInput from '~/components/FormInput';
 import FormDivider from '~/components/FormDivider';
 import OAuthButton from '~/components/OAuthButton';
-import { useToast } from '~/contexts/ToastContext';
 
+export async function loader({ request }: Route.LoaderArgs) {
+	const session = await request_session(request);
+	const oauth = session.get('oauth');
+
+	return data({ oauth }, { headers: { 'Set-Cookie': await commitSession(session) } });
+}
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Register' }];
 }
 
-type RegisterPayload = { username: string; password: string; email: string };
+type RegisterPayload = { username: string; password: string; email: string, oauth42?: { login: string, token: string } };
 async function register_user(payload: RegisterPayload) {
 	const url = new URL(
 		'/api/auth/register',
@@ -37,7 +44,7 @@ async function register_user(payload: RegisterPayload) {
 	if (!res.ok || data.error)
 		throw new Error(data.error ?? 'Internal server error');
 }
-export default function Page() {
+export default function Page({ loaderData }: Route.ComponentProps) {
 	const navigate = useNavigate();
 	const { addToast } = useToast();
 
@@ -91,7 +98,7 @@ export default function Page() {
 		e.preventDefault();
 		if (!validateForm()) return;
 
-		mutRegister.mutate({ username, email, password });
+		mutRegister.mutate({ username, email, password, oauth42: loaderData.oauth });
 	};
 
 	const handleOAuth = () => {
@@ -191,6 +198,18 @@ export default function Page() {
 						autoComplete="new-password"
 						required
 					/>
+					{loaderData.oauth?.login && 
+					<FormInput
+						id="42login"
+						name="42login"
+						type="text"
+						label="42 Login"
+						value={loaderData.oauth?.login}
+						disabled={mutRegister.isPending}
+						onChange={() => {}}
+						onBlur={() => {}}
+						required
+					/> }
 					<Button
 						type="submit"
 						className="w-full"
@@ -198,12 +217,15 @@ export default function Page() {
 					>
 						Register
 					</Button>
-					<FormDivider />
-					<OAuthButton
-						text="Register with"
-						onClick={handleOAuth}
-						disabled={mutRegister.isPending}
-					/>
+					{!loaderData.oauth &&
+						<>
+							<FormDivider />
+							<OAuthButton
+								text="Register with"
+								onClick={handleOAuth}
+								disabled={mutRegister.isPending}
+							/>
+						</>}
 				</form>
 
 				<p className="text-center text-dark/60 text-sm mt-6">
