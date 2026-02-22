@@ -8,6 +8,7 @@ import {
 } from './db/schema';
 import { db } from './utils/db';
 import { eq, and, or, ilike } from 'drizzle-orm';
+import { activeFriendRequests } from './utils/metrics';
 
 export class FoilCTF_Error extends Error {
 	public statusCode: number;
@@ -108,8 +109,6 @@ export async function listReceivedFriendRequests(
 		.limit(limit)
 		.offset(limit * (page - 1));
 
-	// filter receiver name before responding?
-
 	return res.status(200).json({
 		data: requests,
 		limit,
@@ -171,6 +170,7 @@ export async function sendFriendRequest(
 			};
 		});
 
+		activeFriendRequests.inc();
 		return next();
 	} catch (err) {
 		if (err instanceof FoilCTF_Error)

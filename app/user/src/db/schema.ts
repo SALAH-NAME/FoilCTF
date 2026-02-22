@@ -238,29 +238,29 @@ export const reports = pgTable("reports", {
 		}),
 ]);
 
-export const teamMembers = pgTable(
-	'team_members',
-	{
-		teamId: integer('team_id').notNull(),
-		memberId: integer('member_id').notNull(),
-	},
-	(table) => [
-		foreignKey({
-			columns: [table.teamId],
-			foreignColumns: [teams.id],
-			name: 'constraint_team',
-		}),
-		foreignKey({
-			columns: [table.memberId],
-			foreignColumns: [users.id],
-			name: 'constraint_member',
-		}),
-		primaryKey({
-			columns: [table.teamId, table.memberId],
-			name: 'team_members_pkey',
-		}),
-	]
-);
+//export const teamMembers = pgTable(
+//	'team_members',
+//	{
+//		teamId: integer('team_id').notNull(),
+//		memberId: integer('member_id').notNull(),
+//	},
+//	(table) => [
+//		foreignKey({
+//			columns: [table.teamId],
+//			foreignColumns: [teams.id],
+//			name: 'constraint_team',
+//		}),
+//		foreignKey({
+//			columns: [table.memberId],
+//			foreignColumns: [users.id],
+//			name: 'constraint_member',
+//		}),
+//		primaryKey({
+//			columns: [table.teamId, table.memberId],
+//			name: 'team_members_pkey',
+//		}),
+//	]
+//);
 
 export const friends = pgTable(
 	'friends',

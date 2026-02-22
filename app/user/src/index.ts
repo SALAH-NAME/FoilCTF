@@ -65,6 +65,7 @@ import {
 	cancelFriendRequest,
 	notifyUser,
 } from './friend';
+import { user_metrics } from './utils/metrics';
 
 const app = express();
 app.use(middleware_logger);
@@ -235,6 +236,12 @@ app.get(
 	'/api/requests', // !!!!!!!!!!! conflicts with /api/teams/:teamName, getTeamDetails
 	authenticateToken,
 	getReceivedRequests,
+);
+
+// SECTION: Metrics
+app.get( // whitelist of ip address to protect this endpoint?
+	'/user/metrics',
+	user_metrics
 );
 
 app.use(middleware_error);

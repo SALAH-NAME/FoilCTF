@@ -13,7 +13,13 @@ import {
 	generateRefreshToken,
 	user_exists,
 } from './utils/utils';
-import { FoilCTF_Error, FoilCTF_Success, loginSchema, registerSchema } from './utils/types';
+import {
+	FoilCTF_Error,
+	FoilCTF_Success,
+	loginSchema,
+	registerSchema
+} from './utils/types';
+import { authRegistries } from './utils/metrics';
 
 export const route_auth_register = async (
 	req: Request<any, any, zod.infer<typeof registerSchema>['body']>,
@@ -39,7 +45,8 @@ export const route_auth_register = async (
 			eventsparticipated: 0,
 			totalpoints: 0,
 		});
-		console.log(`New user created: ${username}`);
+
+		authRegistries.inc();
 		return res.status(201).json(new FoilCTF_Success("Created", 201));
 	} catch (err) {
 		console.error(err);
