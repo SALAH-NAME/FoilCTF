@@ -43,11 +43,9 @@ export function middleware_error(
 	}
 
 	console.error(err);
-	res
-		.status(500)
-		.json({
-			error:
-				(err instanceof Error ? err.message : err?.toString()) ??
-				'An internal server error has occurred',
-		});
+	res.status(500).json({
+		error:
+			(err instanceof Error ? err.message : err?.toString()) ??
+			'An internal server error has occurred',
+	});
 }

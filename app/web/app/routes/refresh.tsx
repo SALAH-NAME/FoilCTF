@@ -15,8 +15,7 @@ function JWT_verify(token_access: string): JwtPayload | null {
 
 		return payload;
 	} catch (err) {
-		if (err instanceof jwt.TokenExpiredError)
-			return { exp: 0 };
+		if (err instanceof jwt.TokenExpiredError) return { exp: 0 };
 		return null;
 	}
 }
@@ -29,7 +28,7 @@ async function update_access(token: string) {
 		);
 		const res = await fetch(url, {
 			method: 'POST',
-			headers: new Headers({ 'Authorization': `Bearer ${token}` }),
+			headers: new Headers({ Authorization: `Bearer ${token}` }),
 		});
 
 		const type =
@@ -51,7 +50,10 @@ export async function action({ request }: Route.ActionArgs) {
 	const user = session.get('user');
 	if (!user) {
 		session.flash('error', 'No session to refresh');
-		return data({ ok: false }, { headers: { 'Set-Cookie': await commitSession(session) } });
+		return data(
+			{ ok: false },
+			{ headers: { 'Set-Cookie': await commitSession(session) } }
+		);
 	}
 
 	const { token_access: token_access_curr } = user;

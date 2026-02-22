@@ -16,14 +16,16 @@ import type { Route } from './+types/dashboard';
 export async function loader({ request }: Route.LoaderArgs) {
 	const session = await request_session(request);
 	const flashError = session.get('error');
-	return data({ flashError }, { headers: { 'Set-Cookie': await commitSession(session) } });
+	return data(
+		{ flashError },
+		{ headers: { 'Set-Cookie': await commitSession(session) } }
+	);
 }
 export default function Layout({ loaderData }: Route.ComponentProps) {
 	const { addToast } = useToast();
 	const { toggleMobile } = useSidebar();
 	useEffect(() => {
-		if (!loaderData.flashError)
-			return ;
+		if (!loaderData.flashError) return;
 
 		addToast({
 			variant: 'error',
@@ -64,7 +66,6 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 					</main>
 					<Footer />
 				</div>
-
 			</div>
 		</>
 	);

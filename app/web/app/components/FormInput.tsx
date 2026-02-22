@@ -6,6 +6,7 @@ interface FormInputProps {
 	type: 'text' | 'email' | 'password' | 'textarea';
 	label: string;
 	value: string;
+	disabled?: boolean;
 	onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
 	onBlur?: () => void;
 	error?: string;
@@ -26,6 +27,7 @@ export default function FormInput({
 	onBlur,
 	error,
 	touched,
+	disabled,
 	placeholder,
 	autoComplete,
 	required = false,
@@ -52,6 +54,7 @@ export default function FormInput({
 					placeholder={placeholder}
 					required={required}
 					rows={rows}
+					disabled={disabled}
 					aria-invalid={touched && error ? 'true' : 'false'}
 					aria-describedby={touched && error ? errorId : undefined}
 					className={`w-full px-4 py-2.5 rounded-md border ${
@@ -70,6 +73,7 @@ export default function FormInput({
 					onBlur={onBlur}
 					placeholder={placeholder}
 					autoComplete={autoComplete}
+					disabled={disabled}
 					required={required}
 					aria-invalid={touched && error ? 'true' : 'false'}
 					aria-describedby={touched && error ? errorId : undefined}

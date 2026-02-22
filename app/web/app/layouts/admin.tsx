@@ -30,7 +30,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 	return data({ admin });
 }
-export default function Layout({ /* loaderData */ }: Route.ComponentProps) {
+export default function Layout({} /* loaderData */ : Route.ComponentProps) {
 	// const { admin } = loaderData;
 	// TODO(xenobas): Admin Provider/Context
 	return <Outlet />;

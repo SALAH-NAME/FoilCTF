@@ -4,6 +4,7 @@ import type { Request, Response, NextFunction } from 'express';
 
 import { db } from './utils/db';
 import { User } from './utils/types';
+import { SALT_ROUNDS } from './auth';
 import { users as table_users } from './db/schema';
 import { password_validate, user_exists } from './utils/utils';
 
@@ -67,7 +68,6 @@ export async function route_user_update(
 
 	let password_salt: string | undefined;
 	if (password_new) {
-		const SALT_ROUNDS = 10;
 		password_salt = await hash(password_new, SALT_ROUNDS);
 	}
 

@@ -1000,8 +1000,7 @@ function SectionProfileInfo({ credentials, fields, errors }: ProfileInfoProps) {
 	}
 	function blurField(_field: keyof FieldValueMapping) {
 		// TODO(xenobas): This stuff ain't it.
-		return (): void => {
-		};
+		return (): void => {};
 	}
 
 	return (

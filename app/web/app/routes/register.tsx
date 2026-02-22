@@ -1,22 +1,51 @@
-import { Link } from 'react-router';
-import { useState, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router';
+import { useMutation } from '@tanstack/react-query';
+import { useState, type SubmitEvent } from 'react';
+
 import type { Route } from './+types/register';
-import FormInput from '../components/FormInput';
-import FormDivider from '../components/FormDivider';
-import OAuthButton from '../components/OAuthButton';
-import Button from '../components/Button';
-import { useFormValidation } from '../hooks/useFormValidation';
-import { validationRules } from '../utils/validation';
+
+import { validationRules } from '~/utils/validation';
+import { useFormValidation } from '~/hooks/useFormValidation';
+
+import Button from '~/components/Button';
+import FormInput from '~/components/FormInput';
+import FormDivider from '~/components/FormDivider';
+import OAuthButton from '~/components/OAuthButton';
+import { useToast } from '~/contexts/ToastContext';
 
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Register' }];
 }
 
+type RegisterPayload = { username: string; password: string; email: string };
+async function register_user(payload: RegisterPayload) {
+	const url = new URL(
+		'/api/auth/register',
+		import.meta.env.VITE_REST_USER_ORIGIN
+	);
+	const res = await fetch(url, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(payload),
+	});
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Invalid response format');
+
+	const data = await res.json();
+	if (!res.ok || data.error)
+		throw new Error(data.error ?? 'Internal server error');
+}
 export default function Page() {
+	const navigate = useNavigate();
+	const { addToast } = useToast();
+
 	const [username, setUsername] = useState('');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [confirmPassword, setConfirmPassword] = useState('');
+	const formData = { username, email, password, confirmPassword };
 
 	const { errors, touched, handleBlur, handleChange } = useFormValidation({
 		username: validationRules.username,
@@ -25,11 +54,9 @@ export default function Page() {
 		confirmPassword: validationRules.confirmPassword,
 	});
 
-	const formData = { username, email, password, confirmPassword };
-
 	const validateForm = () => {
-		const usernameError = validationRules.username(username);
 		const emailError = validationRules.email(email);
+		const usernameError = validationRules.username(username);
 		const passwordError = validationRules.password(password);
 		const confirmPasswordError = validationRules.confirmPassword(
 			confirmPassword,
@@ -41,14 +68,30 @@ export default function Page() {
 		);
 	};
 
-	const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+	const mutRegister = useMutation<unknown, Error, RegisterPayload, unknown>({
+		mutationFn: register_user,
+		async onSuccess() {
+			addToast({
+				variant: 'success',
+
+				title: 'Register success',
+				message: 'Account has been created',
+			});
+			await navigate('/signin');
+		},
+		async onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Register failed',
+				message: err.message,
+			});
+		},
+	});
+	const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
 		e.preventDefault();
-		if (validateForm()) {
-			// TODO: Submit form
-			alert(
-				`Form submitted:\nusername: ${username},\nemail: ${email},\npass: ${password}`
-			);
-		}
+		if (!validateForm()) return;
+
+		mutRegister.mutate({ username, email, password });
 	};
 
 	const handleOAuth = () => {
@@ -71,6 +114,7 @@ export default function Page() {
 						type="text"
 						label="Username"
 						value={username}
+						disabled={mutRegister.isPending}
 						onChange={(e) => {
 							const value = e.target.value;
 							setUsername(value);
@@ -89,6 +133,7 @@ export default function Page() {
 						type="email"
 						label="Email"
 						value={email}
+						disabled={mutRegister.isPending}
 						onChange={(e) => {
 							const value = e.target.value;
 							setEmail(value);
@@ -107,6 +152,7 @@ export default function Page() {
 						type="password"
 						label="Password"
 						value={password}
+						disabled={mutRegister.isPending}
 						onChange={(e) => {
 							const value = e.target.value;
 							setPassword(value);
@@ -131,6 +177,7 @@ export default function Page() {
 						type="password"
 						label="Confirm Password"
 						value={confirmPassword}
+						disabled={mutRegister.isPending}
 						onChange={(e) => {
 							const value = e.target.value;
 							setConfirmPassword(value);
@@ -144,11 +191,19 @@ export default function Page() {
 						autoComplete="new-password"
 						required
 					/>
-					<Button type="submit" className="w-full">
+					<Button
+						type="submit"
+						className="w-full"
+						disabled={mutRegister.isPending}
+					>
 						Register
 					</Button>
 					<FormDivider />
-					<OAuthButton text="Register with" onClick={handleOAuth} />
+					<OAuthButton
+						text="Register with"
+						onClick={handleOAuth}
+						disabled={mutRegister.isPending}
+					/>
 				</form>
 
 				<p className="text-center text-dark/60 text-sm mt-6">

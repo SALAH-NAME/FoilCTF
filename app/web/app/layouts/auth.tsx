@@ -45,10 +45,11 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 	const fetcher = useFetcher();
 	const { addToast } = useToast();
 	useEffect(() => {
-		if (fetcher.state !== 'idle' || !fetcher.data)
-			return ;
+		if (fetcher.state !== 'idle' || !fetcher.data) return;
 
-		const { data }: { data: { ok: false } | { ok: true, token_access: string } } = fetcher;
+		const {
+			data,
+		}: { data: { ok: false } | { ok: true; token_access: string } } = fetcher;
 		if (data.ok) {
 			addToast({
 				variant: 'info',

@@ -72,7 +72,7 @@ export const getPublicProfile = async (req: Request, res: Response) => {
 		.from(profiles)
 		.where(eq(profiles.username, req_username));
 	if (!profile)
-		return res.status(404).json({ error: 'User profile doesn\'t exist' }).end();
+		return res.status(404).json({ error: "User profile doesn't exist" }).end();
 
 	const res_data = {
 		avatar: profile.avatar,
@@ -163,7 +163,10 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 	}
 };
 
-export const updateProfile = async (req: Request, res: Response<any, { user?: User }>) => {
+export const updateProfile = async (
+	req: Request,
+	res: Response<any, { user?: User }>
+) => {
 	const profileData = req.body;
 	if (!profileData || !res.locals.user)
 		return res.status(400).json({ error: 'Invalid request format' }).end();
@@ -178,7 +181,10 @@ export const updateProfile = async (req: Request, res: Response<any, { user?: Us
 			.set(profileData)
 			.where(eq(profiles.username, user.username)); // "isprivate": "" to set the profile to private
 		if (result.rowCount === 0)
-			return res.status(404).json({ error: 'User profile was not found' }).end();
+			return res
+				.status(404)
+				.json({ error: 'User profile was not found' })
+				.end();
 	}
 	return res.status(200).json({ ok: true }).end();
 };

@@ -67,7 +67,6 @@ async function fetch_user(token: string) {
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Sign In' }];
 }
-
 export async function action({ request }: Route.ActionArgs) {
 	try {
 		const session = await request_session(request);
