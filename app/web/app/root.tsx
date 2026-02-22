@@ -9,6 +9,7 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SidebarProvider } from './contexts/SidebarContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import './app.css';
 
 import type { Route } from './+types/root';
@@ -84,9 +85,11 @@ export default function App() {
 	return (
 		<QueryClientProvider client={queryClient}>
 			<ToastProvider>
-				<SidebarProvider>
-					<Outlet />
-				</SidebarProvider>
+				<NotificationProvider>
+					<SidebarProvider>
+						<Outlet />
+					</SidebarProvider>
+				</NotificationProvider>
 			</ToastProvider>
 		</QueryClientProvider>
 	);

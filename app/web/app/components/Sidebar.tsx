@@ -5,6 +5,8 @@ import { useSidebar } from '~/contexts/SidebarContext';
 
 import Icon from './Icon';
 import Logo from './Logo';
+import NotificationBell from './NotificationBell';
+import NotificationPanel from './NotificationPanel';
 import { NavGroup, type NavItemConfig } from './NavLink';
 
 const navItems: NavItemConfig[] = [
@@ -92,6 +94,8 @@ export default function Sidebar() {
 				/>
 			)}
 
+			<NotificationPanel />
+
 			<aside
 				className={`
                     md:sticky fixed top-0 left-0 h-screen z-50
@@ -124,6 +128,10 @@ export default function Sidebar() {
 					</div>
 
 					<div className="border-t border-dark/10 p-4 space-y-2">
+						<div className="hidden md:block">
+							<NotificationBell variant="sidebar" />
+						</div>
+
 						<Link
 							to="/profile"
 							aria-label="User profile"
