@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import PageHeader from '~/components/PageHeader';
 import FriendCard from '~/components/FriendCard';
@@ -66,8 +66,9 @@ const mockData = {
 };
 
 export default function Page() {
-	const [searchParams, setSearchParams] = useSearchParams();
+	const [queryTerm, setQueryTerm] = useState<string>('');
 	const [friendsData, setFriendsData] = useState(mockData);
+	const [searchParams, setSearchParams] = useSearchParams();
 
 	const activeTab = (searchParams.get('tab') || 'friends') as
 		| 'friends'
@@ -77,16 +78,21 @@ export default function Page() {
 	const currentPage = parseInt(searchParams.get('page') || '1', 10);
 	const itemsPerPage = parseInt(searchParams.get('perPage') || '6', 10);
 
-	const handleSearch = (query: string) => {
-		const newParams = new URLSearchParams(searchParams);
-		if (query) {
-			newParams.set('q', query);
-		} else {
-			newParams.delete('q');
-		}
-		newParams.delete('page');
-		setSearchParams(newParams);
-	};
+	useEffect(() => {
+		const idDebounce = setTimeout(() => {
+			const newParams = new URLSearchParams(searchParams);
+			if (queryTerm) {
+				newParams.set('q', queryTerm);
+			} else {
+				newParams.delete('q');
+			}
+			newParams.delete('page');
+			setSearchParams(newParams);
+		}, 200);
+		return (() => {
+			clearTimeout(idDebounce);
+		});
+	}, [queryTerm]);
 
 	const handleRemoveFriend = (username: string) => {
 		// TODO: Implement
@@ -186,8 +192,8 @@ export default function Page() {
 			>
 				<div className="mb-6">
 					<SearchInput
-						value={searchQuery}
-						onChange={handleSearch}
+						value={queryTerm}
+						onChange={setQueryTerm}
 						placeholder="Search by username..."
 						aria-label="Search friends by username"
 					/>
