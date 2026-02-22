@@ -11,6 +11,9 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   - job_name: 'gateway'
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
     static_configs:
       - targets: ['gateway:443']
     metrics_path: '/metrics'

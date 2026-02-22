@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -39,6 +41,21 @@ func createReverseProxy(targetURL, serviceName string) (*httputil.ReverseProxy, 
 	return proxy, nil
 }
 
+func isWebSocketUpgrade(r *http.Request) bool {
+	return strings.EqualFold(r.Header.Get("Upgrade"), "websocket")
+}
+
+func wsAwareHandler(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if isWebSocketUpgrade(r) {
+			rc := http.NewResponseController(w)
+			_ = rc.SetWriteDeadline(time.Time{})
+			_ = rc.SetReadDeadline(time.Time{})
+		}
+		next.ServeHTTP(w, r)
+	}
+}
+
 func registerRoute(r chi.Router, route RouteConfig, proxy *httputil.ReverseProxy) {
 	r.Route(route.Prefix, func(r chi.Router) {
 		// TODO: Add JWT middleware
@@ -46,16 +63,15 @@ func registerRoute(r chi.Router, route RouteConfig, proxy *httputil.ReverseProxy
 			log.Printf("  [ROUTE] %s - Protected", route.Prefix)
 		}
 
-		// TODO: Add WebSocket specific upgrade
+		var handler http.Handler = proxy
+		if route.StripPrefix {
+			handler = http.StripPrefix(route.Prefix, proxy)
+		}
 		if route.WebSocket {
 			log.Printf("  [ROUTE] %s - WebSocket enabled", route.Prefix)
-		}
-
-		if route.StripPrefix {
-			handler := http.StripPrefix(route.Prefix, proxy)
-			r.HandleFunc("/*", handler.ServeHTTP)
+			r.HandleFunc("/*", wsAwareHandler(handler))
 		} else {
-			r.HandleFunc("/*", proxy.ServeHTTP)
+			r.HandleFunc("/*", handler.ServeHTTP)
 		}
 
 		log.Printf("  [ROUTE] Registered %s -> backend", route.Prefix)

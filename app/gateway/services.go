@@ -157,7 +157,19 @@ var ServiceRegistry = []ServiceConfig{
 			{
 				Prefix:      "/monitoring/grafana",
 				Protected:   false,
-				WebSocket:   false,
+				WebSocket:   true,
+				StripPrefix: false,
+			},
+		},
+	},
+	{
+		Name:    "web",
+		BaseURL: getEnv("GATEWAY_WEB_URL", "http://web:3000"),
+		Routes: []RouteConfig{
+			{
+				Prefix:      "/",
+				Protected:   false,
+				WebSocket:   true,
 				StripPrefix: false,
 			},
 		},

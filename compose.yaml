@@ -25,6 +25,12 @@ services:
       - foilctf_net
     ports:
       - "3443:${GATEWAY_PORT:-443}" # For development access
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- https://localhost:443/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     volumes:
       - gateway-certs:/certs
     restart: unless-stopped
@@ -285,7 +291,7 @@ services:
       - "--web.console.libraries=/usr/share/prometheus/console_libraries"
       - "--web.console.templates=/usr/share/prometheus/consoles"
       - "--web.enable-lifecycle"
-      - "--web.external-url=http://localhost:443/monitoring/prometheus"
+      - "--web.external-url=https://localhost:3443/monitoring/prometheus"
       - "--web.route-prefix=/monitoring/prometheus"
     volumes:
       - ./monitoring/promethues/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -303,10 +309,12 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_HTTP_PORT=9091
-      - GF_SERVER_ROOT_URL=http://localhost:443/monitoring/grafana/
+      - GF_SERVER_ROOT_URL=https://localhost:3443/monitoring/grafana/
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
       - GF_ANALYTICS_REPORTING_ENABLED=false
       - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_SECURITY_CSRF_TRUSTED_ORIGINS=localhost:3443,gateway:443,https://localhost:3443,https://gateway:443
+      - GF_LIVE_ALLOWED_ORIGINS=https://localhost:3443,https://gateway:443
     volumes:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro

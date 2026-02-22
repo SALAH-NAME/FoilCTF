@@ -115,19 +115,20 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RealIP)
+	r.Use(metricsMiddleware)
 
 	r.Get("/health", healthHandler)
+	r.Handle("/metrics", metricsHandler())
 
 	if err := registerAllServices(r, ServiceRegistry); err != nil {
 		log.Fatalf("[%s] Failed to register services: %v", config.ServiceName, err)
 	}
 
 	srv := &http.Server{
-		Addr:         ":" + config.Port,
-		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:              ":" + config.Port,
+		Handler:           r,
+		ReadHeaderTimeout: 15 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	if err := ensureCertificates(config.CertDir); err != nil {
