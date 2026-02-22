@@ -148,6 +148,7 @@ app.delete(
     '/api/users/:username',
     deleteUser,
 );
+
 // SECTION: friends
 app.get('/api/friends', authenticateToken, listFriends);
 app.get('/api/friends/requests', authenticateToken, listReceivedFriendRequests);

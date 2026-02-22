@@ -2,41 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { users } from './db/schema';
 import { db } from './utils/db';
 import { eq, ilike } from 'drizzle-orm';
-
-export class FoilCTF_Error extends Error {
-	public statusCode: number;
-	constructor(message: string, statusCode: number) {
-		super(message);
-		this.statusCode = statusCode;
-
-		this.name = 'FoilCTF_Error';
-	}
-
-	toJSON() {
-		return {
-			error: true,
-			message: this.message,
-			status: this.statusCode
-		}
-	}
-}
-
-export class FoilCTF_Success {
-	public statusCode: number;
-	public message: string;
-
-	constructor(message: string, statusCode: number) {
-		this.statusCode = statusCode;
-		this.message = message
-	}
-
-	toJSON() {
-		return {
-			message: this.message,
-			status: this.statusCode
-		}
-	}
-}
+import { FoilCTF_Error, FoilCTF_Success } from './utils/types';
 
 export async function listUsers(req: Request, res: Response, next: NextFunction) {
     const limit = Math.max(Number(req.query.limit) || 10, 1);
@@ -53,7 +19,7 @@ export async function listUsers(req: Request, res: Response, next: NextFunction)
             username: users.username,
             email: users.email,
             role: users.role,
-            // teamName: users.teamName, // after merging teams
+            teamName: users.teamName,
             createdAt: users.createdAt,
 
         })
@@ -88,7 +54,7 @@ export async function updateUserRole(req: Request, res: Response, next: NextFunc
     return res.status(200).json(new FoilCTF_Success("OK", 200));
 }
 
-export async function deleteUser(req: Request, res: Response) { // what if user is in a team or has friends
+export async function deleteUser(req: Request, res: Response) {
     const target = req.params.username as string;
 
 	const decodedUser = res.locals.user;
