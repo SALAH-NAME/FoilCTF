@@ -20,7 +20,6 @@ import {
 import {
 	getPublicProfile,
 	authenticateTokenProfile,
-	updateUser,
 	updateProfile,
 	uploadAvatar,
 	upload,
@@ -39,7 +38,7 @@ import {
 	route_auth_refresh,
 	route_auth_logout,
 } from './auth';
-import { route_user_me } from './user';
+import { route_user_me, route_user_update } from './user';
 
 const app = express();
 app.use(middleware_cors());
@@ -105,7 +104,7 @@ app.put(
 	parseNonExistingParam,
 	middleware_schema_validate(updateUserSchema),
 	authenticateToken,
-	updateUser,
+	route_user_update,
 	updateTokens
 );
 

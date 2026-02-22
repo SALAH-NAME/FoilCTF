@@ -83,9 +83,20 @@ export const route_auth_login = async (
 		.end();
 };
 
+const request_token = (req: Request): string | null => {
+	const token_query = req.query['token'];
+	if (typeof token_query === 'string' && token_query)
+		return (token_query);
+
+	const value_header = req.get('Authorization');
+	if (typeof value_header !== 'string' || !value_header.startsWith("Bearer "))
+		return (null);
+
+	return value_header.slice("Bearer ".length) || null;
+}
 export const route_auth_refresh = async (req: Request, res: Response) => {
-	const token = req.query['token'];
-	if (typeof token !== 'string')
+	const token = request_token(req);
+	if (!token)
 		return res.status(400).json({ error: 'Missing required query parameter `token`' }).end();
 	if (!JWT_verify(token, RefreshTokenSecret))
 		return res.status(401).json({ error: 'Could not verify token' }).end();
@@ -95,14 +106,14 @@ export const route_auth_refresh = async (req: Request, res: Response) => {
 		.from(table_sessions)
 		.where(eq(table_sessions.refreshtoken, token)); // delete the expired ones? or even limit number of devices connected to at a time
 	if (!session)
-		return res.sendStatus(403);
+		return res.status(403).json({ error: 'Token has no active session' }).end();
 
 	const [user] = await db
 		.select()
 		.from(users)
 		.where(eq(users.id, session.userId));
 	if (!user)
-		return res.sendStatus(400);
+		return res.status(400).json({ error: 'Token user no longer exists' }).end();
 
 	const token_access = generateAccessToken(user.username, user.role, user.id);
 	res.json({ token_access });

@@ -16,14 +16,20 @@ import { users } from '../db/schema';
 import bcrypt from 'bcrypt';
 import { JWT_sign, JWT_verify } from '../jwt';
 
-export function generateAccessToken(username: string, role: string, id: number): string {
+export function generateAccessToken(
+	username: string,
+	role: string,
+	id: number
+): string {
 	const payload = { username, role, id };
 	return JWT_sign(payload, AccessTokenSecret, { expiresIn: AccessTokenExpiry });
 }
 
 export function generateRefreshToken(username: string, id: number): string {
 	const payload = { username, id };
-	return JWT_sign(payload, RefreshTokenSecret, { expiresIn: RefreshTokenExpiry });
+	return JWT_sign(payload, RefreshTokenSecret, {
+		expiresIn: RefreshTokenExpiry,
+	});
 }
 
 export const parseNonExistingParam = async (
@@ -32,13 +38,17 @@ export const parseNonExistingParam = async (
 	next: NextFunction
 ) => {
 	const username = req.params?.username as string | undefined;
-	if (!username) return res.status(400).send();
+	if (!username)
+		return res
+			.status(400)
+			.json({ error: 'Missing user pathname parameter' })
+			.send();
 
 	const [user] = await db
 		.select({ id: users.id })
 		.from(users)
 		.where(eq(users.username, username));
-	if (!user) return res.sendStatus(404);
+	if (!user) return res.status(404).json({ error: "User doesn't exist" }).end();
 
 	next();
 };
@@ -50,11 +60,16 @@ export function authenticateToken(
 ) {
 	const header_value = req.get('authorization');
 	const query_value = req.query.token;
-	if (!header_value && !query_value) return res.sendStatus(400);
+	if (!header_value && !query_value)
+		return res.status(401).json({ error: 'Unauthorized' }).end();
 
 	let token = '';
 	if (header_value) {
-		if (!header_value.startsWith('Bearer ')) return res.sendStatus(401);
+		if (!header_value.startsWith('Bearer '))
+			return res
+				.status(401)
+				.json({ error: 'Authorization protocol is invalid' })
+				.end();
 		token = header_value.slice('Bearer '.length);
 	} else if (typeof query_value === 'string') {
 		token = query_value;
@@ -62,14 +77,15 @@ export function authenticateToken(
 
 	const user = JWT_verify<User>(token, AccessTokenSecret);
 	if (!user)
-		return next(new Error('Unauthorized'));
+		return res.status(401).json({ error: 'Invalid access token' }).end();
 
 	req.user = user;
 	res.locals.user = user;
+
 	next();
 }
 
-export function middleware_schema_validate(schema: ZodObject) {
+export function middleware_schema_validate<T extends ZodObject>(schema: T) {
 	return async (req: Request, _res: Response, next: NextFunction) => {
 		const { body } = schema.parse({ body: req.body });
 		req.body = body;

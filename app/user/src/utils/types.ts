@@ -50,13 +50,13 @@ const userBody = z.object({
 		.string()
 		.min(3)
 		.max(15)
-		.regex(/^[a-zA-Z0-9_-]+$/), // add '-', so yait-nas is valid
+		.regex(/^[a-zA-Z0-9_-]+$/),
 	email: z.email(),
-	newPassword: z
+	password_new: z
 		.string()
 		.min(PASSWORD_MIN_CHARACTERS)
 		.max(PASSWORD_MAX_CHARACTERS),
-	oldPassword: z.string(),
+	password: z.string(),
 });
 
 export const updateUserSchema = z.object({
@@ -66,7 +66,7 @@ export const updateUserSchema = z.object({
 const profileBody = z.object({
 	bio: z.string().trim().max(500),
 	location: z.string().trim().max(50),
-	socialmedia: z.url(),
+	socialmedialinks: z.url(),
 	isprivate: z.coerce.boolean(),
 });
 
