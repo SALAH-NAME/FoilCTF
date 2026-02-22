@@ -4,6 +4,7 @@ import path from 'path';
 
 import { AvatarsDir, PORT } from './utils/env';
 import { middleware_error } from './error';
+import { pool } from './utils/db';
 import {
 	registerSchema,
 	loginSchema,
@@ -157,7 +158,7 @@ app.delete('/api/friends/:username', authenticateToken, removeFriend);
 
 // SECTION: Health
 app.get('/health', (_req, res) => {
-	return res.status(200).json(new FoilCTF_Success("OK", 200));
+	return res.status(200).json(new FoilCTF_Success('OK', 200));
 });
 
 // SECTION: Teams
@@ -165,76 +166,69 @@ app.post(
 	'/api/teams/',
 	middleware_schema_validate(teamCreationSchema),
 	authenticateToken,
-	createTeam,
+	createTeam
 );
 app.get(
 	'/api/teams/:teamName',
-	getTeamDetails, // public data
+	getTeamDetails // public data
 );
 app.get(
 	'/api/teams/:teamName/members',
-	getTeamMembers, // public data
+	getTeamMembers // public data
 );
 app.delete(
 	'/api/teams/:teamName/members',
 	authenticateToken,
 	leaveTeam,
-	notifyAllMembers,
+	notifyAllMembers
 );
 app.delete(
 	'/api/teams/:teamName/members/:username',
 	authenticateToken,
 	deleteMember,
-	notifyAllMembers,
+	notifyAllMembers
 );
 app.put(
 	'/api/teams/:teamName/captain',
 	middleware_schema_validate(transferLeadershipSchema),
 	authenticateToken,
 	handOverLeadership,
-	notifyCaptain,
+	notifyCaptain
 );
 app.post(
 	'/api/teams/:teamName',
 	authenticateToken,
 	sendJoinRequest,
-	notifyCaptain,
+	notifyCaptain
 );
-app.delete(
-	'/api/teams/:teamName',
-	authenticateToken,
-	cancelJoinRequest,
-);
+app.delete('/api/teams/:teamName', authenticateToken, cancelJoinRequest);
 app.put(
 	'/api/teams/:teamName/requests/:username',
 	authenticateToken,
 	acceptJoinRequest,
-	notifyAllMembers,
+	notifyAllMembers
 );
 app.delete(
 	'/api/teams/:teamName/requests/:username',
 	authenticateToken,
-	declineJoinRequest,
+	declineJoinRequest
 );
 app.get(
 	'/api/teams/:teamName/requests', // teamName is redundant! ( '/api/user/requests' ? )
 	authenticateToken,
-	getSentRequests,
+	getSentRequests
 );
 app.put(
 	'/api/teams',
 	middleware_schema_validate(updateTeamSchema),
 	authenticateToken,
-	updateTeam,
+	updateTeam
 );
-app.get(
-	'/api/teams',
-	getTeams,
-);
+app.get('/api/teams', getTeams);
 app.get(
 	'/api/requests', // !!!!!!!!!!! conflicts with /api/teams/:teamName, getTeamDetails
 	authenticateToken,
-	getReceivedRequests,
+	getReceivedRequests
 );
 
 app.use(middleware_error);
@@ -244,7 +238,7 @@ if (!folder_exists(AvatarsDir))
 		`Environment variable AVATARS_DIR="${AvatarsDir}" is not a valid path (doesn't exist, no permission, ...etc)"`
 	);
 
-app.listen(PORT, (err?: Error) => {
+const server = app.listen(PORT, (err?: Error) => {
 	if (!err) {
 		console.log(`INFO :: SERVER :: Listening at ${PORT}`);
 		return;
@@ -253,3 +247,35 @@ app.listen(PORT, (err?: Error) => {
 	console.error(`ERROR :: SERVER :: An error has occurred during listen:`);
 	console.error(err);
 });
+
+const gracefulShutdown = (signal: string) => {
+	console.log(`Received ${signal}, shutting down gracefully...`);
+
+	const forceTimer = setTimeout(() => {
+		console.error(
+			'Could not close connections in time, forcefully shutting down'
+		);
+		process.exit(1);
+	}, 10000);
+
+	server.close(async (err) => {
+		if (err) {
+			console.error('Error closing HTTP server:', err);
+		} else {
+			console.log('HTTP server closed.');
+		}
+
+		try {
+			await pool.end();
+			console.log('Database connection closed.');
+			clearTimeout(forceTimer);
+			process.exit(err ? 1 : 0);
+		} catch (dbErr) {
+			console.error('Error closing database connection:', dbErr);
+			process.exit(1);
+		}
+	});
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
