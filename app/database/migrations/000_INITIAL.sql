@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS users (
   oauth42_login	TEXT DEFAULT NULL UNIQUE,
 
   profile_id    INTEGER DEFAULT NULL,
+  team_name		TEXT DEFAULT NULL,
   CONSTRAINT profile  FOREIGN KEY (profile_id) REFERENCES profiles
 );
 
@@ -74,6 +75,19 @@ CREATE TABLE IF NOT EXISTS ctf_organizers (
 );
 
 CREATE TABLE IF NOT EXISTS teams (
+  id              SERIAL PRIMARY KEY,
+  name            TEXT NOT NULL UNIQUE,
+
+  captain_name    TEXT NOT NULL,
+  max_members     INTEGER NOT NULL DEFAULT 1,
+
+  members_count   INTEGER NOT NULL DEFAULT 1,
+
+  description     TEXT DEFAULT NULL,
+  is_locked       BOOLEAN DEFAULT FALSE,
+
+  CONSTRAINT constraint_captain_name FOREIGN KEY (captain_name) REFERENCES users(username) ON UPDATE CASCADE
+
   id			SERIAL PRIMARY KEY,
   name			TEXT NOT NULL,
   team_size		INTEGER NOT NULL DEFAULT 0,
@@ -82,14 +96,43 @@ CREATE TABLE IF NOT EXISTS teams (
   CONSTRAINT constraint_profile FOREIGN KEY (profile_id) REFERENCES profiles
 );
 CREATE TABLE IF NOT EXISTS team_members (
-  team_id    INTEGER NOT NULL,
-  member_id  INTEGER NOT NULL,
-  PRIMARY KEY (team_id, member_id),
+  team_name    TEXT NOT NULL,
+  member_name  TEXT NOT NULL,
 
-  CONSTRAINT constraint_team FOREIGN KEY (team_id) REFERENCES teams,
-  CONSTRAINT constraint_member FOREIGN KEY (member_id) REFERENCES users
+  PRIMARY KEY  (team_name, member_name),
+
+  CONSTRAINT constraint_team FOREIGN KEY (team_name) REFERENCES teams(name) ON DELETE CASCADE,
+  CONSTRAINT constraint_member FOREIGN KEY (member_name) REFERENCES users(username) ON UPDATE CASCADE
 );
+CREATE TABLE IF NOT EXISTS team_join_requests (
+  team_name    TEXT NOT NULL,
+  username     TEXT NOT NULL,
 
+  CONSTRAINT constraint_team FOREIGN KEY (team_name) REFERENCES teams(name) ON UPDATE CASCADE,
+  CONSTRAINT constraint_member FOREIGN KEY (username) REFERENCES users(username) ON UPDATE CASCADE
+);
+-- SECTION: friends
+CREATE TABLE IF NOT EXISTS friends (
+  username_1 TEXT NOT NULL,
+  username_2 TEXT NOT NULL,
+
+  PRIMARY KEY (username_1, username_2),
+
+  CONSTRAINT constraint_self_friend CHECK (username_1 <> username_2),
+  CONSTRAINT constraint_user1 FOREIGN KEY (username_1) REFERENCES users (username) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT constraint_user2 FOREIGN KEY (username_2) REFERENCES users (username) ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE TABLE IF NOT EXISTS friend_requests (
+  sender_name   TEXT NOT NULL,
+  receiver_name TEXT NOT NULL,
+
+  PRIMARY KEY (sender_name, receiver_name),
+
+  CONSTRAINT constraint_self_friend   CHECK (sender_name <> receiver_name),
+  CONSTRAINT constraint_user_sender   FOREIGN KEY (sender_name)   REFERENCES users (username) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT constraint_user_receiver FOREIGN KEY (receiver_name) REFERENCES users (username) ON DELETE CASCADE ON UPDATE CASCADE
+);
+-- SECTION: friends
 CREATE TABLE IF NOT EXISTS attachments (
   id        SERIAL PRIMARY KEY,
   contents  JSON NOT NULL

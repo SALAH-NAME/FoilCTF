@@ -1,8 +1,9 @@
 import fs from 'node:fs';
+import bcrypt from 'bcrypt';
+import { eq, or } from 'drizzle-orm';
 import { ZodObject } from 'zod';
 import { Request, Response, NextFunction } from 'express';
 
-import { User, AuthRequest } from './types';
 import {
 	AccessTokenSecret,
 	AccessTokenExpiry,
@@ -10,9 +11,8 @@ import {
 	RefreshTokenExpiry,
 } from './env';
 import { db } from './db';
-import { eq, or } from 'drizzle-orm';
 import { users } from '../db/schema';
-import bcrypt from 'bcrypt';
+import { User, AuthRequest } from './types';
 import { JWT_sign, JWT_verify } from '../jwt';
 
 export function generateAccessToken(

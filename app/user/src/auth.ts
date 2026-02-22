@@ -5,7 +5,6 @@ import ms, { StringValue } from 'ms';
 import { type Request, type Response } from 'express';
 
 import { db } from './utils/db';
-import { loginSchema, registerSchema } from './utils/types';
 import { RefreshTokenSecret, RefreshTokenExpiry } from './utils/env';
 import { users, sessions as table_sessions, profiles } from './db/schema';
 import {
@@ -13,6 +12,7 @@ import {
 	generateRefreshToken,
 	user_exists,
 } from './utils/utils';
+import { FoilCTF_Error, FoilCTF_Success, loginSchema, registerSchema } from './utils/types';
 import { JWT_verify } from './jwt';
 import { fetch_42_profile } from './routes/oauth';
 

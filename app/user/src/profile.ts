@@ -35,7 +35,7 @@ export const authenticateTokenProfile = async (
 
 	const req_username = req.params.username;
 	if (typeof req_username !== 'string' || !req_username)
-		return res.sendStatus(404);
+		return res.status(404).json({ error: 'Invalid request format' }).end();
 
 	if (req_username !== token_user.username) return next(); // ownership check
 
@@ -43,7 +43,7 @@ export const authenticateTokenProfile = async (
 		.select()
 		.from(profiles)
 		.where(eq(profiles.username, req_username));
-	if (!profile) return res.sendStatus(404);
+	if (!profile) return res.status(404).json({ error: 'User has no profile attached' }).end();
 
 	const { avatar, id, ...profile_sane } = profile;
 
@@ -140,26 +140,20 @@ export const upload = multer({
 });
 
 export const uploadAvatar = async (req: Request, res: Response) => {
-	try {
-		const file = req.file;
-		if (!file) {
-			return res.sendStatus(400); // no file | file too large
-		}
-		console.log(`received ${file.filename}, size: ${file.size} bytes`);
-		const user = res.locals.user;
-		if (!user || user.id === undefined) {
-			return res.sendStatus(400);
-		}
-		const dbFilename = `/api/profiles/${user.username}/avatar/` + file.filename;
-		await db
-			.update(profiles)
-			.set({ avatar: dbFilename })
-			.where(eq(profiles.id, user.id));
-		return res.sendStatus(201);
-	} catch (err) {
-		console.error(err);
-		res.sendStatus(500);
-	}
+	const file = req.file;
+	if (!file)
+		return res.status(400).json({ error: 'File too large' }).end();
+
+	const user = res.locals.user;
+	if (!user || user.id === undefined)
+		return res.status(401).json({ error: 'Unauthorized' }).end();
+
+	const dbFilename = `/api/profiles/${user.username}/avatar/` + file.filename;
+	await db
+		.update(profiles)
+		.set({ avatar: dbFilename })
+		.where(eq(profiles.id, user.id));
+	return res.status(201).json({ ok: true }).end()
 };
 
 export const updateProfile = async (
@@ -186,28 +180,4 @@ export const updateProfile = async (
 				.end();
 	}
 	return res.status(200).json({ ok: true }).end();
-};
-
-export const updateTokens = async (
-	_req: Request,
-	res: Response<any, { user: User }>
-) => {
-	const { username, role, id } = res.locals.user;
-
-	const token_access = generateAccessToken(username, role, id);
-	const token_refresh = generateRefreshToken(username, id);
-	const expiry_date = new Date(Date.now() + ms(RefreshTokenExpiry));
-
-	await db
-		.update(sessions)
-		.set({
-			refreshtoken: token_refresh,
-			expiry: expiry_date.toISOString(),
-		})
-		.where(eq(sessions.userId, id));
-
-	return res
-		.status(200)
-		.json({ token_access, token_refresh, expiry: expiry_date.toISOString() })
-		.end();
 };

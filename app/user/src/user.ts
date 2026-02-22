@@ -6,7 +6,7 @@ import { db } from './utils/db';
 import { User } from './utils/types';
 import { SALT_ROUNDS } from './auth';
 import { users as table_users } from './db/schema';
-import { password_validate, user_exists, user_exists_email, user_exists_username } from './utils/utils';
+import { password_validate, user_exists_email, user_exists_username } from './utils/utils';
 
 export async function route_user_me(
 	_req: Request,

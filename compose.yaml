@@ -10,14 +10,17 @@ services:
       context: ./app/gateway/
       dockerfile: Containerfile
     environment:
-      - PORT=${GATEWAY_PORT:-3000}
+      - PORT=${GATEWAY_PORT:-443}
       - JWT_SECRET=${JWT_SECRET:-changeme-secret-key}
       - SERVICE_NAME=${GATEWAY_SERVICE_NAME:-gateway}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
+      - CERT_DIR=/certs
     networks:
       - foilctf_net
     ports:
-      - "3000:3000" # For development access
+      - "3443:${GATEWAY_PORT:-443}" # For development access
+    volumes:
+      - gateway-certs:/certs
     restart: unless-stopped
 
   user:
@@ -52,6 +55,43 @@ services:
           "node",
           "-e",
           "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
+        ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  challenge:
+    container_name: foilctf_challenge
+    build:
+      tags:
+        - "foilctf/challenge:latest"
+      context: ./app/challenge/
+      dockerfile: Containerfile
+    environment:
+      - API_PORT=${CHALLENGE_PORT:-3002}
+      - API_HOST=0.0.0.0
+      - API_ORIGINS_WHITELIST=${API_ORIGINS_WHITELIST:-http://localhost:443,http://127.0.0.1:443}
+      - DATABASE_HOST=database
+      - DATABASE_PORT=5432
+      - DATABASE_USER=${DATABASE_DEVELOPER_USER:?DATABASE_DEVELOPER_USER must be set}
+      - DATABASE_PASS=${DATABASE_DEVELOPER_PASS:?DATABASE_DEVELOPER_PASS must be set}
+      - DATABASE_NAME=${DATABASE_NAME:-foilctf}
+    networks:
+      - foilctf_net
+    ports:
+      - "3002:3002" # For development access
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3002/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
         ]
       interval: 30s
       timeout: 3s
@@ -111,7 +151,7 @@ services:
       - "--web.console.libraries=/usr/share/prometheus/console_libraries"
       - "--web.console.templates=/usr/share/prometheus/consoles"
       - "--web.enable-lifecycle"
-      - "--web.external-url=http://localhost:3000/monitoring/prometheus"
+      - "--web.external-url=http://localhost:443/monitoring/prometheus"
       - "--web.route-prefix=/monitoring/prometheus"
     volumes:
       - ./monitoring/promethues/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -129,7 +169,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_HTTP_PORT=9091
-      - GF_SERVER_ROOT_URL=http://localhost:3000/monitoring/grafana/
+      - GF_SERVER_ROOT_URL=http://localhost:443/monitoring/grafana/
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
       - GF_ANALYTICS_REPORTING_ENABLED=false
       - GF_ANALYTICS_CHECK_FOR_UPDATES=false
@@ -149,6 +189,7 @@ networks:
     driver: bridge
 
 volumes:
+  gateway-certs:
   postgres:
   migrations:
     driver_opts:
