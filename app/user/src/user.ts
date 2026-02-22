@@ -6,7 +6,7 @@ import { db } from './utils/db';
 import { User } from './utils/types';
 import { SALT_ROUNDS } from './auth';
 import { users as table_users } from './db/schema';
-import { password_validate, user_exists } from './utils/utils';
+import { password_validate, user_exists, user_exists_email, user_exists_username } from './utils/utils';
 
 export async function route_user_me(
 	_req: Request,
@@ -61,9 +61,14 @@ export async function route_user_update(
 		return res.status(401).json({ error: 'Incorrect password' }).end();
 
 	if (email) {
-		const existingUser = await user_exists(username, email);
-		if (existingUser)
+		const user_exists = await user_exists_email(email);
+		if (user_exists)
 			return res.status(409).json({ error: 'Email already used' }).end();
+	}
+	if (username) {
+		const user_exists = await user_exists_username(username);
+		if (user_exists)
+			return res.status(409).json({ error: 'Username already taken' }).end();
 	}
 
 	let password_salt: string | undefined;

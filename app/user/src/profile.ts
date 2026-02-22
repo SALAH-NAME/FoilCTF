@@ -88,7 +88,6 @@ export const getPublicProfile = async (req: Request, res: Response) => {
 			? undefined
 			: profile.socialmedialinks,
 	};
-	console.log(res_data.bio, profile.bio);
 	return res.status(200).json(res_data).end();
 };
 

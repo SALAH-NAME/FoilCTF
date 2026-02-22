@@ -18,13 +18,21 @@ export async function loader({ request }: Route.LoaderArgs) {
 	const session = await request_session(request);
 	const oauth = session.get('oauth');
 
-	return data({ oauth }, { headers: { 'Set-Cookie': await commitSession(session) } });
+	return data(
+		{ oauth },
+		{ headers: { 'Set-Cookie': await commitSession(session) } }
+	);
 }
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Register' }];
 }
 
-type RegisterPayload = { username: string; password: string; email: string, oauth42?: { login: string, token: string } };
+type RegisterPayload = {
+	username: string;
+	password: string;
+	email: string;
+	oauth42?: { login: string; token: string };
+};
 async function register_user(payload: RegisterPayload) {
 	const url = new URL(
 		'/api/auth/register',
@@ -98,7 +106,12 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		e.preventDefault();
 		if (!validateForm()) return;
 
-		mutRegister.mutate({ username, email, password, oauth42: loaderData.oauth });
+		mutRegister.mutate({
+			username,
+			email,
+			password,
+			oauth42: loaderData.oauth,
+		});
 	};
 
 	const handleOAuth = () => {
@@ -198,18 +211,19 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 						autoComplete="new-password"
 						required
 					/>
-					{loaderData.oauth?.login && 
-					<FormInput
-						id="42login"
-						name="42login"
-						type="text"
-						label="42 Login"
-						value={loaderData.oauth?.login}
-						disabled={mutRegister.isPending}
-						onChange={() => {}}
-						onBlur={() => {}}
-						required
-					/> }
+					{loaderData.oauth?.login && (
+						<FormInput
+							id="42login"
+							name="42login"
+							type="text"
+							label="42 Login"
+							value={loaderData.oauth?.login}
+							disabled={mutRegister.isPending}
+							onChange={() => {}}
+							onBlur={() => {}}
+							required
+						/>
+					)}
 					<Button
 						type="submit"
 						className="w-full"
@@ -217,7 +231,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 					>
 						Register
 					</Button>
-					{!loaderData.oauth &&
+					{!loaderData.oauth && (
 						<>
 							<FormDivider />
 							<OAuthButton
@@ -225,7 +239,8 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 								onClick={handleOAuth}
 								disabled={mutRegister.isPending}
 							/>
-						</>}
+						</>
+					)}
 				</form>
 
 				<p className="text-center text-dark/60 text-sm mt-6">

@@ -2,7 +2,6 @@ import zod from 'zod';
 import bcrypt from 'bcrypt';
 import { eq } from 'drizzle-orm';
 import ms, { StringValue } from 'ms';
-import jwt, { type JwtPayload } from 'jsonwebtoken';
 import { type Request, type Response } from 'express';
 
 import { db } from './utils/db';

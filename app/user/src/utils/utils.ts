@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import jwt from 'jsonwebtoken';
 import { ZodObject } from 'zod';
 import { Request, Response, NextFunction } from 'express';
 
@@ -121,23 +120,27 @@ export async function password_validate(
 
 export async function user_exists(
 	username: string,
-	email?: string
-): Promise<boolean>;
-export async function user_exists(
-	username: string | undefined,
 	email: string
-): Promise<boolean>;
-export async function user_exists(
-	username?: string,
-	email?: string
 ): Promise<boolean> {
-	if (!username) return false;
-	if (!email) return false;
-
 	const [existingUser] = await db
 		.select()
 		.from(users)
 		.where(or(eq(users.username, username), eq(users.email, email)));
+	return Boolean(existingUser);
+}
+
+export async function user_exists_username(username: string) {
+	const [existingUser] = await db
+		.select({ id: users.id })
+		.from(users)
+		.where(eq(users.username, username));
+	return Boolean(existingUser);
+}
+export async function user_exists_email(email: string) {
+	const [existingUser] = await db
+		.select({ id: users.id })
+		.from(users)
+		.where(eq(users.email, email));
 	return Boolean(existingUser);
 }
 

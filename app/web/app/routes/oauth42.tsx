@@ -36,7 +36,9 @@ type ProfileData = {
 	'pool_month'?: string | undefined;
 	'pool_year'?: string | undefined;
 };
-type Data = TokenData | { did_authenticate: false; profile: ProfileData, oauth_token: string };
+type Data =
+	| TokenData
+	| { did_authenticate: false; profile: ProfileData; oauth_token: string };
 
 export async function loader({ request }: Route.LoaderArgs) {
 	let redirect_fallback = '/';
@@ -49,16 +51,17 @@ export async function loader({ request }: Route.LoaderArgs) {
 			Buffer.from(query_data, 'base64').toString('ascii')
 		) as Data;
 		switch (auth_data.did_authenticate) {
-			case false:
-				{
+			case false: {
 				const { profile, oauth_token } = auth_data;
 				session.flash('oauth', {
 					login: profile.login,
 					token: oauth_token,
 				});
 
-				return redirect('/register', { headers: { 'Set-Cookie': await commitSession(session) } });
-			} ;
+				return redirect('/register', {
+					headers: { 'Set-Cookie': await commitSession(session) },
+				});
+			}
 			case true:
 				{
 					const { user, token_access, token_refresh, expiry } = auth_data;
@@ -73,9 +76,14 @@ export async function loader({ request }: Route.LoaderArgs) {
 					});
 				}
 				break;
-			default: {
-				session.flash('error', 'Unknown response from authentication service');
-			} break ;
+			default:
+				{
+					session.flash(
+						'error',
+						'Unknown response from authentication service'
+					);
+				}
+				break;
 		}
 	} else {
 		const error = url.searchParams.get('error');

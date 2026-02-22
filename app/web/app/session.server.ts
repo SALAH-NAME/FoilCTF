@@ -16,9 +16,10 @@ type SessionData = {
 export type SessionFlash = {
 	error?: string;
 	oauth?: {
-		login: string,
-		token: string,
-	},
+		login: string;
+		token: string;
+	};
+	profile?: string;
 };
 
 export const { commitSession, destroySession, getSession } =
