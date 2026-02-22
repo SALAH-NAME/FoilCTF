@@ -11,10 +11,16 @@ services:
       dockerfile: Containerfile
     environment:
       - PORT=${GATEWAY_PORT:-443}
-      - JWT_SECRET=${JWT_SECRET:-changeme-secret-key}
+      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET:-changeme-secret-key}
       - SERVICE_NAME=${GATEWAY_SERVICE_NAME:-gateway}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
       - CERT_DIR=/certs
+      - GATEWAY_USER_URL=http://user:${USER_SERVICE_PORT:-3001}
+      - GATEWAY_CHALLENGE_URL=http://challenge:${CHALLENGE_SERVICE_PORT:-3002}
+      - GATEWAY_CHAT_URL=http://chat:${CHAT_SERVICE_PORT:-3003}
+      - GATEWAY_NOTIFICATION_URL=http://notification:${NOTIFICATION_SERVICE_PORT:-3004}
+      - GATEWAY_EVENT_URL=http://event:${EVENT_SERVICE_PORT:-3005}
+      - GATEWAY_SANDBOX_URL=http://sandbox:${SANDBOX_SERVICE_PORT:-3006}
     networks:
       - foilctf_net
     ports:
@@ -38,7 +44,7 @@ services:
       - ACCESS_TOKEN_EXPIRY=${ACCESS_TOKEN_EXPIRY:-15m}
       - REFRESH_TOKEN_EXPIRY=${REFRESH_TOKEN_EXPIRY:-7d}
       - MAX_FILE_SIZE=${MAX_FILE_SIZE:-2097152}
-      - AVATARS_DIR=${AVATARS_DIR:-uploads/avatars}
+      - AVATARS_DIR=${AVATARS_DIR:-./uploads/avatars}
     volumes:
       - user-avatars:/app/uploads/avatars
     networks:
@@ -49,15 +55,9 @@ services:
       database:
         condition: service_healthy
     healthcheck:
-      test:
-        [
-          "CMD",
-          "node",
-          "-e",
-          "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
-        ]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
       interval: 30s
-      timeout: 3s
+      timeout: 5s
       retries: 3
       start_period: 10s
     restart: unless-stopped
@@ -71,7 +71,7 @@ services:
       dockerfile: Containerfile
     environment:
       - API_PORT=${CHALLENGE_PORT:-3002}
-      - API_HOST=0.0.0.0
+      - API_HOST=localhost
       - API_ORIGINS_WHITELIST=${API_ORIGINS_WHITELIST:-http://localhost:443,http://127.0.0.1:443}
       - DATABASE_HOST=database
       - DATABASE_PORT=5432
@@ -86,15 +86,9 @@ services:
       database:
         condition: service_healthy
     healthcheck:
-      test:
-        [
-          "CMD",
-          "node",
-          "-e",
-          "require('http').get('http://localhost:3002/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
-        ]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/health || exit 1"]
       interval: 30s
-      timeout: 3s
+      timeout: 5s
       retries: 3
       start_period: 10s
     restart: unless-stopped
@@ -141,6 +135,146 @@ services:
       timeout: "5s"
       retries: 5
       start_period: 30s
+    restart: unless-stopped
+
+  web:
+    container_name: foilctf_web
+    build:
+      tags:
+        - "foilctf/web:latest"
+      context: ./app/web/
+      dockerfile: Containerfile
+    environment:
+      - PORT=${WEB_PORT:-3000}
+      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET:?ACCESS_TOKEN_SECRET must be set}
+
+    networks:
+      - foilctf_net
+    ports:
+      - "3000:3000" # For development access
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+  chat:
+    container_name: foilctf_chat
+    build:
+      tags:
+        - "foilctf/chat:latest"
+      context: ./app/chat/
+      dockerfile: Containerfile
+    environment:
+      - PORT=${CHAT_SERVICE_PORT:-3003}
+      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET:-changeme-secret-key}
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_USER=${DATABASE_DEVELOPER_USER:?DATABASE_DEVELOPER_USER must be set}
+      - DB_PASS=${DATABASE_DEVELOPER_PASS:?DATABASE_DEVELOPER_PASS must be set}
+      - DB_NAME=${DATABASE_NAME:-foilctf}
+    networks:
+      - foilctf_net
+    ports:
+      - "3003:3003" # For development access
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3003/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  notification:
+    container_name: foilctf_notification
+    build:
+      tags:
+        - "foilctf/notification:latest"
+      context: ./app/notification/
+      dockerfile: Containerfile
+    environment:
+      - PORT=${NOTIFICATION_SERVICE_PORT:-3004}
+      - SECRET_KEY=${ACCESS_TOKEN_SECRET:-changeme-secret-key}
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_USER=${DATABASE_DEVELOPER_USER:?DATABASE_DEVELOPER_USER must be set}
+      - DB_PASS=${DATABASE_DEVELOPER_PASS:?DATABASE_DEVELOPER_PASS must be set}
+      - DB_NAME=${DATABASE_NAME:-foilctf}
+    networks:
+      - foilctf_net
+    ports:
+      - "3004:3004" # For development access
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3004/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  event:
+    container_name: foilctf_event
+    build:
+      tags:
+        - "foilctf/event:latest"
+      context: ./app/event/
+      dockerfile: Containerfile
+    environment:
+      - PORT=${EVENT_SERVICE_PORT:-3005}
+      - SECRET_KEY=${ACCESS_TOKEN_SECRET:-changeme-secret-key}
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_USER=${DATABASE_DEVELOPER_USER:?DATABASE_DEVELOPER_USER must be set}
+      - DB_PASS=${DATABASE_DEVELOPER_PASS:?DATABASE_DEVELOPER_PASS must be set}
+      - DB_NAME=${DATABASE_NAME:-foilctf}
+    networks:
+      - foilctf_net
+    ports:
+      - "3005:3005" # For development access
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3005/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  sandbox:
+    container_name: foilctf_sandbox
+    build:
+      tags:
+        - "foilctf/sandbox:latest"
+      context: ./app/sandbox/
+      dockerfile: Containerfile
+    environment:
+      - SERVER_ADDRESS=:${SANDBOX_SERVICE_PORT:-3006}
+      - DATABASE_URI=postgresql://${DATABASE_DEVELOPER_USER}:${DATABASE_DEVELOPER_PASS}@database:5432/${DATABASE_NAME:-foilctf}
+      - PODMAN_URI=unix:///run/podman/podman.sock
+      - PODMAN_DIR_IMAGES=${SANDBOX_IMAGES_DIR:-/data/images}
+      - PODMAN_DIR_HEALTH=/data/health
+    volumes:
+      - sandbox-images:/data/images
+      - ${PODMAN_SOCKET:-/run/podman/podman.sock}:/run/podman/podman.sock:ro
+    networks:
+      - foilctf_net
+    ports:
+      - "3006:3006" # For development access
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3006/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
   prometheus:
@@ -190,13 +324,13 @@ networks:
 
 volumes:
   gateway-certs:
+  user-avatars:
+  sandbox-images:
+  prometheus-data:
+  grafana-data:
   postgres:
   migrations:
     driver_opts:
       o: "bind"
       type: "none"
       device: "${DATABASE_VOLUME_MIGRATIONS_DIR?}"
-  user-avatars:
-  sandbox-images:
-  prometheus-data:
-  grafana-data:

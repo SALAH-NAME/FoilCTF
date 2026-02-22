@@ -12,8 +12,12 @@ func (h *Hub) RegisterRoutes() http.Handler {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RealIP)
-
 	r.Use(h.IdentityMiddleware)
+
+	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/events", func(r chi.Router) {
 			r.Get("/", h.ListEvents)

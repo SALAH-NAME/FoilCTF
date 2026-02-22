@@ -112,11 +112,11 @@ var ServiceRegistry = []ServiceConfig{
 	},
 
 	{
-		Name:    "scoreboard",
-		BaseURL: getEnv("GATEWAY_SCOREBOARD_URL", "http://scoreboard:3005"),
+		Name:    "event",
+		BaseURL: getEnv("GATEWAY_EVENT_URL", "http://event:3005"),
 		Routes: []RouteConfig{
 			{
-				Prefix:      "/api/scoreboard",
+				Prefix:      "/api/event",
 				Protected:   false,
 				WebSocket:   true,
 				StripPrefix: false,

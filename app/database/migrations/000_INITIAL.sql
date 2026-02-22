@@ -85,10 +85,8 @@ CREATE TABLE IF NOT EXISTS teams (
   description     TEXT DEFAULT NULL,
   is_locked       BOOLEAN DEFAULT FALSE,
 
-  CONSTRAINT constraint_captain_name FOREIGN KEY (captain_name) REFERENCES users(username) ON UPDATE CASCADE
+  CONSTRAINT constraint_captain_name FOREIGN KEY (captain_name) REFERENCES users(username) ON UPDATE CASCADE,
 
-  id			SERIAL PRIMARY KEY,
-  name			TEXT NOT NULL,
   team_size		INTEGER NOT NULL DEFAULT 0,
 
   profile_id	INTEGER,

@@ -7,6 +7,11 @@ import (
 
 func (hub *Hub) RegisterRoutes() http.Handler {
 	r := mux.NewRouter()
+
+	r.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}).Methods(http.MethodGet)
+
 	apiRoute := r.PathPrefix("/api/notifications").Subrouter()
 
 	apiRoute.Use(hub.AuthMiddleware)
