@@ -26,7 +26,7 @@ services:
     ports:
       - "3443:${GATEWAY_PORT:-443}" # For development access
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- https://localhost:443/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://localhost:443/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -77,7 +77,7 @@ services:
       dockerfile: Containerfile
     environment:
       - API_PORT=${CHALLENGE_PORT:-3002}
-      - API_HOST=localhost
+      - API_HOST=0.0.0.0
       - API_ORIGINS_WHITELIST=${API_ORIGINS_WHITELIST:-http://localhost:443,http://127.0.0.1:443}
       - DATABASE_HOST=database
       - DATABASE_PORT=5432
@@ -92,7 +92,7 @@ services:
       database:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3002/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
