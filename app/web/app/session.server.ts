@@ -13,7 +13,7 @@ export type SessionUser = {
 type SessionData = {
 	user?: SessionUser;
 };
-type SessionFlash = {
+export type SessionFlash = {
 	error?: string;
 };
 

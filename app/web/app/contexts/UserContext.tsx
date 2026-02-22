@@ -6,5 +6,6 @@ export type UserContextValue = {
 	userState: SessionUser;
 	setUserState: Dispatch<SetStateAction<SessionUser>>;
 	logoutUserState: () => void;
+	refreshUserState: () => Promise<void>;
 };
 export const UserContext = createContext<UserContextValue | null>(null);

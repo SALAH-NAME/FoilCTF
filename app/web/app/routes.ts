@@ -19,7 +19,9 @@ const routes = [
 		route('team', 'routes/team.tsx'),
 		route('users', 'routes/users.tsx'),
 		route('users/:username', 'routes/users.$username.tsx'),
-		route('/oauth/42', 'routes/oauth42.tsx'),
+
+		route('oauth/42', 'routes/oauth42.tsx'),
+		route('refresh', 'routes/refresh.tsx'),
 
 		route('privacy-policy', 'routes/privacy-policy.tsx'),
 		route('terms-of-service', 'routes/terms-of-service.tsx'),

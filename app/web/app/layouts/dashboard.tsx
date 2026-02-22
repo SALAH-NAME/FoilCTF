@@ -1,13 +1,36 @@
-import { Outlet } from 'react-router';
-import Footer from '../components/Footer';
-import Sidebar from '../components/Sidebar';
-import SkipLink from '../components/SkipLink';
-import { useSidebar } from '../contexts/SidebarContext';
-import Icon from '../components/Icon';
-import Logo from '../components/Logo';
+import { useEffect } from 'react';
+import { data, Outlet } from 'react-router';
 
-export default function Layout() {
+import { useToast } from '~/contexts/ToastContext';
+import { useSidebar } from '~/contexts/SidebarContext';
+import { commitSession, request_session } from '~/session.server';
+
+import Icon from '~/components/Icon';
+import Logo from '~/components/Logo';
+import Footer from '~/components/Footer';
+import Sidebar from '~/components/Sidebar';
+import SkipLink from '~/components/SkipLink';
+
+import type { Route } from './+types/dashboard';
+
+export async function loader({ request }: Route.LoaderArgs) {
+	const session = await request_session(request);
+	const flashError = session.get('error');
+	return data({ flashError }, { headers: { 'Set-Cookie': await commitSession(session) } });
+}
+export default function Layout({ loaderData }: Route.ComponentProps) {
+	const { addToast } = useToast();
 	const { toggleMobile } = useSidebar();
+	useEffect(() => {
+		if (!loaderData.flashError)
+			return ;
+
+		addToast({
+			variant: 'error',
+			title: 'Session Error',
+			message: loaderData.flashError,
+		});
+	}, [loaderData]);
 
 	return (
 		<>
@@ -41,6 +64,7 @@ export default function Layout() {
 					</main>
 					<Footer />
 				</div>
+
 			</div>
 		</>
 	);

@@ -1,4 +1,4 @@
-import { data, Form, Link, redirect } from 'react-router';
+import { data, redirect, Form, Link, useSearchParams } from 'react-router';
 import { useEffect, useState, type SubmitEvent } from 'react';
 
 import type { Route } from './+types/signin';
@@ -73,13 +73,16 @@ export async function action({ request }: Route.ActionArgs) {
 		const session = await request_session(request);
 		const form_data = await request.formData();
 
+		let redirect_uri = form_data.get('redirect_uri');
+		if (typeof redirect_uri !== 'string' || !redirect_uri) redirect_uri = '/';
+
 		const username = form_data.get('username');
 		const password = form_data.get('password');
 
-		if (typeof username !== 'string')
-			return data({ error: 'Invalid username', timestamp: Date.now() });
-		if (typeof password !== 'string')
-			return data({ error: 'Invalid password', timestamp: Date.now() });
+		if (typeof username !== 'string' || !username)
+			throw new Error('Invalid username');
+		if (typeof password !== 'string' || !password)
+			throw new Error('Invalid password');
 
 		const { token_access, expiry, token_refresh } = await fetch_tokens({
 			username,
@@ -97,13 +100,10 @@ export async function action({ request }: Route.ActionArgs) {
 			username: user.username,
 		});
 
-		const request_uri = new URL(request.url);
-		const redirect_uri = request_uri.searchParams.get('redirect_uri') ?? '/';
 		return redirect(redirect_uri, {
-			headers: new Headers({ 'Set-Cookie': await commitSession(session) }),
+			headers: { 'Set-Cookie': await commitSession(session) },
 		});
 	} catch (err) {
-		console.error(err);
 		return data({
 			error:
 				(err instanceof Error ? err.message : err?.toString()) ??
@@ -164,6 +164,11 @@ export default function Page({ actionData }: Route.ComponentProps) {
 		});
 	}, [actionData?.error, actionData?.timestamp]);
 
+	const [searchParams, _setSearchParams] = useSearchParams();
+	const getRedirectURI = () => {
+		return searchParams.get('redirect_uri') ?? '/';
+	};
+
 	return (
 		<div className="h-full bg-background flex items-center justify-center px-4">
 			<div className="w-full max-w-md">
@@ -178,6 +183,7 @@ export default function Page({ actionData }: Route.ComponentProps) {
 					method="POST"
 					className="space-y-4"
 				>
+					<input type="hidden" name="redirect_uri" value={getRedirectURI()} />
 					<FormInput
 						id="username"
 						name="username"
