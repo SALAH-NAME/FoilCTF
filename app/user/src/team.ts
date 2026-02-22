@@ -3,6 +3,7 @@ import { db } from './utils/db';
 import { eq, and, sql, ne, ilike } from 'drizzle-orm';
 import { users, teams, teamMembers, teamJoinRequests, notifications, notificationUsers } from './db/schema';
 import { FoilCTF_Error, FoilCTF_Success } from './utils/types';
+import { activeTeamJoinRequests, teamCreations } from './utils/metrics';
 
 export const createTeam = async(req: Request, res: Response, next: NextFunction) => {
 	const decodedUser = res.locals.user;
@@ -40,6 +41,7 @@ export const createTeam = async(req: Request, res: Response, next: NextFunction)
 			await tx.update(users).set({ teamName: newTeamName }).where(eq(users.id, decodedUser.id));
 		});
 
+		teamCreations.inc();
 		return res.status(201).json(new FoilCTF_Success("Created", 201));
 	} catch (err) {
 		if (err instanceof FoilCTF_Error)
@@ -293,13 +295,14 @@ export const sendJoinRequest = async(req: Request, res: Response, next: NextFunc
 				.values({
 					teamName: targetTeamName,
 					username: decodedUser.username
-					});
+				});
 
-			res.locals.captainName = team.captainName;
-			res.locals.teamName = team.name;
-			res.locals.contents = { title: "New Join Request", message: `${decodedUser.username} sent a join request` };
-		});
-	
+				res.locals.captainName = team.captainName;
+				res.locals.teamName = team.name;
+				res.locals.contents = { title: "New Join Request", message: `${decodedUser.username} sent a join request` };
+			});
+
+		activeTeamJoinRequests.inc();
 		return next();
 	} catch (err) {
 		if (err instanceof FoilCTF_Error)

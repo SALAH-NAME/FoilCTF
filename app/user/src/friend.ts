@@ -8,41 +8,8 @@ import {
 } from './db/schema';
 import { db } from './utils/db';
 import { eq, and, or, ilike } from 'drizzle-orm';
-
-export class FoilCTF_Error extends Error {
-	public statusCode: number;
-	constructor(message: string, statusCode: number) {
-		super(message);
-		this.statusCode = statusCode;
-
-		this.name = 'FoilCTF_Error';
-	}
-
-	toJSON() {
-		return {
-			error: true,
-			message: this.message,
-			status: this.statusCode,
-		};
-	}
-}
-
-export class FoilCTF_Success {
-	public statusCode: number;
-	public message: string;
-
-	constructor(message: string, statusCode: number) {
-		this.statusCode = statusCode;
-		this.message = message;
-	}
-
-	toJSON() {
-		return {
-			message: this.message,
-			status: this.statusCode,
-		};
-	}
-}
+import { activeFriendRequests } from './utils/metrics';
+import { FoilCTF_Error, FoilCTF_Success } from './utils/types';
 
 export async function listFriends(
 	req: Request,
@@ -108,8 +75,6 @@ export async function listReceivedFriendRequests(
 		.limit(limit)
 		.offset(limit * (page - 1));
 
-	// filter receiver name before responding?
-
 	return res.status(200).json({
 		data: requests,
 		limit,
@@ -171,6 +136,7 @@ export async function sendFriendRequest(
 			};
 		});
 
+		activeFriendRequests.inc();
 		return next();
 	} catch (err) {
 		if (err instanceof FoilCTF_Error)
