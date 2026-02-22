@@ -10,6 +10,10 @@ import {
 	updateProfileSchema,
 	updateUserSchema,
 	updateUserRoleSchema,
+	teamCreationSchema,
+	updateTeamSchema,
+	transferLeadershipSchema,
+	FoilCTF_Success,
 } from './utils/types';
 import {
 	authenticateToken,
@@ -33,12 +37,40 @@ import {
 	route_auth_refresh,
 	route_auth_logout,
 } from './auth';
+import {
+	createTeam,
+	getTeamDetails,
+	getTeamMembers,
+	leaveTeam,
+	deleteMember,
+	handOverLeadership,
+	sendJoinRequest,
+	cancelJoinRequest,
+	acceptJoinRequest,
+	declineJoinRequest,
+	getSentRequests,
+	notifyAllMembers,
+	notifyCaptain,
+	updateTeam,
+	getTeams,
+	getReceivedRequests,
+} from './team';
 import { route_user_me } from './user';
 import {
 	deleteUser,
 	listUsers,
 	updateUserRole
 } from './admin';
+import {
+	sendFriendRequest,
+	acceptFriendRequest,
+	rejectFriendRequest,
+	listFriends,
+	listReceivedFriendRequests,
+	removeFriend,
+	cancelFriendRequest,
+	notifyUser,
+} from './friend';
 
 const app = express();
 app.use(middleware_logger);
@@ -92,11 +124,7 @@ app.put(
 );
 
 // SECTION: Users
-app.get(
-	'/api/users/me',
-	authenticateToken,
-	route_user_me,
-)
+app.get('/api/users/me', authenticateToken, route_user_me);
 app.put(
 	'/api/users/:username',
 	parseNonExistingParam,
@@ -120,11 +148,114 @@ app.delete(
     '/api/users/:username',
     deleteUser,
 );
+// SECTION: friends
+app.get('/api/friends', authenticateToken, listFriends);
+app.get('/api/friends/requests', authenticateToken, listReceivedFriendRequests);
+app.post(
+	'/api/friends/requests/:username',
+	authenticateToken,
+	sendFriendRequest,
+	notifyUser
+);
+app.delete(
+	'/api/friends/requests/:username',
+	authenticateToken,
+	cancelFriendRequest
+);
+app.patch(
+	'/api/friends/requests/pending/:username',
+	authenticateToken,
+	acceptFriendRequest,
+	notifyUser
+);
+app.delete(
+	'/api/friends/requests/pending/:username',
+	authenticateToken,
+	rejectFriendRequest
+);
+app.delete('/api/friends/:username', authenticateToken, removeFriend);
 
 // SECTION: Health
 app.get('/health', (_req, res) => {
-	res.status(200).send('OK');
+	return res.status(200).json(new FoilCTF_Success("OK", 200));
 });
+
+// SECTION: Teams
+app.post(
+	'/api/teams/',
+	middleware_schema_validate(teamCreationSchema),
+	authenticateToken,
+	createTeam,
+);
+app.get(
+	'/api/teams/:teamName',
+	getTeamDetails, // public data
+);
+app.get(
+	'/api/teams/:teamName/members',
+	getTeamMembers, // public data
+);
+app.delete(
+	'/api/teams/:teamName/members',
+	authenticateToken,
+	leaveTeam,
+	notifyAllMembers,
+);
+app.delete(
+	'/api/teams/:teamName/members/:username',
+	authenticateToken,
+	deleteMember,
+	notifyAllMembers,
+);
+app.put(
+	'/api/teams/:teamName/captain',
+	middleware_schema_validate(transferLeadershipSchema),
+	authenticateToken,
+	handOverLeadership,
+	notifyCaptain,
+);
+app.post(
+	'/api/teams/:teamName',
+	authenticateToken,
+	sendJoinRequest,
+	notifyCaptain,
+);
+app.delete(
+	'/api/teams/:teamName',
+	authenticateToken,
+	cancelJoinRequest,
+);
+app.put(
+	'/api/teams/:teamName/requests/:username',
+	authenticateToken,
+	acceptJoinRequest,
+	notifyAllMembers,
+);
+app.delete(
+	'/api/teams/:teamName/requests/:username',
+	authenticateToken,
+	declineJoinRequest,
+);
+app.get(
+	'/api/teams/:teamName/requests', // teamName is redundant! ( '/api/user/requests' ? )
+	authenticateToken,
+	getSentRequests,
+);
+app.put(
+	'/api/teams',
+	middleware_schema_validate(updateTeamSchema),
+	authenticateToken,
+	updateTeam,
+);
+app.get(
+	'/api/teams',
+	getTeams,
+);
+app.get(
+	'/api/requests', // !!!!!!!!!!! conflicts with /api/teams/:teamName, getTeamDetails
+	authenticateToken,
+	getReceivedRequests,
+);
 
 app.use(middleware_error);
 
