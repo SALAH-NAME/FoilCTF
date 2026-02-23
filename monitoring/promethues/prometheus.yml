@@ -27,3 +27,9 @@ scrape_configs:
     static_configs:
       - targets: ['chat:3003']
     metrics_path: '/metrics'
+
+  - job_name: 'notification'
+    scheme: http
+    static_configs:
+      - targets: ['notification:3004']
+    metrics_path: '/metrics'

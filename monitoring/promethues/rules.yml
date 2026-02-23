@@ -45,3 +45,40 @@ groups:
         annotations:
           summary: "No WebSocket traffic on Chat"
           description: "Chat service is processing 0 messages despite having active connections for 10 minutes."
+
+      - alert: NotificationDown
+        expr: up{job="notification"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Notification service is down"
+          description: "Notification service has been down for more than 1 minute."
+
+      - alert: NotificationHighRequestLatency
+        expr: (sum(rate(notification_http_request_duration_seconds_sum{status!~"0|101"}[5m])) by (instance)) / (sum(rate(notification_http_request_duration_seconds_count{status!~"0|101"}[5m])) by (instance)) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request latency on Notification"
+          description: "Average latency is above 0.5s for more than 5 minutes."
+
+      - alert: NotificationHighWebSocketConnections
+        expr: notification_websocket_connected_clients > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of WebSocket connections on Notification"
+          description: "Notification service has more than 100 active WebSocket connections for 5 minutes."
+
+      - alert: NotificationWebSocketNoTraffic
+        expr: (sum(rate(notification_websocket_messages_total[10m])) == 0) and (notification_websocket_connected_clients > 0)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No WebSocket traffic on Notification"
+          description: "Notification service is processing 0 messages despite having active connections for 10 minutes."
+
