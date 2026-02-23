@@ -43,7 +43,7 @@ func (client *Client) ReadFromConnectionTunnel() {
 	for {
 		var event WsEvent
 		if err := client.Connection.ReadJSON(&event); err != nil {
-			log.Printf("ERROR: User#03d was unexpectedly terminated: %v", client.ID, err)
+			log.Printf("ERROR: User#%03d was unexpectedly terminated: %v", client.ID, err)
 			break
 		}
 		client.Hub.GlobalChan <- event

@@ -8,8 +8,8 @@ import (
 func (hub *Hub) RegisterRoutes() http.Handler {
 	r := mux.NewRouter()
 	apiRoute := r.PathPrefix("/api/notifications").Subrouter()
-
 	apiRoute.Use(hub.AuthMiddleware)
+
 	apiRoute.HandleFunc("/ws", hub.ServeWs).Methods(http.MethodGet)
 	apiRoute.HandleFunc("/", hub.HandleListNotifications).Methods(http.MethodGet)
 	apiRoute.HandleFunc("/", hub.HandleReadAll).Methods(http.MethodPatch)

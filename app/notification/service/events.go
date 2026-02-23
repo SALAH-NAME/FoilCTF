@@ -31,7 +31,7 @@ func HandleUnjoin(hub *Hub, client *Client) {
 	}
 	client.Connection.Close()
 	close(client.Send) // now guaranteed to be closed once.
-	log.Printf("INFO: userID: %s has left the server", client.ID)
+	log.Printf("INFO: userID: %03v has left the server", client.ID)
 }
 
 func HandleWsEvent(hub *Hub, eventws *WsEvent) {
