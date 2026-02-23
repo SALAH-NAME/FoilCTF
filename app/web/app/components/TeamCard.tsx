@@ -3,14 +3,14 @@ import InfoText from './InfoText';
 import Button from './Button';
 
 interface TeamCardProps {
-	id: string;
+	id: number;
 	name: string;
-	memberCount: number;
-	maxMembers: number;
-	captainName: string;
-	eventsParticipated: number;
-	totalPoints: number;
-	isOpen: boolean;
+	members_count: number;
+	max_members: number;
+	captain_name: string;
+	events_participated?: number;
+	total_points?: number;
+	is_locked: boolean | null;
 	isFull: boolean;
 	hasRequested?: boolean;
 	onRequestJoin?: () => void;
@@ -20,13 +20,13 @@ interface TeamCardProps {
 export default function TeamCard({
 	id,
 	name,
-	memberCount,
-	maxMembers,
-	captainName,
-	eventsParticipated,
-	totalPoints,
-	isOpen,
+	members_count,
+	max_members,
+	captain_name,
+	is_locked,
 	isFull,
+	events_participated = 0,
+	total_points = 0,
 	hasRequested = false,
 	onRequestJoin,
 	onCancelRequest,
@@ -54,39 +54,39 @@ export default function TeamCard({
 					</h3>
 					<div
 						className={`px-3 py-1 rounded-full text-sm font-semibold ${
-							isOpen
+							!is_locked
 								? 'bg-green-100 text-green-700'
 								: 'bg-gray-100 text-gray-700'
 						}`}
-						aria-label={isOpen ? 'Team is open for joining' : 'Team is closed'}
+						aria-label={!is_locked ? 'Team is open for joining' : 'Team is closed'}
 					>
-						{isOpen ? 'Open' : 'Closed'}
+						{!is_locked ? 'Open' : 'Closed'}
 					</div>
 				</div>
 
 				<InfoText icon="user" className="text-sm text-dark/60 mb-auto">
-					Captain: {captainName}
+					Captain: {captain_name}
 				</InfoText>
 
 				<div className="grid grid-cols-2 gap-4 my-4">
 					<div>
 						<InfoText icon="user" className="text-sm text-dark/80">
 							<span className="font-semibold">
-								{memberCount}/{maxMembers}
+								{members_count}/{max_members}
 							</span>{' '}
 							Members
 						</InfoText>
 					</div>
 					<div>
 						<InfoText icon="calendar" className="text-sm text-dark/80">
-							<span className="font-semibold">{eventsParticipated}</span> Events
+							<span className="font-semibold">{events_participated}</span> Events
 						</InfoText>
 					</div>
 				</div>
 
 				<div className="flex items-center justify-between pt-4 border-t border-dark/10">
 					<InfoText icon="trophy" className="text-sm text-dark/60">
-						<span className="font-semibold text-primary">{totalPoints}</span>{' '}
+						<span className="font-semibold text-primary">{total_points}</span>{' '}
 						Points
 					</InfoText>
 					{(onRequestJoin || onCancelRequest) && (
@@ -94,14 +94,14 @@ export default function TeamCard({
 							size="sm"
 							className="h-10"
 							onClick={handleButtonClick}
-							disabled={(!isOpen || isFull) && !hasRequested}
+							disabled={(is_locked || isFull) && !hasRequested}
 							variant={hasRequested ? 'secondary' : 'primary'}
 							aria-label={
 								hasRequested
 									? 'Cancel join request'
 									: isFull
 										? 'Team is full'
-										: !isOpen
+										: is_locked
 											? 'Team is closed'
 											: `Request to join ${name}`
 							}

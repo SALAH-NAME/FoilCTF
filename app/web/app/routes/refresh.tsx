@@ -91,7 +91,7 @@ export async function action({ request }: Route.ActionArgs) {
 	if (unixExpiryRefresh <= unixNow) {
 		// NOTE(xenobas): On refresh expiry must re sign-in manually.
 		session.unset('user');
-		session.flash('error', 'Session could not be refreshed');
+		session.flash('error', 'Session has expired');
 		return redirect('/signin', {
 			headers: { 'Set-Cookie': await commitSession(session) },
 		});

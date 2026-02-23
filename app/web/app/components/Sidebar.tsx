@@ -1,13 +1,16 @@
+import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router';
 
 import { useSidebar } from '~/contexts/SidebarContext';
+import type { SessionUser } from '~/session.server';
 
-import Icon from './Icon';
-import Logo from './Logo';
-import NotificationBell from './NotificationBell';
-import NotificationPanel from './NotificationPanel';
-import { NavGroup, type NavItemConfig } from './NavLink';
+import Icon from '~/components/Icon';
+import Logo from '~/components/Logo';
+import NotificationBell from '~/components/NotificationBell';
+import NotificationPanel from '~/components/NotificationPanel';
+import { NavGroup, NavLink, type NavItemConfig } from '~/components/NavLink';
+import { fetch_user } from '~/routes/profile';
 
 const navItems: NavItemConfig[] = [
 	{ to: '/', label: 'Home', icon: 'home' },
@@ -51,12 +54,15 @@ const navItems: NavItemConfig[] = [
 	{ to: '/signin', label: 'Sign In', icon: 'user' },
 ];
 
-export default function Sidebar() {
+type SidebarProps = {
+	session_user: SessionUser | undefined;
+};
+export default function Sidebar({ session_user }: SidebarProps) {
 	const { isExpanded, toggleExpanded, isMobileOpen, closeMobile } =
 		useSidebar();
 
 	const location = useLocation();
-	const isActive = location.pathname == '/profile';
+	const is_profile_active = location.pathname == '/profile';
 
 	useEffect(() => {
 		closeMobile();
@@ -84,6 +90,16 @@ export default function Sidebar() {
 		};
 	}, [isMobileOpen, closeMobile]);
 
+	const query_user = useQuery({
+		queryKey: ['user', { username: session_user?.username }, { token_access: session_user?.token_access }],
+		initialData: null,
+		queryFn: async () => {
+			if (!session_user)
+				return (null);
+			return await fetch_user(session_user.token_access);
+		},
+	});
+	const user = query_user.data;
 	return (
 		<>
 			{isMobileOpen && (
@@ -122,8 +138,24 @@ export default function Sidebar() {
 							/>
 						</Link>
 
-						<nav className="p-4" aria-label="Main navigation">
-							<NavGroup items={navItems} />
+						<nav className="p-4 space-y-2" aria-label="Main navigation">
+							<NavLink item={{ to: '/', label: 'Home', icon: 'home' }} />
+							{ !user && <NavLink item={{ to: '/signin', label: 'Sign In', icon: 'user' }} />}
+							<NavLink item={{ to: '/events', label: 'Events', icon: 'calendar' }}>
+								<NavLink item={{ to: '/events?filter=upcoming', label: 'Active', icon: 'calendar' }} isNested />
+								<NavLink item={{ to: '/events?filter=active', label: 'Upcoming', icon: 'calendar' }} isNested />
+								<NavLink item={{ to: '/events?filter=ended', label: 'Past', icon: 'calendar' }} isNested />
+							</NavLink>
+							<NavLink item={{ to: '/dashboard', label: 'Dashboard', icon: 'chart' }}>
+								<NavLink item={{ to: '/challenges', label: 'Challenges', icon: 'challenge' }} isNested />
+								<NavLink item={{ to: '/instances', label: 'Instances', icon: 'instance' }} isNested />
+							</NavLink>
+							<NavLink item={{ to: '/teams', label: 'Teams', icon: 'team' }}>
+								{ user?.team_name && <NavLink item={{ to: '/team', label: user.team_name ?? 'My Team', icon: 'team' }} isNested />}
+							</NavLink>
+							<NavLink item={{ to: '/users', label: 'Users', icon: 'users' }}>
+								{ user && <NavLink item={{ to: '/friends', label: 'Friends', icon: 'users' }} isNested />}
+							</NavLink>
 						</nav>
 					</div>
 
@@ -136,18 +168,18 @@ export default function Sidebar() {
 							to="/profile"
 							aria-label="User profile"
 							className={`w-full flex items-center px-2 py-2 rounded-md transition-colors no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-inset ${
-								isActive
+								is_profile_active
 									? 'bg-primary hover:bg-accent/20 text-white focus-visible:ring-dark'
 									: 'hover:bg-primary text-dark focus-visible:ring-primary'
 							} ${isExpanded ? 'gap-3' : 'md:gap-0 gap-3'}`}
 							title={isExpanded ? undefined : 'Profile'}
 						>
 							<div
-								className={`w-8 h-8 my-1  rounded-full flex items-center justify-center shrink-0 ${isActive ? 'bg-white' : 'bg-secondary'}`}
+								className={`w-8 h-8 my-1  rounded-full flex items-center justify-center shrink-0 ${is_profile_active ? 'bg-white' : 'bg-secondary'}`}
 							>
 								<Icon
 									name="user"
-									className={`size-4  ${isActive ? 'text-black' : 'text-white'}`}
+									className={`size-4  ${is_profile_active ? 'text-black' : 'text-white'}`}
 									aria-hidden={true}
 								/>
 							</div>
@@ -159,7 +191,7 @@ export default function Sidebar() {
 													? 'opacity-100 delay-300'
 													: 'md:opacity-0 md:w-0 md:overflow-hidden opacity-100'
 											}
-											${isActive ? 'text-white hover:text-dark' : ' text-dark'}`}
+											${is_profile_active ? 'text-white hover:text-dark' : ' text-dark'}`}
 								>
 									<p className="text-sm font-medium truncate">John Doe</p>
 									<p className="text-xs  truncate">john@example.com</p>

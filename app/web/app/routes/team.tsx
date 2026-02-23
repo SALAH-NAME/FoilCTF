@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import PageHeader from '~/components/PageHeader';
+
+import type { Route } from './+types/team';
+
+import Modal from '~/components/Modal';
 import Button from '~/components/Button';
 import InfoText from '~/components/InfoText';
 import StatsCard from '~/components/StatsCard';
+import FormInput from '~/components/FormInput';
+import FilterTabs from '~/components/FilterTabs';
+import PageHeader from '~/components/PageHeader';
 import TeamMemberCard from '~/components/TeamMemberCard';
 import JoinRequestCard from '~/components/JoinRequestCard';
-import FilterTabs from '~/components/FilterTabs';
-import Modal from '~/components/Modal';
-import FormInput from '~/components/FormInput';
-import type { Route } from './+types/team';
+
 
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - My Team' }];

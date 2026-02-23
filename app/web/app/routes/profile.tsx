@@ -147,7 +147,7 @@ async function fetch_profile(token: string, username: string) {
 	};
 	return json as JSONData_Profile;
 }
-async function fetch_user(token: string) {
+export async function fetch_user(token: string) {
 	const uri = new URL(`/api/users/me`, import.meta.env.VITE_REST_USER_ORIGIN);
 	const res = await fetch(uri, {
 		headers: new Headers({ Authorization: `Bearer ${token}` }),
@@ -160,15 +160,17 @@ async function fetch_user(token: string) {
 	const json = await res.json();
 	type JSONData_User = {
 		id: number;
-		email: string | null;
 		username: string;
-		role: string;
 
-		profileId: number | null;
+		created_at: string;
+		banned_until: string | null;
+
+		role: string;
+		email: string | null;
+		team_name: string | null;
 		oauth42_login: string | null;
 
-		createdAt: string;
-		bannedUntil: string | null;
+		profile_id: number | null;
 	};
 	return json as JSONData_User;
 }

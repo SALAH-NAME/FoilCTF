@@ -102,7 +102,7 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 					<NotificationBell variant="navbar" />
 				</header>
 
-				<Sidebar />
+				<Sidebar session_user={user} />
 				<div className="flex-1 flex flex-col">
 					<main
 						id="main-content"

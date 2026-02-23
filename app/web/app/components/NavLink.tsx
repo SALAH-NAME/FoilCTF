@@ -16,25 +16,26 @@ export interface NavItemConfig {
 		| 'logout'
 		| 'challenge'
 		| 'instance';
-	children?: NavItemConfig[];
 }
 
 interface NavLinkProps {
 	item: NavItemConfig;
 	isNested?: boolean;
 	isParentCollapsed?: boolean;
+	children?: any,
 }
 
 export function NavLink({
 	item,
 	isNested = false,
 	isParentCollapsed = false,
+	children,
 }: NavLinkProps) {
 	const location = useLocation();
 	const { isExpanded, isMobileOpen } = useSidebar();
-	const [isOpen, setIsOpen] = useState(true);
 
-	const hasChildren = item.children && item.children.length > 0;
+	const [isOpen, setIsOpen] = useState(true);
+	const hasChildren = !!children;
 
 	const isActive = item.to
 		? item.to.includes('?')
@@ -107,14 +108,7 @@ export function NavLink({
 						 `}
 				>
 					<div className="ml-4 mt-1 space-y-1 transition-all duration-300">
-						{item.children?.map((child) => (
-							<NavLink
-								key={child.to || child.label}
-								item={child}
-								isNested
-								isParentCollapsed={!showLabels || !isOpen}
-							/>
-						))}
+						{ children }
 					</div>
 				</div>
 			</div>

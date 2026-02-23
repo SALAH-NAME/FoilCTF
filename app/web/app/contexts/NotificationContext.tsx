@@ -164,11 +164,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 		last_index: number;
 	}
 	const [notificationsState, setNotificationsState] = useState<NotificationsState>({ elements: [], last_index: 0 });
+	const unreadCount = notificationsState.elements.filter(({ read }) => !read).length;
 
 	const [isPanelOpen, setIsPanelOpen] = useState(false);
-
-	const unreadCount = notificationsState.elements.filter((n) => !n.read).length;
-
 	const openPanel = useCallback(() => setIsPanelOpen(true), []);
 	const closePanel = useCallback(() => setIsPanelOpen(false), []);
 	const togglePanel = useCallback(() => setIsPanelOpen((prev) => !prev), []);
@@ -206,8 +204,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 		});
 	}, []);
 
-	const audio_ding = new Audio('/notification.wav');
-
 	const { messages } = useNotificationSocketProvider();
 	const [_lastMessageIndex, setLastMessageIndex] = useState(0);
 	useEffect(() => {
@@ -226,8 +222,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 			}
 
 			const elements_count = messages.length - last_index;
-			if (elements_count > 0)
+			if (elements_count > 0) {
+				const audio_ding = new Audio('/notification.wav');
 				audio_ding.play();
+			}
 			return { elements: [...elements, ...elements_new], last_index: messages.length };
 		});
 		setLastMessageIndex(messages.length);
