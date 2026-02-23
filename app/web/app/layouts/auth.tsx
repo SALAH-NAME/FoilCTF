@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { data, redirect, Outlet, useNavigate, useFetcher } from 'react-router';
 
 import type { Route } from './+types/auth';

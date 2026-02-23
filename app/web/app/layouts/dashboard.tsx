@@ -1,8 +1,11 @@
 import { useEffect } from 'react';
-import { data, Outlet } from 'react-router';
+import { data, Outlet, useFetcher } from 'react-router';
+
+import type { Route } from './+types/dashboard';
 
 import { useToast } from '~/contexts/ToastContext';
 import { useSidebar } from '~/contexts/SidebarContext';
+import { useNotificationSocketProvider } from '~/contexts/WebSocketContext';
 import { commitSession, request_session } from '~/session.server';
 
 import Icon from '~/components/Icon';
@@ -12,13 +15,13 @@ import Sidebar from '~/components/Sidebar';
 import SkipLink from '~/components/SkipLink';
 import NotificationBell from '../components/NotificationBell';
 
-import type { Route } from './+types/dashboard';
-
 export async function loader({ request }: Route.LoaderArgs) {
 	const session = await request_session(request);
+
+	const user = session.get('user');
 	const flashError = session.get('error');
 	return data(
-		{ flashError },
+		{ flashError, user },
 		{ headers: { 'Set-Cookie': await commitSession(session) } }
 	);
 }
@@ -34,6 +37,45 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 			message: loaderData.flashError,
 		});
 	}, [loaderData]);
+
+	const { user } = loaderData;
+	const { performOpen } = useNotificationSocketProvider();
+	useEffect(() => {
+		if (!user?.token_access)
+			return ;
+
+		performOpen(user.token_access);
+	}, [user]);
+
+
+	const fetcher = useFetcher();
+	useEffect(() => {
+		if (!user)
+			return ;
+
+		const { token_access } = user;
+		if (!token_access)
+			return ;
+
+		let cancelled = false;
+		fetcher.submit(null, {
+			method: 'post',
+			action: '/refresh',
+		});
+		const intervalHandle = setInterval(async () => {
+			if (cancelled) return ;
+
+			await fetcher.submit(null, {
+				method: 'post',
+				action: '/refresh',
+			});
+			console.debug('Session has been refreshed');
+		}, 1_000 * parseInt(import.meta.env.VITE_REFRESH_INTERVAL_SECS ?? '60'));
+		return (() => {
+			cancelled = true;
+			clearInterval(intervalHandle);
+		});
+	}, [user?.token_refresh]);
 
 	return (
 		<>

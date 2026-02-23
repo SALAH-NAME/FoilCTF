@@ -13,6 +13,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import './app.css';
 
 import type { Route } from './+types/root';
+import { NotificationSocketProvider } from './contexts/WebSocketContext';
 
 export const links: Route.LinksFunction = () => [
 	{ rel: 'preconnect', href: 'https://fonts.googleapis.com' },
@@ -85,11 +86,13 @@ export default function App() {
 	return (
 		<QueryClientProvider client={queryClient}>
 			<ToastProvider>
-				<NotificationProvider>
-					<SidebarProvider>
-						<Outlet />
-					</SidebarProvider>
-				</NotificationProvider>
+				<NotificationSocketProvider url="http://localhost:3004/api/notifications/ws">
+					<NotificationProvider>
+						<SidebarProvider>
+							<Outlet />
+						</SidebarProvider>
+					</NotificationProvider>
+				</NotificationSocketProvider>
 			</ToastProvider>
 		</QueryClientProvider>
 	);

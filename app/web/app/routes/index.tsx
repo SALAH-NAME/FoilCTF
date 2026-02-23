@@ -27,7 +27,7 @@ export default function Page() {
 						to="/register"
 						className="inline-block px-8 py-3 border-2 border-dark text-lg font-semibold rounded hover:bg-primary hover:text-white transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
 					>
-						Join us NOW
+						Join us
 					</Link>
 				</div>
 			</main>
