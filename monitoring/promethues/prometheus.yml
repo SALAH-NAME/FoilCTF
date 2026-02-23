@@ -5,6 +5,9 @@ global:
     cluster: 'foilctf'
     environment: 'production'
 
+rule_files:
+  - "rules.yml"
+
 scrape_configs:
   - job_name: 'prometheus'
     static_configs:

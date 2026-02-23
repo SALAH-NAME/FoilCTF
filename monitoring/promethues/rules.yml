@@ -1,0 +1,20 @@
+groups:
+  - name: foilctf_alerts
+    rules:
+      - alert: GatewayDown
+        expr: up{job="gateway"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Gateway Instance is down"
+          description: "Gateway instance has been down for more than 1 minute."
+
+      - alert: GatewayHighRequestLatency
+        expr: (sum(rate(gateway_http_request_duration_seconds_sum{status!~"0|101"}[5m])) by (instance)) / (sum(rate(gateway_http_request_duration_seconds_count{status!~"0|101"}[5m])) by (instance)) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request latency on Gateway"
+          description: "Average latency (excluding WebSockets) is above 0.5s for more than 5 minutes."
