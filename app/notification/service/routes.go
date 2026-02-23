@@ -1,12 +1,15 @@
 package service
 
 import (
-	"github.com/gorilla/mux"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 func (hub *Hub) RegisterRoutes() http.Handler {
 	r := mux.NewRouter()
+
+	r.Handle("/metrics", MetricsHandler()).Methods(http.MethodGet)
 
 	r.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -22,5 +25,6 @@ func (hub *Hub) RegisterRoutes() http.Handler {
 
 	apiRoute.HandleFunc("/{id:[0-9]+}", hub.HandleReadSingle).Methods(http.MethodPatch)
 	apiRoute.HandleFunc("/{id:[0-9]+}", hub.HandleDeleteSingle).Methods(http.MethodDelete)
-	return r
+
+	return MetricsMiddleware(r)
 }

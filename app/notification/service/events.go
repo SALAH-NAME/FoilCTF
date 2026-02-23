@@ -12,6 +12,7 @@ func HandleJoin(hub *Hub, client *Client) {
 		hub.Clients[client.ID] = make(map[*Client]bool)
 	}
 	hub.Clients[client.ID][client] = true
+	WebsocketConnectedClients.Inc()
 	log.Printf("INFO: WEBSOCKET: User #%03d has joined the server", client.ID)
 }
 
@@ -29,12 +30,15 @@ func HandleUnjoin(hub *Hub, client *Client) {
 	if len(connections) == 0 {
 		delete(hub.Clients, client.ID)
 	}
+	WebsocketConnectedClients.Dec()
 	client.Connection.Close()
 	close(client.Send) // now guaranteed to be closed once.
 	log.Printf("INFO: userID: %s has left the server", client.ID)
 }
 
 func HandleWsEvent(hub *Hub, eventws *WsEvent) {
+	WebsocketMessagesTotal.Inc()
+	WebsocketEventsTotal.WithLabelValues(eventws.Event).Inc()
 	switch eventws.Event {
 	case "new":
 		BroadcastNotification(hub, eventws)

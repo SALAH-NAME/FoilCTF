@@ -18,7 +18,7 @@ const (
 )
 
 type FoilClaims struct {
-	UserID   *int `json:"userid"`
+	UserID   *int   `json:"userid"`
 	UserRole string `json:"role"`
 	jwt.RegisteredClaims
 }
