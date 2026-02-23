@@ -44,7 +44,7 @@ export default function TeamCard({
 	return (
 		<article className="h-full">
 			<Link
-				to={`/teams/${id}`}
+				to={`/teams/${name}`}
 				className="flex flex-col bg-white/70 rounded-md justify-between h-full p-6 border border-dark/10 hover:border-primary transition-all duration-200 hover:shadow-lg no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 				aria-label={`View ${name} team details`}
 			>

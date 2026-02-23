@@ -43,9 +43,8 @@ export function NavLink({
 			: location.pathname === item.to
 		: false;
 
-	const showLabels = isExpanded || isMobileOpen;
 	const isHidden = isParentCollapsed;
-
+	const showLabels = isExpanded || isMobileOpen;
 	if (hasChildren) {
 		return (
 			<div>

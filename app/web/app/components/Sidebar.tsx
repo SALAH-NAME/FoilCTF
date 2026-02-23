@@ -12,61 +12,22 @@ import NotificationPanel from '~/components/NotificationPanel';
 import { NavGroup, NavLink, type NavItemConfig } from '~/components/NavLink';
 import { fetch_user } from '~/routes/profile';
 
-const navItems: NavItemConfig[] = [
-	{ to: '/', label: 'Home', icon: 'home' },
-	{
-		to: '/events',
-		label: 'Events',
-		icon: 'calendar',
-		children: [
-			{ to: '/events?filter=active', label: 'Active', icon: 'calendar' },
-			{ to: '/events?filter=upcoming', label: 'Upcoming', icon: 'calendar' },
-			{ to: '/events?filter=ended', label: 'Past', icon: 'calendar' },
-		],
-	},
-	{
-		to: '/dashboard',
-		label: 'Dashboard',
-		icon: 'chart',
-		children: [
-			{ to: '/challenges', label: 'Challenges', icon: 'challenge' },
-			{ to: '/instances', label: 'Instances', icon: 'instance' },
-		],
-	},
-	{
-		to: '/teams',
-		label: 'Teams',
-		icon: 'team',
-		children: [
-			{ to: '/teams', label: 'Browse Teams', icon: 'team' },
-			{ to: '/team', label: 'My Team', icon: 'team' },
-		],
-	},
-	{
-		to: '/friends',
-		label: 'Social',
-		icon: 'users',
-		children: [
-			{ to: '/friends', label: 'Friends', icon: 'users' },
-			{ to: '/users', label: 'Find Users', icon: 'users' },
-		],
-	},
-	{ to: '/signin', label: 'Sign In', icon: 'user' },
-];
-
 type SidebarProps = {
 	session_user: SessionUser | undefined;
 };
 export default function Sidebar({ session_user }: SidebarProps) {
 	const { isExpanded, toggleExpanded, isMobileOpen, closeMobile } =
 		useSidebar();
+	const showText = isExpanded || isMobileOpen;
 
 	const location = useLocation();
-	const is_profile_active = location.pathname == '/profile';
+	const is_profile_active = (location.pathname === '/profile');
 
 	useEffect(() => {
+		if (!closeMobile)
+			return ;
 		closeMobile();
-	}, [location.pathname, closeMobile]);
+	}, [location.pathname]);
 	useEffect(() => {
 		if (isMobileOpen) {
 			document.body.style.overflow = 'hidden';
@@ -78,6 +39,9 @@ export default function Sidebar({ session_user }: SidebarProps) {
 		};
 	}, [isMobileOpen]);
 	useEffect(() => {
+		if (!closeMobile)
+			return ;
+
 		const handleEscape = (e: KeyboardEvent) => {
 			if (e.key === 'Escape' && isMobileOpen) {
 				closeMobile();
@@ -112,7 +76,6 @@ export default function Sidebar({ session_user }: SidebarProps) {
 					aria-hidden="true"
 				/>
 			)}
-
 			<NotificationPanel />
 
 			<aside
@@ -136,7 +99,7 @@ export default function Sidebar({ session_user }: SidebarProps) {
 						>
 							<Logo
 								size="md"
-								showText={isExpanded || isMobileOpen}
+								showText={showText}
 								className="ml-2"
 							/>
 						</Link>
@@ -232,7 +195,7 @@ export default function Sidebar({ session_user }: SidebarProps) {
 									className={`w-full flex items-center px-2 py-2 rounded-md transition-colors no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-inset ${
 										is_profile_active
 											? 'bg-primary hover:bg-accent/20 text-white focus-visible:ring-dark'
-											: 'hover:bg-primary text-dark focus-visible:ring-primary'
+											: 'hover:bg-primary text-dark hover:text-white focus-visible:ring-primary'
 									} ${isExpanded ? 'gap-3' : 'md:gap-0 gap-3'}`}
 									title={isExpanded ? undefined : 'Profile'}
 								>
@@ -241,11 +204,11 @@ export default function Sidebar({ session_user }: SidebarProps) {
 									>
 										<Icon
 											name="user"
-											className={`size-4  ${is_profile_active ? 'text-black' : 'text-white'}`}
+											className={`size-4 ${is_profile_active ? 'text-black' : 'text-white'}`}
 											aria-hidden={true}
 										/>
 									</div>
-									{(isExpanded || isMobileOpen) && (
+									{showText && (
 										<div
 											className={`flex-1 min-w-0 transition-opacity duration-300
 										 ${
@@ -253,10 +216,10 @@ export default function Sidebar({ session_user }: SidebarProps) {
 													? 'opacity-100 delay-300'
 													: 'md:opacity-0 md:w-0 md:overflow-hidden opacity-100'
 											}
-											${is_profile_active ? 'text-white hover:text-dark' : ' text-dark'}`}
+											${is_profile_active ? 'text-white hover:text-dark' : ''}`}
 										>
-											<p className="text-sm font-medium truncate">John Doe</p>
-											<p className="text-xs  truncate">john@example.com</p>
+											<p className="text-sm font-medium truncate">{user.username}</p>
+											{user.email && <p className="text-xs  truncate">{user.email}</p>}
 										</div>
 									)}
 								</Link>

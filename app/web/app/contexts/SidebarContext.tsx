@@ -16,22 +16,14 @@ interface SidebarContextType {
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
-
 export function SidebarProvider({ children }: { children: ReactNode }) {
-	const [isExpanded, setIsExpanded] = useState(() => {
-		if (typeof window === 'undefined') return false;
+	const [isExpanded, setIsExpanded] = useState(false);
+	useEffect(() => {
 		const saved = localStorage.getItem('sidebar-expanded');
-		return saved !== null ? JSON.parse(saved) : false;
-	});
+		setIsExpanded(saved !== null ? JSON.parse(saved) : true);
+	}, []);
 
 	const [isMobileOpen, setIsMobileOpen] = useState(false);
-
-	useEffect(() => {
-		if (typeof window !== 'undefined') {
-			localStorage.setItem('sidebar-expanded', JSON.stringify(isExpanded));
-		}
-	}, [isExpanded]);
-
 	useEffect(() => {
 		const handleResize = () => {
 			if (window.innerWidth >= 768) {
@@ -44,13 +36,14 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	const toggleExpanded = useCallback(() => {
-		setIsExpanded((prev: boolean) => !prev);
+		setIsExpanded((prev: boolean) => {
+			localStorage.setItem('sidebar-expanded', JSON.stringify(!prev));
+			return !prev;
+		});
 	}, []);
-
 	const toggleMobile = useCallback(() => {
 		setIsMobileOpen((prev) => !prev);
 	}, []);
-
 	const closeMobile = useCallback(() => {
 		setIsMobileOpen(false);
 	}, []);
