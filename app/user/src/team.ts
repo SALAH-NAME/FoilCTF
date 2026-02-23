@@ -584,14 +584,16 @@ export const getTeams = async(req: Request, res: Response) => {
 	const dbTeams = await db
 		.select()
 		.from(teams)
-		.where(search ? ilike(teams.name, `${search}%`) : undefined)
+		.where(search ? ilike(teams.name, `%${search}%`) : undefined)
 		.limit(limit)
 		.offset(limit * (page - 1));
 
-	const dbTeamsPublicData = dbTeams.map( (team) => ({
+	const dbTeamsPublicData = dbTeams.map(team => ({
+		id: team.id,
 		name: team.name,
 		captain_name: team.captain_name,
 		members_count: team.members_count,
+		max_members: team.max_members,
 		description: team.description,
 		is_locked: team.is_locked,
 	}));
