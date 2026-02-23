@@ -9,10 +9,11 @@ type ServiceConfig struct {
 }
 
 type RouteConfig struct {
-	Prefix      string
-	Protected   bool // is requires JWT authentication
-	WebSocket   bool // if it supports WebSocket upgrades
-	StripPrefix bool // if true, remove the prefix when forwarding
+	Prefix       string
+	Protected    bool   // is requires JWT authentication
+	RequiredRole string // optional required role (e.g. "admin")
+	WebSocket    bool   // if it supports WebSocket upgrades
+	StripPrefix  bool   // if true, remove the prefix when forwarding
 }
 
 func getEnv(key, fallback string) string {
@@ -148,10 +149,11 @@ var ServiceRegistry = []ServiceConfig{
 		BaseURL: getEnv("GATEWAY_PROMETHEUS_URL", "http://prometheus:9090"),
 		Routes: []RouteConfig{
 			{
-				Prefix:      "/monitoring/prometheus",
-				Protected:   false,
-				WebSocket:   false,
-				StripPrefix: false,
+				Prefix:       "/monitoring/prometheus",
+				Protected:    false,
+				RequiredRole: "",
+				WebSocket:    false,
+				StripPrefix:  false,
 			},
 		},
 	},
@@ -161,10 +163,11 @@ var ServiceRegistry = []ServiceConfig{
 		BaseURL: getEnv("GATEWAY_GRAFANA_URL", "http://grafana:9091"),
 		Routes: []RouteConfig{
 			{
-				Prefix:      "/monitoring/grafana",
-				Protected:   false,
-				WebSocket:   true,
-				StripPrefix: false,
+				Prefix:       "/monitoring/grafana",
+				Protected:    false,
+				RequiredRole: "",
+				WebSocket:    true,
+				StripPrefix:  false,
 			},
 		},
 	},

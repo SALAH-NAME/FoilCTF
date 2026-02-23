@@ -26,7 +26,11 @@ services:
     ports:
       - "3443:${GATEWAY_PORT:-443}" # For development access
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://localhost:443/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-check-certificate -qO- https://localhost:443/health || exit 1",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -295,6 +299,7 @@ services:
       - "--web.route-prefix=/monitoring/prometheus"
     volumes:
       - ./monitoring/promethues/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/promethues/rules.yml:/etc/prometheus/rules.yml:ro
       - prometheus-data:/prometheus
     networks:
       - foilctf_net
@@ -306,7 +311,7 @@ services:
     image: docker.io/grafana/grafana:latest
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_DOMAIN=localhost:3443
       - GF_SERVER_HTTP_PORT=9091

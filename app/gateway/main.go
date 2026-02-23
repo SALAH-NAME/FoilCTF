@@ -120,7 +120,7 @@ func main() {
 	r.Get("/health", healthHandler)
 	r.Handle("/metrics", metricsHandler())
 
-	if err := registerAllServices(r, ServiceRegistry); err != nil {
+	if err := registerAllServices(r, ServiceRegistry, config.AccessTokenSecret); err != nil {
 		log.Fatalf("[%s] Failed to register services: %v", config.ServiceName, err)
 	}
 
