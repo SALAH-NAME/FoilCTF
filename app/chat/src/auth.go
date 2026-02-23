@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -19,7 +20,7 @@ const (
 )
 
 type MyClaims struct {
-	UserID   string `json:"userid"`
+	UserID   int64  `json:"id"`
 	Username string `json:"username"`
 	UserRole string `json:"role"`
 	jwt.RegisteredClaims
@@ -54,12 +55,12 @@ func (hub *Hub) AuthMiddleware(next http.Handler) http.Handler {
 			JSONError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		if claims.UserID == "" || claims.Username == "" {
+		if claims.UserID == 0 || claims.Username == "" {
 			log.Printf("DEBUG: SERVER: Missing either UserID or Username")
 			JSONError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		ctx := context.WithValue(r.Context(), userIDKey, claims.UserID)
+		ctx := context.WithValue(r.Context(), userIDKey, strconv.FormatInt(claims.UserID, 10))
 		ctx = context.WithValue(ctx, usernameKey, claims.Username)
 		ctx = context.WithValue(ctx, userRoleKey, claims.UserRole)
 		next.ServeHTTP(w, r.WithContext(ctx))
