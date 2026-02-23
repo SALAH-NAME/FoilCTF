@@ -308,13 +308,14 @@ services:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_DOMAIN=localhost:3443
       - GF_SERVER_HTTP_PORT=9091
       - GF_SERVER_ROOT_URL=https://localhost:3443/monitoring/grafana/
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
       - GF_ANALYTICS_REPORTING_ENABLED=false
       - GF_ANALYTICS_CHECK_FOR_UPDATES=false
-      - GF_SECURITY_CSRF_TRUSTED_ORIGINS=localhost:3443,gateway:443,https://localhost:3443,https://gateway:443
-      - GF_LIVE_ALLOWED_ORIGINS=https://localhost:3443,https://gateway:443
+      - GF_SECURITY_CSRF_TRUSTED_ORIGINS=localhost:3443 localhost gateway:443 gateway grafana:9091 grafana
+      - GF_LIVE_ALLOWED_ORIGINS=https://localhost:3443,https://gateway:443,http://grafana:9091
     volumes:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
