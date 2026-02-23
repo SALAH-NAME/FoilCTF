@@ -18,3 +18,30 @@ groups:
         annotations:
           summary: "High request latency on Gateway"
           description: "Average latency (excluding WebSockets) is above 0.5s for more than 5 minutes."
+
+      - alert: ChatDown
+        expr: up{job="chat"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Chat service is down"
+          description: "Chat service has been down for more than 1 minute."
+
+      - alert: ChatHighWebSocketConnections
+        expr: chat_websocket_connected_clients > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of WebSocket connections on Chat"
+          description: "Chat service has more than 100 active WebSocket connections for 5 minutes."
+
+      - alert: ChatWebSocketNoTraffic
+        expr: (sum(rate(chat_websocket_messages_total[10m])) == 0) and (chat_websocket_connected_clients > 0)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No WebSocket traffic on Chat"
+          description: "Chat service is processing 0 messages despite having active connections for 10 minutes."

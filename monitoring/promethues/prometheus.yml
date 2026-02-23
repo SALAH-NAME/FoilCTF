@@ -21,3 +21,9 @@ scrape_configs:
     static_configs:
       - targets: ['gateway:443']
     metrics_path: '/metrics'
+
+  - job_name: 'chat'
+    scheme: http
+    static_configs:
+      - targets: ['chat:3003']
+    metrics_path: '/metrics'
