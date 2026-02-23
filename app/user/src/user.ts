@@ -42,8 +42,8 @@ export async function route_user_list(req: Request, res: Response<any, { user: J
 	const { user: user_dispatcher } = res.locals;
 	
 	const orm_on_friends = or(
-		and(eq(table_friends.username_1, table_users.username), ilike(table_friends.username_2, '%' + search + '%')),
-		and(eq(table_friends.username_2, table_users.username), ilike(table_friends.username_1, '%' + search + '%')),
+		and(eq(table_friends.username_1, table_users.username), ilike(table_friends.username_2, user_dispatcher.username)),
+		and(eq(table_friends.username_2, table_users.username), ilike(table_friends.username_1, user_dispatcher.username)),
 	);
 	const orm_on_friend_requests = or(
 		eq(table_friend_requests.sender_name, table_users.username),
@@ -81,7 +81,6 @@ export async function route_user_list(req: Request, res: Response<any, { user: J
 	const calculateFriendStatus = (user: typeof orm_users[number]): FriendStatus  => {
 		if (user.username === user_dispatcher.username)
 			return ('none');
-
 		if (user.friend_1 === user_dispatcher.username || user.friend_2 === user_dispatcher.username)
 			return ('friends');
 		if (user.request_sender === user_dispatcher.username)
