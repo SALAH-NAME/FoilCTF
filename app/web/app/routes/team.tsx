@@ -12,7 +12,6 @@ import PageHeader from '~/components/PageHeader';
 import TeamMemberCard from '~/components/TeamMemberCard';
 import JoinRequestCard from '~/components/JoinRequestCard';
 
-
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - My Team' }];
 }

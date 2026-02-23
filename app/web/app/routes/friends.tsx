@@ -24,17 +24,21 @@ interface Friend {
 	totalPoints: number;
 }
 
-export async function remote_fetch_friends(token: string, q: string, page: number, limit: number) {
+export async function remote_fetch_friends(
+	token: string,
+	q: string,
+	page: number,
+	limit: number
+) {
 	const url = new URL('/api/friends', import.meta.env.VITE_REST_USER_ORIGIN);
-	if (q)
-		url.searchParams.set('q', q);
+	if (q) url.searchParams.set('q', q);
 	url.searchParams.set('page', page.toString());
 	url.searchParams.set('limit', limit.toString());
 
 	const res = await fetch(url, {
 		headers: {
-			'Authorization': `Bearer ${token}`,
-		}
+			Authorization: `Bearer ${token}`,
+		},
 	});
 	const content_type =
 		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
@@ -42,8 +46,7 @@ export async function remote_fetch_friends(token: string, q: string, page: numbe
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 	type JSONData_Friends = {
 		data: string[];
 		limit: number;
@@ -52,13 +55,16 @@ export async function remote_fetch_friends(token: string, q: string, page: numbe
 	return json as JSONData_Friends;
 }
 export async function remote_remove_friend(token: string, target: string) {
-	const url = new URL('/api/friends/' + target, import.meta.env.VITE_REST_USER_ORIGIN);
+	const url = new URL(
+		'/api/friends/' + target,
+		import.meta.env.VITE_REST_USER_ORIGIN
+	);
 
 	const res = await fetch(url, {
 		method: 'DELETE',
 		headers: {
-			'Authorization': `Bearer ${token}`,
-		}
+			Authorization: `Bearer ${token}`,
+		},
 	});
 	const content_type =
 		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
@@ -66,21 +72,27 @@ export async function remote_remove_friend(token: string, target: string) {
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
 
-export async function remote_fetch_friend_requests(token: string, q: string, page: number, limit: number) {
-	const url = new URL('/api/friends/requests', import.meta.env.VITE_REST_USER_ORIGIN);
-	if (q)
-		url.searchParams.set('q', q);
+export async function remote_fetch_friend_requests(
+	token: string,
+	q: string,
+	page: number,
+	limit: number
+) {
+	const url = new URL(
+		'/api/friends/requests',
+		import.meta.env.VITE_REST_USER_ORIGIN
+	);
+	if (q) url.searchParams.set('q', q);
 	url.searchParams.set('page', page.toString());
 	url.searchParams.set('limit', limit.toString());
 
 	const res = await fetch(url, {
 		headers: {
-			'Authorization': `Bearer ${token}`,
-		}
+			Authorization: `Bearer ${token}`,
+		},
 	});
 	const content_type =
 		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
@@ -88,23 +100,28 @@ export async function remote_fetch_friend_requests(token: string, q: string, pag
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 	type JSONData_Friends = {
-		data: { sender_name: string, receiver_name: string }[];
+		data: { sender_name: string; receiver_name: string }[];
 		limit: number;
 		page: number;
 	};
 	return json as JSONData_Friends;
 }
-export async function remote_send_friend_request(token: string, target: string) {
-	const url = new URL('/api/friends/requests/' + target, import.meta.env.VITE_REST_USER_ORIGIN);
+export async function remote_send_friend_request(
+	token: string,
+	target: string
+) {
+	const url = new URL(
+		'/api/friends/requests/' + target,
+		import.meta.env.VITE_REST_USER_ORIGIN
+	);
 
 	const res = await fetch(url, {
 		method: 'POST',
 		headers: {
-			'Authorization': `Bearer ${token}`,
-		}
+			Authorization: `Bearer ${token}`,
+		},
 	});
 	const content_type =
 		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
@@ -112,17 +129,22 @@ export async function remote_send_friend_request(token: string, target: string) 
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
-export async function remote_cancel_friend_request(token: string, target: string) {
-	const url = new URL('/api/friends/requests/' + target, import.meta.env.VITE_REST_USER_ORIGIN);
+export async function remote_cancel_friend_request(
+	token: string,
+	target: string
+) {
+	const url = new URL(
+		'/api/friends/requests/' + target,
+		import.meta.env.VITE_REST_USER_ORIGIN
+	);
 
 	const res = await fetch(url, {
 		method: 'DELETE',
 		headers: {
-			'Authorization': `Bearer ${token}`,
-		}
+			Authorization: `Bearer ${token}`,
+		},
 	});
 	const content_type =
 		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
@@ -130,17 +152,22 @@ export async function remote_cancel_friend_request(token: string, target: string
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
-export async function remote_accept_friend_request(token: string, target: string) {
-	const url = new URL('/api/friends/requests/pending/' + target, import.meta.env.VITE_REST_USER_ORIGIN);
+export async function remote_accept_friend_request(
+	token: string,
+	target: string
+) {
+	const url = new URL(
+		'/api/friends/requests/pending/' + target,
+		import.meta.env.VITE_REST_USER_ORIGIN
+	);
 
 	const res = await fetch(url, {
 		method: 'PATCH',
 		headers: {
-			'Authorization': `Bearer ${token}`,
-		}
+			Authorization: `Bearer ${token}`,
+		},
 	});
 	const content_type =
 		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
@@ -148,17 +175,22 @@ export async function remote_accept_friend_request(token: string, target: string
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
-export async function remote_refuse_friend_request(token: string, target: string) {
-	const url = new URL('/api/friends/requests/pending/' + target, import.meta.env.VITE_REST_USER_ORIGIN);
+export async function remote_refuse_friend_request(
+	token: string,
+	target: string
+) {
+	const url = new URL(
+		'/api/friends/requests/pending/' + target,
+		import.meta.env.VITE_REST_USER_ORIGIN
+	);
 
 	const res = await fetch(url, {
 		method: 'DELETE',
 		headers: {
-			'Authorization': `Bearer ${token}`,
-		}
+			Authorization: `Bearer ${token}`,
+		},
 	});
 	const content_type =
 		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
@@ -166,8 +198,7 @@ export async function remote_refuse_friend_request(token: string, target: string
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
 
 export default function Page() {
@@ -195,37 +226,51 @@ export default function Page() {
 			newParams.delete('page');
 			setSearchParams(newParams);
 		}, 200);
-		return (() => {
+		return () => {
 			clearTimeout(idDebounce);
-		});
+		};
 	}, [queryTerm]);
 
 	const queryClient = useQueryClient();
 	const { addToast } = useToast();
 
 	const query_friends = useQuery({
-		queryKey: ['friends', { token_access, searchQuery, currentPage, itemsPerPage }],
+		queryKey: [
+			'friends',
+			{ token_access, searchQuery, currentPage, itemsPerPage },
+		],
 		initialData: [],
 		queryFn: async ({ queryKey }) => {
 			const [_queryKeyPrime, variables] = queryKey;
-			if (typeof variables === 'string')
-				return [];
+			if (typeof variables === 'string') return [];
 
 			const { searchQuery, currentPage, itemsPerPage } = variables;
-			const { data: friends } = await remote_fetch_friends(token_access, searchQuery, currentPage, itemsPerPage);
+			const { data: friends } = await remote_fetch_friends(
+				token_access,
+				searchQuery,
+				currentPage,
+				itemsPerPage
+			);
 			return friends;
 		},
 	});
 	const query_requests = useQuery({
-		queryKey: ['friends-requests', { token_access, searchQuery, currentPage, itemsPerPage }],
+		queryKey: [
+			'friends-requests',
+			{ token_access, searchQuery, currentPage, itemsPerPage },
+		],
 		initialData: [],
 		queryFn: async ({ queryKey }) => {
 			const [_queryKeyPrime, variables] = queryKey;
-			if (typeof variables === 'string')
-				return [];
+			if (typeof variables === 'string') return [];
 
 			const { searchQuery, currentPage, itemsPerPage } = variables;
-			const { data: friends } = await remote_fetch_friend_requests(token_access, searchQuery, currentPage, itemsPerPage);
+			const { data: friends } = await remote_fetch_friend_requests(
+				token_access,
+				searchQuery,
+				currentPage,
+				itemsPerPage
+			);
 			return friends;
 		},
 	});
@@ -238,7 +283,7 @@ export default function Page() {
 			addToast({
 				variant: 'success',
 				title: 'User unfriended',
-				message: ''
+				message: '',
 			});
 		},
 		onError(err) {
@@ -247,7 +292,7 @@ export default function Page() {
 				title: 'User unfriend',
 				message: err.message,
 			});
-		}
+		},
 	});
 	const mut_friend_request_cancel = useMutation<unknown, Error, string>({
 		mutationFn: async (target) => {
@@ -258,7 +303,7 @@ export default function Page() {
 			addToast({
 				variant: 'success',
 				title: 'Friend request cancel',
-				message: ''
+				message: '',
 			});
 		},
 		onError(err) {
@@ -279,7 +324,7 @@ export default function Page() {
 			addToast({
 				variant: 'success',
 				title: 'Friend request accepted',
-				message: ''
+				message: '',
 			});
 		},
 		onError(err) {
@@ -300,7 +345,7 @@ export default function Page() {
 			addToast({
 				variant: 'success',
 				title: 'Friend request refused',
-				message: ''
+				message: '',
 			});
 		},
 		onError(err) {
@@ -311,7 +356,6 @@ export default function Page() {
 			});
 		},
 	});
-
 
 	const handleRemoveFriend = (target: string) => {
 		mut_friend_remove.mutate(target);
@@ -347,9 +391,25 @@ export default function Page() {
 		},
 	];
 
-	const filteredSent: Friend[] = query_requests.data.filter(({ sender_name: username }) => username === user.username).map(({ receiver_name: username }) => ({ username, challengesSolved: 0, totalPoints: 0 })); // getFilteredData(friendsData.received);
-	const filteredFriends: Friend[] = query_friends.data.map(username => ({ username, challengesSolved: 0, totalPoints: 0 })); // getFilteredData(friendsData.friends);
-	const filteredReceived: Friend[] = query_requests.data.filter(({ receiver_name: username }) => username === user.username).map(({ sender_name: username }) => ({ username, challengesSolved: 0, totalPoints: 0 })); // getFilteredData(friendsData.received);
+	const filteredSent: Friend[] = query_requests.data
+		.filter(({ sender_name: username }) => username === user.username)
+		.map(({ receiver_name: username }) => ({
+			username,
+			challengesSolved: 0,
+			totalPoints: 0,
+		})); // getFilteredData(friendsData.received);
+	const filteredFriends: Friend[] = query_friends.data.map((username) => ({
+		username,
+		challengesSolved: 0,
+		totalPoints: 0,
+	})); // getFilteredData(friendsData.friends);
+	const filteredReceived: Friend[] = query_requests.data
+		.filter(({ receiver_name: username }) => username === user.username)
+		.map(({ sender_name: username }) => ({
+			username,
+			challengesSolved: 0,
+			totalPoints: 0,
+		})); // getFilteredData(friendsData.received);
 
 	const getPaginatedData = (data: Friend[]) => {
 		const totalPages = Math.ceil(data.length / itemsPerPage);

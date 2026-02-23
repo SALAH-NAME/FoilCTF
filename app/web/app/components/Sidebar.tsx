@@ -91,11 +91,14 @@ export default function Sidebar({ session_user }: SidebarProps) {
 	}, [isMobileOpen, closeMobile]);
 
 	const query_user = useQuery({
-		queryKey: ['user', { username: session_user?.username }, { token_access: session_user?.token_access }],
+		queryKey: [
+			'user',
+			{ username: session_user?.username },
+			{ token_access: session_user?.token_access },
+		],
 		initialData: null,
 		queryFn: async () => {
-			if (!session_user)
-				return (null);
+			if (!session_user) return null;
 			return await fetch_user(session_user.token_access);
 		},
 	});
@@ -140,64 +143,125 @@ export default function Sidebar({ session_user }: SidebarProps) {
 
 						<nav className="p-4 space-y-2" aria-label="Main navigation">
 							<NavLink item={{ to: '/', label: 'Home', icon: 'home' }} />
-							{ !user && <NavLink item={{ to: '/signin', label: 'Sign In', icon: 'user' }} />}
-							<NavLink item={{ to: '/events', label: 'Events', icon: 'calendar' }}>
-								<NavLink item={{ to: '/events?filter=upcoming', label: 'Active', icon: 'calendar' }} isNested />
-								<NavLink item={{ to: '/events?filter=active', label: 'Upcoming', icon: 'calendar' }} isNested />
-								<NavLink item={{ to: '/events?filter=ended', label: 'Past', icon: 'calendar' }} isNested />
+							{!user && (
+								<NavLink
+									item={{ to: '/signin', label: 'Sign In', icon: 'user' }}
+								/>
+							)}
+							<NavLink
+								item={{ to: '/events', label: 'Events', icon: 'calendar' }}
+							>
+								<NavLink
+									item={{
+										to: '/events?filter=upcoming',
+										label: 'Active',
+										icon: 'calendar',
+									}}
+									isNested
+								/>
+								<NavLink
+									item={{
+										to: '/events?filter=active',
+										label: 'Upcoming',
+										icon: 'calendar',
+									}}
+									isNested
+								/>
+								<NavLink
+									item={{
+										to: '/events?filter=ended',
+										label: 'Past',
+										icon: 'calendar',
+									}}
+									isNested
+								/>
 							</NavLink>
-							<NavLink item={{ to: '/dashboard', label: 'Dashboard', icon: 'chart' }}>
-								<NavLink item={{ to: '/challenges', label: 'Challenges', icon: 'challenge' }} isNested />
-								<NavLink item={{ to: '/instances', label: 'Instances', icon: 'instance' }} isNested />
+							<NavLink
+								item={{ to: '/dashboard', label: 'Dashboard', icon: 'chart' }}
+							>
+								<NavLink
+									item={{
+										to: '/challenges',
+										label: 'Challenges',
+										icon: 'challenge',
+									}}
+									isNested
+								/>
+								<NavLink
+									item={{
+										to: '/instances',
+										label: 'Instances',
+										icon: 'instance',
+									}}
+									isNested
+								/>
 							</NavLink>
 							<NavLink item={{ to: '/teams', label: 'Teams', icon: 'team' }}>
-								{ user?.team_name && <NavLink item={{ to: '/team', label: user.team_name ?? 'My Team', icon: 'team' }} isNested />}
+								{user?.team_name && (
+									<NavLink
+										item={{
+											to: '/team',
+											label: user.team_name ?? 'My Team',
+											icon: 'team',
+										}}
+										isNested
+									/>
+								)}
 							</NavLink>
 							<NavLink item={{ to: '/users', label: 'Users', icon: 'users' }}>
-								{ user && <NavLink item={{ to: '/friends', label: 'Friends', icon: 'users' }} isNested />}
+								{user && (
+									<NavLink
+										item={{ to: '/friends', label: 'Friends', icon: 'users' }}
+										isNested
+									/>
+								)}
 							</NavLink>
 						</nav>
 					</div>
 
 					<div className="border-t border-dark/10 p-4 space-y-2">
-						<div className="hidden md:block">
-							<NotificationBell variant="sidebar" />
-						</div>
+						{user && (
+							<>
+								<div className="hidden md:block">
+									<NotificationBell variant="sidebar" />
+								</div>
 
-						<Link
-							to="/profile"
-							aria-label="User profile"
-							className={`w-full flex items-center px-2 py-2 rounded-md transition-colors no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-inset ${
-								is_profile_active
-									? 'bg-primary hover:bg-accent/20 text-white focus-visible:ring-dark'
-									: 'hover:bg-primary text-dark focus-visible:ring-primary'
-							} ${isExpanded ? 'gap-3' : 'md:gap-0 gap-3'}`}
-							title={isExpanded ? undefined : 'Profile'}
-						>
-							<div
-								className={`w-8 h-8 my-1  rounded-full flex items-center justify-center shrink-0 ${is_profile_active ? 'bg-white' : 'bg-secondary'}`}
-							>
-								<Icon
-									name="user"
-									className={`size-4  ${is_profile_active ? 'text-black' : 'text-white'}`}
-									aria-hidden={true}
-								/>
-							</div>
-							{(isExpanded || isMobileOpen) && (
-								<div
-									className={`flex-1 min-w-0 transition-opacity duration-300
+								<Link
+									to="/profile"
+									aria-label="User profile"
+									className={`w-full flex items-center px-2 py-2 rounded-md transition-colors no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-inset ${
+										is_profile_active
+											? 'bg-primary hover:bg-accent/20 text-white focus-visible:ring-dark'
+											: 'hover:bg-primary text-dark focus-visible:ring-primary'
+									} ${isExpanded ? 'gap-3' : 'md:gap-0 gap-3'}`}
+									title={isExpanded ? undefined : 'Profile'}
+								>
+									<div
+										className={`w-8 h-8 my-1  rounded-full flex items-center justify-center shrink-0 ${is_profile_active ? 'bg-white' : 'bg-secondary'}`}
+									>
+										<Icon
+											name="user"
+											className={`size-4  ${is_profile_active ? 'text-black' : 'text-white'}`}
+											aria-hidden={true}
+										/>
+									</div>
+									{(isExpanded || isMobileOpen) && (
+										<div
+											className={`flex-1 min-w-0 transition-opacity duration-300
 										 ${
 												isExpanded
 													? 'opacity-100 delay-300'
 													: 'md:opacity-0 md:w-0 md:overflow-hidden opacity-100'
 											}
 											${is_profile_active ? 'text-white hover:text-dark' : ' text-dark'}`}
-								>
-									<p className="text-sm font-medium truncate">John Doe</p>
-									<p className="text-xs  truncate">john@example.com</p>
-								</div>
-							)}
-						</Link>
+										>
+											<p className="text-sm font-medium truncate">John Doe</p>
+											<p className="text-xs  truncate">john@example.com</p>
+										</div>
+									)}
+								</Link>
+							</>
+						)}
 
 						<button
 							type="button"

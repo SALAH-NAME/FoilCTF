@@ -22,7 +22,7 @@ interface NavLinkProps {
 	item: NavItemConfig;
 	isNested?: boolean;
 	isParentCollapsed?: boolean;
-	children?: any,
+	children?: any;
 }
 
 export function NavLink({
@@ -108,7 +108,7 @@ export function NavLink({
 						 `}
 				>
 					<div className="ml-4 mt-1 space-y-1 transition-all duration-300">
-						{ children }
+						{children}
 					</div>
 				</div>
 			</div>

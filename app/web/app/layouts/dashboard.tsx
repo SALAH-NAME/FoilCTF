@@ -41,40 +41,39 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 	const { user } = loaderData;
 	const { performOpen } = useNotificationSocketProvider();
 	useEffect(() => {
-		if (!user?.token_access)
-			return ;
+		if (!user?.token_access) return;
 
 		performOpen(user.token_access);
 	}, [user]);
 
-
 	const fetcher = useFetcher();
 	useEffect(() => {
-		if (!user)
-			return ;
+		if (!user) return;
 
 		const { token_access } = user;
-		if (!token_access)
-			return ;
+		if (!token_access) return;
 
 		let cancelled = false;
 		fetcher.submit(null, {
 			method: 'post',
 			action: '/refresh',
 		});
-		const intervalHandle = setInterval(async () => {
-			if (cancelled) return ;
+		const intervalHandle = setInterval(
+			async () => {
+				if (cancelled) return;
 
-			await fetcher.submit(null, {
-				method: 'post',
-				action: '/refresh',
-			});
-			console.debug('Session has been refreshed');
-		}, 1_000 * parseInt(import.meta.env.VITE_REFRESH_INTERVAL_SECS ?? '60'));
-		return (() => {
+				await fetcher.submit(null, {
+					method: 'post',
+					action: '/refresh',
+				});
+				console.debug('Session has been refreshed');
+			},
+			1_000 * parseInt(import.meta.env.VITE_REFRESH_INTERVAL_SECS ?? '60')
+		);
+		return () => {
 			cancelled = true;
 			clearInterval(intervalHandle);
-		});
+		};
 	}, [user?.token_refresh]);
 
 	return (

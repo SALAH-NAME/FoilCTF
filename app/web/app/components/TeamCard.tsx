@@ -58,7 +58,9 @@ export default function TeamCard({
 								? 'bg-green-100 text-green-700'
 								: 'bg-gray-100 text-gray-700'
 						}`}
-						aria-label={!is_locked ? 'Team is open for joining' : 'Team is closed'}
+						aria-label={
+							!is_locked ? 'Team is open for joining' : 'Team is closed'
+						}
 					>
 						{!is_locked ? 'Open' : 'Closed'}
 					</div>
@@ -79,7 +81,8 @@ export default function TeamCard({
 					</div>
 					<div>
 						<InfoText icon="calendar" className="text-sm text-dark/80">
-							<span className="font-semibold">{events_participated}</span> Events
+							<span className="font-semibold">{events_participated}</span>{' '}
+							Events
 						</InfoText>
 					</div>
 				</div>

@@ -25,17 +25,21 @@ interface User {
 
 // TODO(xenobas): Continue fixing the bug where if you don't type the exact bastard it doesn't show up despite the response containing all matching bastards
 
-async function remote_fetch_users(token: string, q: string, page: number, limit: number) {
+async function remote_fetch_users(
+	token: string,
+	q: string,
+	page: number,
+	limit: number
+) {
 	const url = new URL('/api/users', import.meta.env.VITE_REST_USER_ORIGIN);
-	if (q)
-		url.searchParams.set('q', q);
+	if (q) url.searchParams.set('q', q);
 	url.searchParams.set('page', page.toString());
 	url.searchParams.set('limit', limit.toString());
 
 	const res = await fetch(url, {
 		headers: {
-			'Authorization': `Bearer ${token}`,
-		}
+			Authorization: `Bearer ${token}`,
+		},
 	});
 	const content_type =
 		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
@@ -43,8 +47,7 @@ async function remote_fetch_users(token: string, q: string, page: number, limit:
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 	type JSONData_User = {
 		id: number;
 		role: string;
@@ -64,7 +67,9 @@ async function remote_fetch_users(token: string, q: string, page: number, limit:
 }
 export default function Page() {
 	const { addToast } = useToast();
-	const { userState: { token_access } } = useUserAuth();
+	const {
+		userState: { token_access },
+	} = useUserAuth();
 
 	const [queryTerm, setQueryTerm] = useState<string>('');
 	const [searchParams, setSearchParams] = useSearchParams();
@@ -79,9 +84,9 @@ export default function Page() {
 			newParams.delete('page');
 			setSearchParams(newParams);
 		}, 200);
-		return (() => {
+		return () => {
 			clearTimeout(idDebounce);
-		});
+		};
 	}, [queryTerm]);
 
 	const searchQuery = searchParams.get('q') || '';
@@ -91,15 +96,22 @@ export default function Page() {
 	const queryClient = useQueryClient();
 
 	const query_users = useQuery({
-		queryKey: ['users', { token_access, searchQuery, currentPage, itemsPerPage }],
+		queryKey: [
+			'users',
+			{ token_access, searchQuery, currentPage, itemsPerPage },
+		],
 		initialData: [],
 		queryFn: async ({ queryKey }) => {
 			const [_queryKeyPrime, variables] = queryKey;
-			if (typeof variables === 'string')
-				return [];
+			if (typeof variables === 'string') return [];
 
 			const { searchQuery, currentPage, itemsPerPage } = variables;
-			const { data: users } = await remote_fetch_users(token_access, searchQuery, currentPage, itemsPerPage);
+			const { data: users } = await remote_fetch_users(
+				token_access,
+				searchQuery,
+				currentPage,
+				itemsPerPage
+			);
 			return users;
 		},
 	});
@@ -112,7 +124,7 @@ export default function Page() {
 			addToast({
 				variant: 'success',
 				title: 'Friend request sent',
-				message: ''
+				message: '',
 			});
 		},
 		onError(err) {
@@ -121,12 +133,11 @@ export default function Page() {
 				title: 'Friend request not sent',
 				message: err.message,
 			});
-		}
+		},
 	});
 
 	useEffect(() => {
-		if (!query_users.error)
-			return ;
+		if (!query_users.error) return;
 		addToast({
 			variant: 'error',
 			title: 'Users query failed',
@@ -137,7 +148,7 @@ export default function Page() {
 	const filtered_users = query_users.data.map((user) => ({
 		username: user.username,
 		teamName: user.team_name || '',
-		
+
 		avatar: user.avatar || '',
 		challengesSolved: user.challenges_solved || 0,
 		totalPoints: user.total_points || 0,

@@ -16,8 +16,7 @@ export function meta({}: Route.MetaArgs) {
 
 async function remote_fetch_teams(q: string, page: number, limit: number) {
 	const url = new URL('/api/teams', import.meta.env.VITE_REST_USER_ORIGIN);
-	if (q)
-		url.searchParams.set('q', q);
+	if (q) url.searchParams.set('q', q);
 	url.searchParams.set('page', page.toString());
 	url.searchParams.set('limit', limit.toString());
 
@@ -28,8 +27,7 @@ async function remote_fetch_teams(q: string, page: number, limit: number) {
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 	type JSONData_Teams = {
 		data: {
 			id: number;
@@ -52,7 +50,7 @@ export default function Page() {
 
 	const [queryTerm, setQueryTerm] = useState<string>('');
 	const [searchParams, setSearchParams] = useSearchParams();
-	
+
 	const searchQuery = searchParams.get('q') || '';
 	const statusFilter = (searchParams.get('status') || 'all') as
 		| 'all'
@@ -71,9 +69,9 @@ export default function Page() {
 			newParams.delete('page');
 			setSearchParams(newParams);
 		}, 200);
-		return (() => {
+		return () => {
 			clearTimeout(idDebounce);
-		});
+		};
 	}, [queryTerm]);
 
 	const query_teams = useQuery({
@@ -81,11 +79,14 @@ export default function Page() {
 		initialData: [],
 		queryFn: async ({ queryKey }) => {
 			const [_queryKeyPrime, variables] = queryKey;
-			if (typeof variables === 'string')
-				return [];
+			if (typeof variables === 'string') return [];
 
 			const { searchQuery, currentPage, itemsPerPage } = variables;
-			const { data: teams } = await remote_fetch_teams(searchQuery, currentPage, itemsPerPage);
+			const { data: teams } = await remote_fetch_teams(
+				searchQuery,
+				currentPage,
+				itemsPerPage
+			);
 			return teams;
 		},
 	});

@@ -13,7 +13,7 @@ interface UserCardProps {
 	challengesSolved: number;
 	totalPoints: number;
 	friendStatus?: FriendStatus;
-	disabled?: boolean,
+	disabled?: boolean;
 	onAddFriend?: () => void;
 }
 
@@ -58,7 +58,8 @@ export default function UserCard({
 				'aria-label': `Already friends with ${username}`,
 			};
 		}
-		if (friendStatus === 'sent' || friendStatus === 'received') { // TODO(xenobas): Do not collapse this to 'pending'
+		if (friendStatus === 'sent' || friendStatus === 'received') {
+			// TODO(xenobas): Do not collapse this to 'pending'
 			return {
 				'variant': 'ghost' as const,
 				'disabled': true,
@@ -120,12 +121,11 @@ export default function UserCard({
 					</div>
 				</div>
 
-				{ user_curr.username !== username && (
-				(true) && (
+				{user_curr.username !== username && true && (
 					<Button size="sm" {...getButtonProps(friendStatus)}>
 						{getButtonContent(friendStatus)}
 					</Button>
-				))}
+				)}
 			</div>
 		</article>
 	);
