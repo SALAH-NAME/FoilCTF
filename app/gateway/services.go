@@ -57,6 +57,12 @@ var ServiceRegistry = []ServiceConfig{
 				WebSocket:   false,
 				StripPrefix: false,
 			},
+			{
+				Prefix:      "/api/requests",
+				Protected:   true,
+				WebSocket:   false,
+				StripPrefix: false,
+			},
 		},
 	},
 

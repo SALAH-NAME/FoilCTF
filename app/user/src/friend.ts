@@ -140,6 +140,25 @@ export async function sendFriendRequest(
 				throw new FoilCTF_Error('No such user', 403);
 			}
 
+			const [existingFriendship] = await tx
+				.select()
+				.from(friends)
+				.where(
+					or(
+						and(
+							eq(friends.username1, decodedUser.username),
+							eq(friends.username2, target)
+						),
+						and(
+							eq(friends.username1, target),
+							eq(friends.username2, decodedUser.username)
+						)
+					)
+				);
+			if (existingFriendship) {
+				throw new FoilCTF_Error('Already friends', 403);
+			}
+
 			const [existingRequest] = await tx
 				.select()
 				.from(friendRequests)
