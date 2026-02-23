@@ -42,7 +42,7 @@ import {
 	route_auth_refresh,
 	route_auth_logout,
 } from './auth';
-import { route_user_me, route_user_update } from './user';
+import { route_user_list, route_user_me, route_user_update } from './user';
 import {
 	createTeam,
 	getTeamDetails,
@@ -66,7 +66,7 @@ import {
 	acceptFriendRequest,
 	rejectFriendRequest,
 	listFriends,
-	listReceivedFriendRequests,
+	listFriendRequests,
 	removeFriend,
 	cancelFriendRequest,
 	notifyUser,
@@ -130,6 +130,7 @@ app.get('/api/oauth/42/connect', route_oauth_42_connect);
 app.get('/api/oauth/42/connect/verify', route_oauth_42_verify('connect'));
 
 // SECTION: Users
+app.get('/api/users', authenticateToken, route_user_list);
 app.get('/api/users/me', authenticateToken, route_user_me);
 app.put(
 	'/api/users/:username',
@@ -142,7 +143,7 @@ app.put(
 
 // SECTION: friends
 app.get('/api/friends', authenticateToken, listFriends);
-app.get('/api/friends/requests', authenticateToken, listReceivedFriendRequests);
+app.get('/api/friends/requests', authenticateToken, listFriendRequests);
 app.post(
 	'/api/friends/requests/:username',
 	authenticateToken,

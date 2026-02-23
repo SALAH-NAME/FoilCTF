@@ -58,11 +58,11 @@ export async function listFriends(
 		? or(
 				and(
 					eq(friends.username_1, decodedUser.username),
-					ilike(friends.username_2, `${search}%`)
+					search ? ilike(friends.username_2, `%${search}%`) : undefined,
 				),
 				and(
 					eq(friends.username_2, decodedUser.username),
-					ilike(friends.username_1, `${search}%`)
+					search ? ilike(friends.username_1, `%${search}%`) : undefined,
 				)
 			)
 		: or(
@@ -88,28 +88,26 @@ export async function listFriends(
 	});
 }
 
-export async function listReceivedFriendRequests(
+export async function listFriendRequests(
 	req: Request,
 	res: Response,
 	_next: NextFunction
 ) {
 	const decodedUser = res.locals.user;
+
 	const limit = Math.max(Number(req.query.limit) || 10, 1);
 	const page = Math.max(Number(req.query.page) || 1, 1);
 	const search = req.query.q as string;
 
-	const filters = [eq(friend_requests.receiver_name, decodedUser.username)];
-	if (search) filters.push(ilike(friend_requests.sender_name, `${search}%`));
+	const filters = [eq(friend_requests.receiver_name, decodedUser.username), eq(friend_requests.sender_name, decodedUser.username)];
+	if (search) filters.push(ilike(friend_requests.sender_name, `${search}%`), ilike(friend_requests.receiver_name, `${search}%`));
 
 	const requests = await db
 		.select()
 		.from(friend_requests)
-		.where(and(...filters))
+		.where(or(...filters))
 		.limit(limit)
 		.offset(limit * (page - 1));
-
-	// filter receiver name before responding?
-
 	return res.status(200).json({
 		data: requests,
 		limit,
@@ -130,57 +128,46 @@ export async function sendFriendRequest(
 			.status(403)
 			.json(new FoilCTF_Error('No self requests allowed', 403));
 
-	try {
-		await db.transaction(async (tx) => {
-			const [dbUser] = await tx
-				.select()
-				.from(users)
-				.where(eq(users.username, target));
-			if (!dbUser) {
-				throw new FoilCTF_Error('No such user', 403);
-			}
+	await db.transaction(async (tx) => {
+		const [dbUser] = await tx
+			.select()
+			.from(users)
+			.where(eq(users.username, target));
+		if (!dbUser) {
+			throw new FoilCTF_Error('No such user', 403);
+		}
 
-			const [existingRequest] = await tx
-				.select()
-				.from(friend_requests)
-				.where(
-					or(
-						and(
-							eq(friend_requests.sender_name, decodedUser.username),
-							eq(friend_requests.receiver_name, target)
-						),
-						and(
-							eq(friend_requests.sender_name, target),
-							eq(friend_requests.receiver_name, decodedUser.username)
-						)
+		const [existingRequest] = await tx
+			.select()
+			.from(friend_requests)
+			.where(
+				or(
+					and(
+						eq(friend_requests.sender_name, decodedUser.username),
+						eq(friend_requests.receiver_name, target)
+					),
+					and(
+						eq(friend_requests.sender_name, target),
+						eq(friend_requests.receiver_name, decodedUser.username)
 					)
-				);
-			if (existingRequest) {
-				throw new FoilCTF_Error('Request already exists', 403);
-			}
+				)
+			);
+		if (existingRequest) {
+			throw new FoilCTF_Error('Request already exists', 403);
+		}
 
-			await tx.insert(friend_requests).values({
-				sender_name: decodedUser.username,
-				receiver_name: target,
-			});
-
-			res.locals.userNameToNotify = target;
-			res.locals.contents = {
-				title: 'New Friend Request',
-				message: `${decodedUser.username} has sent a request to you`,
-			};
+		await tx.insert(friend_requests).values({
+			sender_name: decodedUser.username,
+			receiver_name: target,
 		});
 
-		return next();
-	} catch (err) {
-		if (err instanceof FoilCTF_Error)
-			return res.status(err.statusCode).json(err);
-
-		console.error(err);
-		return res
-			.status(500)
-			.json(new FoilCTF_Error('Internal Server Error', 500));
-	}
+		res.locals.userNameToNotify = target;
+		res.locals.contents = {
+			title: 'New Friend Request',
+			message: `${decodedUser.username} has sent a request to you`,
+		};
+	});
+	next();
 }
 
 export async function cancelFriendRequest(
