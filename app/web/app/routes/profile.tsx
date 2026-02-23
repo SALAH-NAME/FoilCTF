@@ -5,7 +5,7 @@ import { useContext, useEffect, useState, type SubmitEvent } from 'react';
 import type { Route } from './+types/profile';
 
 import { useToast } from '~/contexts/ToastContext';
-import { UserContext } from '~/contexts/UserContext';
+import { UserProvider } from '~/contexts/UserContext';
 import { validationRules } from '~/utils/validation';
 import { useFormValidation } from '~/hooks/useFormValidation';
 import { commitSession, request_session } from '~/session.server';
@@ -222,7 +222,7 @@ function SectionProfileInfo({ credentials, fields, errors }: ProfileInfoProps) {
 				title: 'Profile Information',
 				message: 'Updated your personal information',
 			});
-			queryClient.invalidateQueries({
+			await queryClient.invalidateQueries({
 				queryKey: ['profile', { username: credentials.username }],
 			});
 		},
@@ -502,7 +502,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 		password: '',
 	});
 
-	const { logoutUserState, refreshUserState } = useContext(UserContext)!;
+	const { logoutUserState, refreshUserState } = useContext(UserProvider)!;
 
 	// NOTE(xenobas): ProfileData syncing
 	useEffect(() => {

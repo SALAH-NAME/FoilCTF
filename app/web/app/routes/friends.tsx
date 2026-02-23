@@ -1,11 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
+import { useEffect, useState } from 'react';
+
+import type { Route } from './+types/friends';
+
 import PageHeader from '~/components/PageHeader';
 import FriendCard from '~/components/FriendCard';
 import FilterTabs from '~/components/FilterTabs';
 import SearchInput from '~/components/SearchInput';
 import Pagination from '~/components/Pagination';
-import type { Route } from './+types/friends';
+import { useUserAuth } from '~/contexts/UserContext';
+import { useToast } from '~/contexts/ToastContext';
 
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Friends' }];
@@ -19,55 +24,157 @@ interface Friend {
 	totalPoints: number;
 }
 
-// Mock data - Replace
-const mockData = {
-	friends: [
-		{
-			username: 'Bob_Hacker',
-			teamName: 'Binary Bandits',
-			challengesSolved: 52,
-			totalPoints: 2450,
-		},
-		{
-			username: 'Charlie_Sec',
-			teamName: 'Shell Shockers',
-			challengesSolved: 38,
-			totalPoints: 1680,
-		},
-		{
-			username: 'Diana_Rev',
-			teamName: 'Cyber Warriors',
-			challengesSolved: 28,
-			totalPoints: 1100,
-		},
-	] as Friend[],
-	received: [
-		{
-			username: 'Eve_Cipher',
-			teamName: 'Crypto Crew',
-			challengesSolved: 31,
-			totalPoints: 1420,
-		},
-		{
-			username: 'Frank_Pwn',
-			teamName: 'Pwn Masters',
-			challengesSolved: 61,
-			totalPoints: 3200,
-		},
-	] as Friend[],
-	sent: [
-		{
-			username: 'Grace_Web',
-			teamName: 'Web Warriors',
-			challengesSolved: 44,
-			totalPoints: 1980,
-		},
-	] as Friend[],
-};
+export async function remote_fetch_friends(token: string, q: string, page: number, limit: number) {
+	const url = new URL('/api/friends', import.meta.env.VITE_REST_USER_ORIGIN);
+	if (q)
+		url.searchParams.set('q', q);
+	url.searchParams.set('page', page.toString());
+	url.searchParams.set('limit', limit.toString());
+
+	const res = await fetch(url, {
+		headers: {
+			'Authorization': `Bearer ${token}`,
+		}
+	});
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok)
+		throw new Error(json.error ?? 'Internal server error');
+	type JSONData_Friends = {
+		data: string[];
+		limit: number;
+		page: number;
+	};
+	return json as JSONData_Friends;
+}
+export async function remote_remove_friend(token: string, target: string) {
+	const url = new URL('/api/friends/' + target, import.meta.env.VITE_REST_USER_ORIGIN);
+
+	const res = await fetch(url, {
+		method: 'DELETE',
+		headers: {
+			'Authorization': `Bearer ${token}`,
+		}
+	});
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok)
+		throw new Error(json.error ?? 'Internal server error');
+}
+
+export async function remote_fetch_friend_requests(token: string, q: string, page: number, limit: number) {
+	const url = new URL('/api/friends/requests', import.meta.env.VITE_REST_USER_ORIGIN);
+	if (q)
+		url.searchParams.set('q', q);
+	url.searchParams.set('page', page.toString());
+	url.searchParams.set('limit', limit.toString());
+
+	const res = await fetch(url, {
+		headers: {
+			'Authorization': `Bearer ${token}`,
+		}
+	});
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok)
+		throw new Error(json.error ?? 'Internal server error');
+	type JSONData_Friends = {
+		data: { sender_name: string, receiver_name: string }[];
+		limit: number;
+		page: number;
+	};
+	return json as JSONData_Friends;
+}
+export async function remote_send_friend_request(token: string, target: string) {
+	const url = new URL('/api/friends/requests/' + target, import.meta.env.VITE_REST_USER_ORIGIN);
+
+	const res = await fetch(url, {
+		method: 'POST',
+		headers: {
+			'Authorization': `Bearer ${token}`,
+		}
+	});
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok)
+		throw new Error(json.error ?? 'Internal server error');
+}
+export async function remote_cancel_friend_request(token: string, target: string) {
+	const url = new URL('/api/friends/requests/' + target, import.meta.env.VITE_REST_USER_ORIGIN);
+
+	const res = await fetch(url, {
+		method: 'DELETE',
+		headers: {
+			'Authorization': `Bearer ${token}`,
+		}
+	});
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok)
+		throw new Error(json.error ?? 'Internal server error');
+}
+export async function remote_accept_friend_request(token: string, target: string) {
+	const url = new URL('/api/friends/requests/pending/' + target, import.meta.env.VITE_REST_USER_ORIGIN);
+
+	const res = await fetch(url, {
+		method: 'PATCH',
+		headers: {
+			'Authorization': `Bearer ${token}`,
+		}
+	});
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok)
+		throw new Error(json.error ?? 'Internal server error');
+}
+export async function remote_refuse_friend_request(token: string, target: string) {
+	const url = new URL('/api/friends/requests/pending/' + target, import.meta.env.VITE_REST_USER_ORIGIN);
+
+	const res = await fetch(url, {
+		method: 'DELETE',
+		headers: {
+			'Authorization': `Bearer ${token}`,
+		}
+	});
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok)
+		throw new Error(json.error ?? 'Internal server error');
+}
 
 export default function Page() {
+	const { userState: user } = useUserAuth();
+	const { token_access } = user;
+
 	const [queryTerm, setQueryTerm] = useState<string>('');
-	const [friendsData, setFriendsData] = useState(mockData);
 	const [searchParams, setSearchParams] = useSearchParams();
 
 	const activeTab = (searchParams.get('tab') || 'friends') as
@@ -77,7 +184,6 @@ export default function Page() {
 	const searchQuery = searchParams.get('q') || '';
 	const currentPage = parseInt(searchParams.get('page') || '1', 10);
 	const itemsPerPage = parseInt(searchParams.get('perPage') || '6', 10);
-
 	useEffect(() => {
 		const idDebounce = setTimeout(() => {
 			const newParams = new URLSearchParams(searchParams);
@@ -94,44 +200,130 @@ export default function Page() {
 		});
 	}, [queryTerm]);
 
-	const handleRemoveFriend = (username: string) => {
-		// TODO: Implement
-		console.log('Removing friend:', username);
-		setFriendsData((prev) => ({
-			...prev,
-			friends: prev.friends.filter((f) => f.username !== username),
-		}));
-	};
+	const queryClient = useQueryClient();
+	const { addToast } = useToast();
 
-	const handleAcceptRequest = (username: string) => {
-		// TODO: Implement
-		console.log('Accepting friend request from:', username);
-		const request = friendsData.received.find((r) => r.username === username);
-		if (request) {
-			setFriendsData((prev) => ({
-				...prev,
-				friends: [...prev.friends, request],
-				received: prev.received.filter((r) => r.username !== username),
-			}));
+	const query_friends = useQuery({
+		queryKey: ['friends', { token_access, searchQuery, currentPage, itemsPerPage }],
+		initialData: [],
+		queryFn: async ({ queryKey }) => {
+			const [_queryKeyPrime, variables] = queryKey;
+			if (typeof variables === 'string')
+				return [];
+
+			const { searchQuery, currentPage, itemsPerPage } = variables;
+			const { data: friends } = await remote_fetch_friends(token_access, searchQuery, currentPage, itemsPerPage);
+			return friends;
+		},
+	});
+	const query_requests = useQuery({
+		queryKey: ['friends-requests', { token_access, searchQuery, currentPage, itemsPerPage }],
+		initialData: [],
+		queryFn: async ({ queryKey }) => {
+			const [_queryKeyPrime, variables] = queryKey;
+			if (typeof variables === 'string')
+				return [];
+
+			const { searchQuery, currentPage, itemsPerPage } = variables;
+			const { data: friends } = await remote_fetch_friend_requests(token_access, searchQuery, currentPage, itemsPerPage);
+			return friends;
+		},
+	});
+	const mut_friend_remove = useMutation<unknown, Error, string>({
+		mutationFn: async (target) => {
+			await remote_remove_friend(token_access, target);
+			await queryClient.invalidateQueries({ queryKey: ['friends'] });
+		},
+		onSuccess() {
+			addToast({
+				variant: 'success',
+				title: 'User unfriended',
+				message: ''
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'User unfriend',
+				message: err.message,
+			});
 		}
-	};
+	});
+	const mut_friend_request_cancel = useMutation<unknown, Error, string>({
+		mutationFn: async (target) => {
+			await remote_cancel_friend_request(token_access, target);
+			await queryClient.invalidateQueries({ queryKey: ['friends-requests'] });
+		},
+		onSuccess() {
+			addToast({
+				variant: 'success',
+				title: 'Friend request cancel',
+				message: ''
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Friend request cancel',
+				message: err.message,
+			});
+		},
+	});
+	const mut_friend_request_accept = useMutation<unknown, Error, string>({
+		mutationFn: async (target) => {
+			await remote_accept_friend_request(token_access, target);
+			await queryClient.invalidateQueries({ queryKey: ['friends-requests'] });
+			await queryClient.invalidateQueries({ queryKey: ['friends'] });
+		},
+		onSuccess() {
+			addToast({
+				variant: 'success',
+				title: 'Friend request accepted',
+				message: ''
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Friend request accept',
+				message: err.message,
+			});
+		},
+	});
+	const mut_friend_request_refuse = useMutation<unknown, Error, string>({
+		mutationFn: async (target) => {
+			await remote_refuse_friend_request(token_access, target);
+			await queryClient.invalidateQueries({ queryKey: ['friends-requests'] });
+			await queryClient.invalidateQueries({ queryKey: ['friends'] });
+		},
+		onSuccess() {
+			addToast({
+				variant: 'success',
+				title: 'Friend request refused',
+				message: ''
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Friend request refuse',
+				message: err.message,
+			});
+		},
+	});
 
-	const handleRejectRequest = (username: string) => {
-		// TODO: Implement
-		console.log('Rejecting friend request from:', username);
-		setFriendsData((prev) => ({
-			...prev,
-			received: prev.received.filter((r) => r.username !== username),
-		}));
-	};
 
-	const handleCancelRequest = (username: string) => {
-		// TODO: Implement
-		console.log('Canceling friend request to:', username);
-		setFriendsData((prev) => ({
-			...prev,
-			sent: prev.sent.filter((r) => r.username !== username),
-		}));
+	const handleRemoveFriend = (target: string) => {
+		mut_friend_remove.mutate(target);
+	};
+	const handleAcceptRequest = (target: string) => {
+		mut_friend_request_accept.mutate(target);
+	};
+	const handleRefuseRequest = (target: string) => {
+		mut_friend_request_refuse.mutate(target);
+	};
+	const handleCancelRequest = (target: string) => {
+		mut_friend_request_cancel.mutate(target);
 	};
 
 	const tabs = [
@@ -139,32 +331,25 @@ export default function Page() {
 			id: 'friends',
 			value: 'friends',
 			label: 'Friends',
-			count: friendsData.friends.length,
+			count: query_friends.data.length,
 		},
 		{
 			id: 'received',
 			value: 'received',
 			label: 'Received',
-			count: friendsData.received.length,
+			count: 0,
 		},
 		{
 			id: 'sent',
 			value: 'sent',
 			label: 'Sent',
-			count: friendsData.sent.length,
+			count: 0,
 		},
 	];
 
-	const getFilteredData = (data: Friend[]) => {
-		if (!searchQuery) return data;
-		return data.filter((item) =>
-			item.username.toLowerCase().includes(searchQuery.toLowerCase())
-		);
-	};
-
-	const filteredFriends = getFilteredData(friendsData.friends);
-	const filteredReceived = getFilteredData(friendsData.received);
-	const filteredSent = getFilteredData(friendsData.sent);
+	const filteredSent: Friend[] = query_requests.data.filter(({ sender_name: username }) => username === user.username).map(({ receiver_name: username }) => ({ username, challengesSolved: 0, totalPoints: 0 })); // getFilteredData(friendsData.received);
+	const filteredFriends: Friend[] = query_friends.data.map(username => ({ username, challengesSolved: 0, totalPoints: 0 })); // getFilteredData(friendsData.friends);
+	const filteredReceived: Friend[] = query_requests.data.filter(({ receiver_name: username }) => username === user.username).map(({ sender_name: username }) => ({ username, challengesSolved: 0, totalPoints: 0 })); // getFilteredData(friendsData.received);
 
 	const getPaginatedData = (data: Friend[]) => {
 		const totalPages = Math.ceil(data.length / itemsPerPage);
@@ -222,7 +407,7 @@ export default function Page() {
 								<h2 id="friends-heading" className="sr-only">
 									Friends list
 								</h2>
-								{friendsData.friends.length === 0 ? (
+								{query_friends.data.length === 0 ? (
 									<div
 										className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
 										role="status"
@@ -290,7 +475,7 @@ export default function Page() {
 								<h2 id="received-heading" className="sr-only">
 									Received friend requests
 								</h2>
-								{friendsData.received.length === 0 ? (
+								{query_requests.data.length === 0 ? (
 									<div
 										className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
 										role="status"
@@ -324,7 +509,7 @@ export default function Page() {
 															handleAcceptRequest(request.username)
 														}
 														onReject={() =>
-															handleRejectRequest(request.username)
+															handleRefuseRequest(request.username)
 														}
 													/>
 												</div>
@@ -360,7 +545,7 @@ export default function Page() {
 								<h2 id="sent-heading" className="sr-only">
 									Sent friend requests
 								</h2>
-								{friendsData.sent.length === 0 ? (
+								{query_requests.data.length === 0 ? (
 									<div
 										className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
 										role="status"

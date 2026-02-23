@@ -4,7 +4,7 @@ import PageHeader from '../components/PageHeader';
 import Button from '../components/Button';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type SubmitEvent } from 'react';
 
 import type { Route } from './+types/index';
 import {
@@ -54,8 +54,8 @@ function DialogCreate({
 			const name = (body.get('name') as string | undefined) ?? '';
 			return await api_sandbox_image_build(name);
 		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
 				queryKey: ['instances'],
 			});
 			triggerClose();
@@ -63,7 +63,7 @@ function DialogCreate({
 	});
 
 	const disabled = mutCreate.status === 'pending';
-	async function onSubmit(event: FormEvent<HTMLFormElement>) {
+	async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
 		event.preventDefault();
 		if (disabled || !(event.target instanceof HTMLFormElement)) return;
 		if (!event.target.checkValidity()) return;
@@ -153,8 +153,8 @@ function DialogInstance({
 		onError: (err) => {
 			console.error(err);
 		},
-		onSuccess: (data) => {
-			queryClient.invalidateQueries({
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
 				queryKey: ['instances'],
 			});
 			triggerClose();

@@ -43,14 +43,14 @@ export default function InstanceLinker({
 			const name = (body.get('name') as string) ?? '';
 			await api_sandbox_image_build(name);
 		},
-		onSuccess: (_data, variables) => {
+		onSuccess: async (_data, variables) => {
 			const name = (variables.get('name') as string) ?? '';
-			queryClient.invalidateQueries({ queryKey: ['sandbox-images'] });
+			await queryClient.invalidateQueries({ queryKey: ['sandbox-images'] });
 			onSelectImage(name);
 		},
 	});
 
-	const handleCreateSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+	const handleCreateSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		if (disabled || mutCreate.status === 'pending') return;
 		const form = e.currentTarget;

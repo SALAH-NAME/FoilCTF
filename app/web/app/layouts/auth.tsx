@@ -5,8 +5,8 @@ import { data, redirect, Outlet, useNavigate, useFetcher } from 'react-router';
 import type { Route } from './+types/auth';
 
 import { useToast } from '~/contexts/ToastContext';
-import { UserContext, type UserContextValue } from '~/contexts/UserContext';
 import { request_session_user } from '~/session.server';
+import { UserProvider, type UserProviderValue } from '~/contexts/UserContext';
 
 async function fetch_signout(token: string) {
 	try {
@@ -38,6 +38,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 		return redirect(uri_redirect.toString());
 	}
+
 	return data({ user });
 }
 
@@ -46,24 +47,12 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 	const { addToast } = useToast();
 	useEffect(() => {
 		if (fetcher.state !== 'idle' || !fetcher.data) return;
-
-		const {
-			data,
-		}: { data: { ok: false } | { ok: true; token_access: string } } = fetcher;
-		if (data.ok) {
-			addToast({
-				variant: 'info',
-				title: 'Session',
-				message: 'Your session has been refreshed',
-			});
-		}
-
 		fetcher.reset();
 	}, [fetcher.state, fetcher.data]);
 
 	const { user } = loaderData;
 	const [userState, setUserState] =
-		useState<UserContextValue['userState']>(user);
+		useState<UserProviderValue['userState']>(user);
 
 	// TODO(xenobas): Show some sort of overlay during logout
 	const navigate = useNavigate();
@@ -91,10 +80,10 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 	};
 
 	return (
-		<UserContext
+		<UserProvider
 			value={{ userState, setUserState, logoutUserState, refreshUserState }}
 		>
 			<Outlet />
-		</UserContext>
+		</UserProvider>
 	);
 }

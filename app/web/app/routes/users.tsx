@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import PageHeader from '~/components/PageHeader';
-import UserCard from '~/components/UserCard';
+import UserCard, { type FriendStatus } from '~/components/UserCard';
 import SearchInput from '~/components/SearchInput';
 import Pagination from '~/components/Pagination';
 import type { Route } from './+types/users';
+import { useUserAuth } from '~/contexts/UserContext';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '~/contexts/ToastContext';
+import { remote_send_friend_request } from './friends';
 
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Users' }];
@@ -12,98 +16,139 @@ export function meta({}: Route.MetaArgs) {
 
 interface User {
 	username: string;
-	avatar?: string;
-	teamName?: string;
+	avatar: string;
+	teamName: string;
 	challengesSolved: number;
 	totalPoints: number;
-	friendStatus: 'none' | 'pending' | 'friends';
+	friendStatus: FriendStatus;
 }
 
-// Mock data - Replace
-const mockUsers: User[] = [
-	{
-		username: 'Alice_CTF',
-		teamName: 'Cyber Warriors',
-		challengesSolved: 45,
-		totalPoints: 2100,
-		friendStatus: 'none',
-	},
-	{
-		username: 'Bob_Hacker',
-		teamName: 'Binary Bandits',
-		challengesSolved: 52,
-		totalPoints: 2450,
-		friendStatus: 'friends',
-	},
-	{
-		username: 'Charlie_Sec',
-		teamName: 'Shell Shockers',
-		challengesSolved: 38,
-		totalPoints: 1680,
-		friendStatus: 'pending',
-	},
-	{
-		username: 'Diana_Rev',
-		teamName: 'Cyber Warriors',
-		challengesSolved: 28,
-		totalPoints: 1100,
-		friendStatus: 'none',
-	},
-	{
-		username: 'Eve_Cipher',
-		teamName: 'Crypto Crew',
-		challengesSolved: 31,
-		totalPoints: 1420,
-		friendStatus: 'none',
-	},
-	{
-		username: 'Frank_Pwn',
-		teamName: 'Pwn Masters',
-		challengesSolved: 61,
-		totalPoints: 3200,
-		friendStatus: 'none',
-	},
-];
+// TODO(xenobas): Continue fixing the bug where if you don't type the exact bastard it doesn't show up despite the response containing all matching bastards
 
+async function remote_fetch_users(token: string, q: string, page: number, limit: number) {
+	const url = new URL('/api/users', import.meta.env.VITE_REST_USER_ORIGIN);
+	if (q)
+		url.searchParams.set('q', q);
+	url.searchParams.set('page', page.toString());
+	url.searchParams.set('limit', limit.toString());
+
+	const res = await fetch(url, {
+		headers: {
+			'Authorization': `Bearer ${token}`,
+		}
+	});
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok)
+		throw new Error(json.error ?? 'Internal server error');
+	type JSONData_User = {
+		id: number;
+		role: string;
+		username: string;
+		team_name: string | null;
+		avatar: string | null;
+		total_points: number | null;
+		challenges_solved: number | null;
+		friend_status: FriendStatus;
+	};
+	type JSONData_Users = {
+		data: JSONData_User[];
+		limit: number;
+		page: number;
+	};
+	return json as JSONData_Users;
+}
 export default function Page() {
+	const { addToast } = useToast();
+	const { userState: { token_access } } = useUserAuth();
+
+	const [queryTerm, setQueryTerm] = useState<string>('');
 	const [searchParams, setSearchParams] = useSearchParams();
-	const [users, setUsers] = useState<User[]>(mockUsers);
-	const [isSearching, setIsSearching] = useState(false);
+	useEffect(() => {
+		const idDebounce = setTimeout(() => {
+			const newParams = new URLSearchParams(searchParams);
+			if (queryTerm) {
+				newParams.set('q', queryTerm);
+			} else {
+				newParams.delete('q');
+			}
+			newParams.delete('page');
+			setSearchParams(newParams);
+		}, 200);
+		return (() => {
+			clearTimeout(idDebounce);
+		});
+	}, [queryTerm]);
 
 	const searchQuery = searchParams.get('q') || '';
 	const currentPage = parseInt(searchParams.get('page') || '1', 10);
 	const itemsPerPage = parseInt(searchParams.get('perPage') || '6', 10);
 
-	const handleSearch = (query: string) => {
-		const newParams = new URLSearchParams(searchParams);
-		if (query) {
-			newParams.set('q', query);
-		} else {
-			newParams.delete('q');
-		}
-		newParams.delete('page');
-		setSearchParams(newParams);
-		if (query.length > 0) {
-			setIsSearching(true);
-			// TODO: Implement
-			setTimeout(() => {
-				setIsSearching(false);
-			}, 300);
-		} else {
-			setIsSearching(false);
-		}
-	};
+	const queryClient = useQueryClient();
 
-	const filteredUsers = searchQuery
-		? users.filter((user) =>
-				user.username.toLowerCase().includes(searchQuery.toLowerCase())
-			)
-		: [];
+	const query_users = useQuery({
+		queryKey: ['users', { token_access, searchQuery, currentPage, itemsPerPage }],
+		initialData: [],
+		queryFn: async ({ queryKey }) => {
+			const [_queryKeyPrime, variables] = queryKey;
+			if (typeof variables === 'string')
+				return [];
+
+			const { searchQuery, currentPage, itemsPerPage } = variables;
+			const { data: users } = await remote_fetch_users(token_access, searchQuery, currentPage, itemsPerPage);
+			return users;
+		},
+	});
+	const mut_friend_request_send = useMutation<unknown, Error, string>({
+		mutationFn: async (target) => {
+			await remote_send_friend_request(token_access, target);
+			await queryClient.invalidateQueries({ queryKey: ['users'] });
+		},
+		onSuccess() {
+			addToast({
+				variant: 'success',
+				title: 'Friend request sent',
+				message: ''
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Friend request not sent',
+				message: err.message,
+			});
+		}
+	});
+
+	useEffect(() => {
+		if (!query_users.error)
+			return ;
+		addToast({
+			variant: 'error',
+			title: 'Users query failed',
+			message: query_users.error.message,
+		});
+	}, [query_users.errorUpdateCount, query_users.errorUpdatedAt]);
+
+	const filtered_users = query_users.data.map((user) => ({
+		username: user.username,
+		teamName: user.team_name || '',
+		
+		avatar: user.avatar || '',
+		challengesSolved: user.challenges_solved || 0,
+		totalPoints: user.total_points || 0,
+
+		friendStatus: user.friend_status,
+	})) satisfies User[];
 
 	// Pagination
-	const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+	const totalPages = Math.ceil(filtered_users.length / itemsPerPage);
 	const startIndex = (currentPage - 1) * itemsPerPage;
-	const paginatedUsers = filteredUsers.slice(
+	const paginatedUsers = filtered_users.slice(
 		startIndex,
 		startIndex + itemsPerPage
 	);
@@ -114,29 +159,8 @@ export default function Page() {
 		setSearchParams(newParams);
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	};
-
-	const handleAddFriend = (username: string) => {
-		// TODO: Implement
-		setUsers((prev) =>
-			prev.map((user) =>
-				user.username === username
-					? { ...user, friendStatus: 'pending' as const }
-					: user
-			)
-		);
-		console.log('Sending friend request to:', username);
-	};
-
-	const handleCancelRequest = (username: string) => {
-		// TODO: Implement
-		setUsers((prev) =>
-			prev.map((user) =>
-				user.username === username
-					? { ...user, friendStatus: 'none' as const }
-					: user
-			)
-		);
-		console.log('Canceling friend request to:', username);
+	const handleAddFriend = (target: string) => {
+		mut_friend_request_send.mutate(target);
 	};
 
 	return (
@@ -149,25 +173,14 @@ export default function Page() {
 			>
 				<div className="mb-6">
 					<SearchInput
-						value={searchQuery}
-						onChange={handleSearch}
+						value={queryTerm}
+						onChange={setQueryTerm}
 						placeholder="Search users by username..."
 						aria-label="Search for users by username"
 					/>
 				</div>
 
-				{!searchQuery ? (
-					<div
-						className="text-center py-12"
-						role="status"
-						aria-live="polite"
-						aria-atomic="true"
-					>
-						<p className="text-dark/60 text-lg">
-							Start typing to search for users
-						</p>
-					</div>
-				) : isSearching ? (
+				{query_users.isLoading ? (
 					<div
 						className="text-center py-12"
 						role="status"
@@ -176,7 +189,7 @@ export default function Page() {
 					>
 						<p className="text-dark/60 text-lg">Searching...</p>
 					</div>
-				) : filteredUsers.length === 0 ? (
+				) : filtered_users.length === 0 ? (
 					<div
 						className="text-center py-12"
 						role="status"
@@ -198,16 +211,8 @@ export default function Page() {
 								<div key={user.username} role="listitem">
 									<UserCard
 										{...user}
-										onAddFriend={
-											user.friendStatus === 'none'
-												? () => handleAddFriend(user.username)
-												: undefined
-										}
-										onCancelRequest={
-											user.friendStatus === 'pending'
-												? () => handleCancelRequest(user.username)
-												: undefined
-										}
+										disabled={mut_friend_request_send.isPending}
+										onAddFriend={() => handleAddFriend(user.username)}
 									/>
 								</div>
 							))}
@@ -231,8 +236,8 @@ export default function Page() {
 
 				{searchQuery && (
 					<div className="sr-only" role="status" aria-live="polite">
-						{filteredUsers.length} user
-						{filteredUsers.length !== 1 ? 's' : ''} found
+						{filtered_users.length} user
+						{filtered_users.length !== 1 ? 's' : ''} found
 					</div>
 				)}
 			</main>

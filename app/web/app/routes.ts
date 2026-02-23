@@ -17,8 +17,6 @@ const routes = [
 		route('teams', 'routes/teams.tsx'),
 		route('teams/:id', 'routes/teams.$id.tsx'),
 		route('team', 'routes/team.tsx'),
-		route('users', 'routes/users.tsx'),
-		route('users/:username', 'routes/users.$username.tsx'),
 
 		route('oauth/42', 'routes/oauth42.tsx'),
 		route('refresh', 'routes/refresh.tsx'),
@@ -32,6 +30,9 @@ const routes = [
 		]),
 
 		layout('./layouts/auth.tsx', [
+			route('users', 'routes/users.tsx'),
+			route('users/:username', 'routes/users.$username.tsx'),
+
 			route('signout', 'routes/signout.tsx'),
 			route('friends', 'routes/friends.tsx'),
 			route('profile', 'routes/profile.tsx'),

@@ -184,8 +184,8 @@ export default function Page() {
 		mutationFn: async (id: number) => {
 			await api_challenge_delete(id);
 		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['challenges'] });
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({ queryKey: ['challenges'] });
 			setDeleteTarget(null);
 		},
 	});

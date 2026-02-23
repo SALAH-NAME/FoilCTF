@@ -2,18 +2,19 @@ import { Link } from 'react-router';
 import Icon from './Icon';
 import InfoText from './InfoText';
 import Button from './Button';
+import { useUserAuth } from '~/contexts/UserContext';
 
-type FriendStatus = 'none' | 'pending' | 'friends';
+export type FriendStatus = 'none' | 'sent' | 'received' | 'friends';
 
 interface UserCardProps {
 	username: string;
 	avatar?: string;
-	teamName?: string;
+	teamName: string | null;
 	challengesSolved: number;
 	totalPoints: number;
 	friendStatus?: FriendStatus;
+	disabled?: boolean,
 	onAddFriend?: () => void;
-	onCancelRequest?: () => void;
 }
 
 export default function UserCard({
@@ -23,26 +24,33 @@ export default function UserCard({
 	challengesSolved,
 	totalPoints,
 	friendStatus = 'none',
+	disabled = false,
 	onAddFriend,
-	onCancelRequest,
 }: UserCardProps) {
-	const getButtonContent = () => {
+	const { userState: user_curr } = useUserAuth();
+
+	const getButtonContent = (friendStatus: FriendStatus) => {
 		switch (friendStatus) {
 			case 'friends':
 				return (
 					<span className="flex items-center gap-2">
 						<Icon name="check" className="size-4" aria-hidden={true} />
-						Friends
+						<span>Friends</span>
 					</span>
 				);
-			case 'pending':
-				return 'Pending';
+			case 'sent':
+			case 'received':
+				return (
+					<span className="flex items-center gap-2">
+						<Icon className="size-4" name="edit" aria-hidden={true} />
+						<span>Pending</span>
+					</span>
+				);
 			default:
 				return 'Add Friend';
 		}
 	};
-
-	const getButtonProps = () => {
+	const getButtonProps = (friendStatus: FriendStatus) => {
 		if (friendStatus === 'friends') {
 			return {
 				'variant': 'ghost' as const,
@@ -50,14 +58,15 @@ export default function UserCard({
 				'aria-label': `Already friends with ${username}`,
 			};
 		}
-		if (friendStatus === 'pending') {
+		if (friendStatus === 'sent' || friendStatus === 'received') { // TODO(xenobas): Do not collapse this to 'pending'
 			return {
-				'variant': 'secondary' as const,
-				'onClick': onCancelRequest,
-				'aria-label': `Cancel friend request to ${username}`,
+				'variant': 'ghost' as const,
+				'disabled': true,
+				'aria-label': `You have a pending friend request with ${username}`,
 			};
 		}
 		return {
+			'disabled': disabled,
 			'variant': 'primary' as const,
 			'onClick': onAddFriend,
 			'aria-label': `Send friend request to ${username}`,
@@ -111,11 +120,12 @@ export default function UserCard({
 					</div>
 				</div>
 
-				{(onAddFriend || onCancelRequest) && (
-					<Button size="sm" {...getButtonProps()}>
-						{getButtonContent()}
+				{ user_curr.username !== username && (
+				(true) && (
+					<Button size="sm" {...getButtonProps(friendStatus)}>
+						{getButtonContent(friendStatus)}
 					</Button>
-				)}
+				))}
 			</div>
 		</article>
 	);

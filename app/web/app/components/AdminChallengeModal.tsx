@@ -177,8 +177,8 @@ export default function AdminChallengeModal({
 
 			return await api_challenge_update(challenge.id, payload);
 		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['challenges'] });
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({ queryKey: ['challenges'] });
 			onSuccess?.();
 			onClose();
 		},
@@ -201,14 +201,14 @@ export default function AdminChallengeModal({
 		}) => {
 			await api_attachment_remove(String(challengeId), String(attachmentId));
 		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
 				queryKey: ['challenge-attachments', challenge?.id],
 			});
 		},
 	});
 
-	const handleSubmit = (e: React.FormEvent) => {
+	const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
 		if (!name.trim()) {
@@ -247,8 +247,8 @@ export default function AdminChallengeModal({
 				api_attachment_upload(challenge.id, {
 					name: f.name,
 					contents: {},
-				}).then(() => {
-					queryClient.invalidateQueries({
+				}).then(async () => {
+					await queryClient.invalidateQueries({
 						queryKey: ['challenge-attachments', challenge.id],
 					});
 				});
