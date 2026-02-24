@@ -5,9 +5,9 @@ import Button from './Button';
 interface JoinRequestCardProps {
 	username: string;
 	avatar?: string;
-	challengesSolved: number;
-	totalPoints: number;
-	requestedAt: string;
+	challengesSolved?: number;
+	totalPoints?: number;
+	requestedAt?: string;
 	onAccept: () => void;
 	onReject: () => void;
 }
@@ -54,7 +54,7 @@ export default function JoinRequestCard({
 					</Link>
 					<InfoText icon="calendar" className="text-sm text-dark/60 mb-2">
 						Requested{' '}
-						{new Date(requestedAt).toLocaleDateString('en-US', {
+						{new Date(requestedAt ?? Date.now()).toLocaleDateString('en-US', {
 							month: 'short',
 							day: 'numeric',
 							year: 'numeric',

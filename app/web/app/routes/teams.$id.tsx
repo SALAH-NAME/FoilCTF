@@ -65,8 +65,7 @@ export default function Page() {
 	const [hasRequested, setHasRequested] = useState(false);
 	const team = mockTeam;
 
-	const isFull = team.memberCount >= team.maxMembers;
-	const canRequestJoin = team.isOpen && !isFull && !hasRequested;
+	const canRequestJoin = team.isOpen && !hasRequested;
 
 	const handleRequestJoin = () => {
 		// TODO: Implement
@@ -86,20 +85,16 @@ export default function Page() {
 						aria-label={
 							hasRequested
 								? 'Join request pending'
-								: isFull
-									? 'Team is full'
-									: !team.isOpen
-										? 'Team is closed for new members'
-										: `Request to join ${team.name}`
+								: !team.isOpen
+									? 'Team is closed for new members'
+									: `Request to join ${team.name}`
 						}
 					>
 						{hasRequested
 							? 'Request Pending'
-							: isFull
-								? 'Team Full'
-								: !team.isOpen
-									? 'Closed'
-									: 'Request to Join'}
+							: !team.isOpen
+								? 'Closed'
+								: 'Request to Join'}
 					</Button>
 				}
 			/>

@@ -16,7 +16,7 @@ export default function PageHeader({
 			<h1 className="text-5xl font-bold text-dark line-clamp-1 break-all leading-15">
 				{title}
 			</h1>
-			{action && <div role="group">{action}</div>}
+			{action && <div className="contents" role="group">{action}</div>}
 		</header>
 	);
 }

@@ -6,35 +6,32 @@ interface TeamCardProps {
 	id: number;
 	name: string;
 	members_count: number;
-	max_members: number;
 	captain_name: string;
-	events_participated?: number;
-	total_points?: number;
 	is_locked: boolean | null;
-	isFull: boolean;
-	hasRequested?: boolean;
+	total_points?: number;
+	events_participated?: number;
+	can_request?: boolean;
+	has_requested?: boolean;
 	onRequestJoin?: () => void;
 	onCancelRequest?: () => void;
 }
 
 export default function TeamCard({
-	id,
 	name,
 	members_count,
-	max_members,
 	captain_name,
 	is_locked,
-	isFull,
-	events_participated = 0,
 	total_points = 0,
-	hasRequested = false,
+	events_participated = 0,
+	has_requested = false,
+	can_request = false,
 	onRequestJoin,
 	onCancelRequest,
 }: TeamCardProps) {
 	const handleButtonClick = (e: React.MouseEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
-		if (hasRequested && onCancelRequest) {
+		if (has_requested && onCancelRequest) {
 			onCancelRequest();
 		} else if (onRequestJoin) {
 			onRequestJoin();
@@ -74,7 +71,7 @@ export default function TeamCard({
 					<div>
 						<InfoText icon="user" className="text-sm text-dark/80">
 							<span className="font-semibold">
-								{members_count}/{max_members}
+								{members_count}
 							</span>{' '}
 							Members
 						</InfoText>
@@ -92,24 +89,22 @@ export default function TeamCard({
 						<span className="font-semibold text-primary">{total_points}</span>{' '}
 						Points
 					</InfoText>
-					{(onRequestJoin || onCancelRequest) && (
+					{(onRequestJoin || onCancelRequest) && can_request && (
 						<Button
 							size="sm"
 							className="h-10"
 							onClick={handleButtonClick}
-							disabled={(is_locked || isFull) && !hasRequested}
-							variant={hasRequested ? 'secondary' : 'primary'}
+							disabled={(is_locked ?? false) && !has_requested}
+							variant={has_requested ? 'secondary' : 'primary'}
 							aria-label={
-								hasRequested
+								has_requested
 									? 'Cancel join request'
-									: isFull
-										? 'Team is full'
-										: is_locked
-											? 'Team is closed'
-											: `Request to join ${name}`
+									: is_locked
+										? 'Team is closed'
+										: `Request to join ${name}`
 							}
 						>
-							{hasRequested ? 'Cancel Request' : 'Request to Join'}
+							{has_requested ? 'Cancel Request' : 'Request to Join'}
 						</Button>
 					)}
 				</div>

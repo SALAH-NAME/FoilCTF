@@ -130,7 +130,10 @@ async function fetch_profile(token: string, username: string) {
 
 	const content_type =
 		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
-	if (!res.ok || content_type !== 'application/json') return null;
+	if (content_type !== 'application/json')
+		return null;
+	if (!res.ok)
+		return null;
 
 	const json = await res.json();
 	type JSONData_Profile = {
@@ -155,7 +158,10 @@ export async function fetch_user(token: string) {
 
 	const content_type =
 		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
-	if (!res.ok || content_type !== 'application/json') return null;
+	if (content_type !== 'application/json')
+		return null;
+	if (!res.ok)
+		return null;
 
 	const json = await res.json();
 	type JSONData_User = {
@@ -250,8 +256,8 @@ function SectionProfileInfo({ credentials, fields, errors }: ProfileInfoProps) {
 	const submitModeEdit = (event: SubmitEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		if (mutUpdate.isPending) return;
+		// TODO(xenobas): Run validation logic
 		if (false)
-			// TODO(xenobas): Run validation logic
 			return;
 
 		const variables: MutUpdateVariables = {};

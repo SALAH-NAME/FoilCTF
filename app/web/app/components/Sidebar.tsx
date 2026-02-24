@@ -9,7 +9,7 @@ import Icon from '~/components/Icon';
 import Logo from '~/components/Logo';
 import NotificationBell from '~/components/NotificationBell';
 import NotificationPanel from '~/components/NotificationPanel';
-import { NavGroup, NavLink, type NavItemConfig } from '~/components/NavLink';
+import { NavLink } from '~/components/NavLink';
 import { fetch_user } from '~/routes/profile';
 
 type SidebarProps = {

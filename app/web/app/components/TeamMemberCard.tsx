@@ -7,11 +7,11 @@ import Modal from './Modal';
 
 interface TeamMemberCardProps {
 	username: string;
-	avatar?: string;
-	role: 'captain' | 'member';
-	challengesSolved: number;
-	totalPoints: number;
-	isCaptain?: boolean;
+	avatar: string | null;
+	challenges_solved?: number | null;
+	total_points?: number | null;
+	is_captain?: boolean;
+	is_editable?: boolean;
 	onMakeCaptain?: () => void;
 	onKick?: () => void;
 }
@@ -19,10 +19,10 @@ interface TeamMemberCardProps {
 export default function TeamMemberCard({
 	username,
 	avatar,
-	role,
-	challengesSolved,
-	totalPoints,
-	isCaptain = false,
+	challenges_solved = 0,
+	total_points = 0,
+	is_captain = false,
+	is_editable = false,
 	onMakeCaptain,
 	onKick,
 }: TeamMemberCardProps) {
@@ -61,7 +61,7 @@ export default function TeamMemberCard({
 							) : (
 								username.charAt(0).toUpperCase()
 							)}
-							{role === 'captain' && (
+							{is_captain && (
 								<div
 									className="absolute -top-1 -right-1 bg-yellow-500 rounded-full p-1"
 									title="Team Captain"
@@ -80,7 +80,7 @@ export default function TeamMemberCard({
 							>
 								<h3>{username}</h3>
 							</Link>
-							{role === 'captain' && (
+							{is_captain && (
 								<span
 									className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded-full"
 									aria-label="Team captain"
@@ -91,39 +91,35 @@ export default function TeamMemberCard({
 						</div>
 						<div className="flex flex-wrap gap-3 text-sm text-dark/80">
 							<InfoText icon="challenge" iconClassName="size-4">
-								<span className="font-semibold">{challengesSolved}</span> Solved
+								<span className="font-semibold">{challenges_solved}</span> Solved
 							</InfoText>
 							<InfoText icon="trophy" iconClassName="size-4">
 								<span className="font-semibold text-primary">
-									{totalPoints}
+									{total_points}
 								</span>{' '}
 								Points
 							</InfoText>
 						</div>
 					</div>
 
-					{isCaptain && role !== 'captain' && (
+					{!is_captain && is_editable && (
 						<div className="flex gap-2">
-							{onMakeCaptain && (
-								<Button
-									size="sm"
-									variant="secondary"
-									onClick={() => setShowMakeCaptainModal(true)}
-									aria-label={`Make ${username} team captain`}
-								>
-									Make Captain
-								</Button>
-							)}
-							{onKick && (
-								<Button
-									size="sm"
-									variant="danger"
-									onClick={() => setShowKickModal(true)}
-									aria-label={`Kick ${username} from team`}
-								>
-									Kick
-								</Button>
-							)}
+							<Button
+								size="sm"
+								variant="secondary"
+								onClick={() => setShowMakeCaptainModal(true)}
+								aria-label={`Make ${username} team captain`}
+							>
+								Make Captain
+							</Button>
+							<Button
+								size="sm"
+								variant="danger"
+								onClick={() => setShowKickModal(true)}
+								aria-label={`Kick ${username} from team`}
+							>
+								Kick
+							</Button>
 						</div>
 					)}
 				</div>
