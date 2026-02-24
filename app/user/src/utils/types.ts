@@ -54,7 +54,6 @@ export class FoilCTF_Success {
 	}
 }
 
-
 export const registerSchema = z.object({
 	body: z.object({
 		username: z
@@ -117,24 +116,18 @@ export const updateProfileSchema = z.object({
 
 export const teamCreationSchema = z.object({
 	body: z.object({
-		newTeamName: z
+		name: z
 			.string()
-			.min(3)
+			.min(4)
 			.max(15)
 			.regex(/^[a-zA-Z0-9_-]+$/),
-		maxMembers: z
-			.coerce
-			.number()
-			.min(1)
-			.optional()
 	}),
 });
 
 export const updateTeamSchema = z.object({
 	body: z.object({
-		isLocked: z.coerce.boolean().optional(),
+		is_locked: z.boolean().optional(),
 		description: z.string().max(500).optional(),
-		maxMembers: z.coerce.number().min(1).optional(),
 	}),
 });
 

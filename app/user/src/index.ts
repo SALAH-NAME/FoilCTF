@@ -15,7 +15,7 @@ import {
 	FoilCTF_Success,
 } from './utils/types';
 import {
-	authenticateToken,
+	authenticateToken as middleware_auth,
 	parseNonExistingParam,
 	middleware_logger,
 	middleware_schema_validate,
@@ -42,7 +42,7 @@ import {
 	route_auth_refresh,
 	route_auth_logout,
 } from './auth';
-import { route_user_list, route_user_me, route_user_update } from './user';
+import { route_user_list, route_user_me, route_user_me_requests, route_user_update } from './user';
 import {
 	createTeam,
 	getTeamDetails,
@@ -50,16 +50,16 @@ import {
 	leaveTeam,
 	deleteMember,
 	handOverLeadership,
+	getTeams,
+	updateTeam,
 	sendJoinRequest,
 	cancelJoinRequest,
 	acceptJoinRequest,
 	declineJoinRequest,
-	getSentRequests,
+	route_team_requests,
 	notifyAllMembers,
 	notifyCaptain,
-	updateTeam,
-	getTeams,
-	getReceivedRequests,
+    route_team_delete,
 } from './team';
 import {
 	sendFriendRequest,
@@ -101,11 +101,10 @@ app.get(
 app.post(
 	'/api/profiles/:username/avatar',
 	parseNonExistingParam,
-	authenticateToken,
+	middleware_auth,
 	upload.single('avatar'),
 	uploadAvatar
 );
-
 app.use(
 	'/api/profiles/:username/avatar',
 	express.static(path.resolve(AvatarsDir), {
@@ -114,59 +113,59 @@ app.use(
 		redirect: false,
 	})
 );
-
 app.put(
 	'/api/profiles/:username',
 	parseNonExistingParam,
 	middleware_schema_validate(updateProfileSchema),
-	authenticateToken,
+	middleware_auth,
 	updateProfile
 );
 
 // SECTION: OAuth
-app.get('/api/oauth/42/link', authenticateToken, route_oauth_42_link);
-app.get('/api/oauth/42/link/verify', route_oauth_42_verify('link'));
+app.get('/api/oauth/42/link', middleware_auth, route_oauth_42_link);
 app.get('/api/oauth/42/connect', route_oauth_42_connect);
+app.get('/api/oauth/42/link/verify', route_oauth_42_verify('link'));
 app.get('/api/oauth/42/connect/verify', route_oauth_42_verify('connect'));
 
 // SECTION: Users
-app.get('/api/users', authenticateToken, route_user_list);
-app.get('/api/users/me', authenticateToken, route_user_me);
+app.get('/api/users', middleware_auth, route_user_list);
+app.get('/api/users/me', middleware_auth, route_user_me);
+app.get('/api/users/me/requests', middleware_auth, route_user_me_requests);
 app.put(
 	'/api/users/:username',
 	parseNonExistingParam,
 	middleware_schema_validate(updateUserSchema),
-	authenticateToken,
+	middleware_auth,
 	route_user_update,
 	updateTokens
 );
 
-// SECTION: friends
-app.get('/api/friends', authenticateToken, listFriends);
-app.get('/api/friends/requests', authenticateToken, listFriendRequests);
+// SECTION: Friends
+app.get('/api/friends', middleware_auth, listFriends);
+app.get('/api/friends/requests', middleware_auth, listFriendRequests);
 app.post(
 	'/api/friends/requests/:username',
-	authenticateToken,
+	middleware_auth,
 	sendFriendRequest,
 	notifyUser
 );
 app.delete(
 	'/api/friends/requests/:username',
-	authenticateToken,
+	middleware_auth,
 	cancelFriendRequest
 );
 app.patch(
 	'/api/friends/requests/pending/:username',
-	authenticateToken,
+	middleware_auth,
 	acceptFriendRequest,
 	notifyUser
 );
 app.delete(
 	'/api/friends/requests/pending/:username',
-	authenticateToken,
+	middleware_auth,
 	rejectFriendRequest
 );
-app.delete('/api/friends/:username', authenticateToken, removeFriend);
+app.delete('/api/friends/:username', middleware_auth, removeFriend);
 
 // SECTION: Health
 app.get('/health', (_req, res) => {
@@ -174,80 +173,84 @@ app.get('/health', (_req, res) => {
 });
 
 // SECTION: Teams
-app.post(
-	'/api/teams/',
-	middleware_schema_validate(teamCreationSchema),
-	authenticateToken,
-	createTeam,
-);
-app.get(
-	'/api/teams/:teamName',
-	getTeamDetails, // public data
-);
-app.get(
-	'/api/teams/:teamName/members',
-	getTeamMembers, // public data
-);
-app.delete(
-	'/api/teams/:teamName/members',
-	authenticateToken,
-	leaveTeam,
-	notifyAllMembers,
-);
-app.delete(
-	'/api/teams/:teamName/members/:username',
-	authenticateToken,
-	deleteMember,
-	notifyAllMembers,
-);
-app.put(
-	'/api/teams/:teamName/captain',
-	middleware_schema_validate(transferLeadershipSchema),
-	authenticateToken,
-	handOverLeadership,
-	notifyCaptain,
-);
-app.post(
-	'/api/teams/:teamName',
-	authenticateToken,
-	sendJoinRequest,
-	notifyCaptain,
-);
-app.delete(
-	'/api/teams/:teamName',
-	authenticateToken,
-	cancelJoinRequest,
-);
-app.put(
-	'/api/teams/:teamName/requests/:username',
-	authenticateToken,
-	acceptJoinRequest,
-	notifyAllMembers,
-);
-app.delete(
-	'/api/teams/:teamName/requests/:username',
-	authenticateToken,
-	declineJoinRequest,
-);
-app.get(
-	'/api/teams/:teamName/requests', // teamName is redundant! ( '/api/user/requests' ? )
-	authenticateToken,
-	getSentRequests,
-);
-app.put(
-	'/api/teams',
-	middleware_schema_validate(updateTeamSchema),
-	authenticateToken,
-	updateTeam,
-);
 app.get(
 	'/api/teams',
 	getTeams,
 );
 app.get(
-	'/api/requests', // !!!!!!!!!!! conflicts with /api/teams/:teamName, getTeamDetails
-	authenticateToken,
-	getReceivedRequests,
+	'/api/teams/:team_name',
+	getTeamDetails,
+);
+app.put(
+	'/api/teams',
+	middleware_auth,
+	middleware_schema_validate(updateTeamSchema),
+	updateTeam,
+);
+app.post(
+	'/api/teams',
+	middleware_schema_validate(teamCreationSchema),
+	middleware_auth,
+	createTeam,
+);
+app.delete(
+	'/api/teams/:team_name',
+	middleware_auth,
+	route_team_delete,
+);
+
+// SECTION: Team membership
+app.get(
+	'/api/teams/:team_name/members',
+	getTeamMembers, // public data
+);
+app.put(
+	'/api/teams/:team_name/crown',
+	middleware_schema_validate(transferLeadershipSchema),
+	middleware_auth,
+	handOverLeadership,
+	notifyCaptain,
+);
+app.delete(
+	'/api/teams/:team_name/members/me',
+	middleware_auth,
+	leaveTeam,
+	notifyAllMembers,
+);
+app.delete(
+	'/api/teams/:team_name/members/:username',
+	middleware_auth,
+	deleteMember,
+	notifyAllMembers,
+);
+
+// SECTION: Team requests
+app.get(
+	'/api/teams/:team_name/requests', // !!!!!!!!!!! conflicts with /api/teams/:team_name, getTeamDetails
+	middleware_auth,
+	route_team_requests,
+);
+app.post(
+	'/api/teams/:team_name/requests',
+	middleware_auth,
+	sendJoinRequest,
+	notifyCaptain,
+);
+app.put(
+	'/api/teams/:team_name/requests/:username',
+	middleware_auth,
+	acceptJoinRequest,
+	notifyAllMembers,
+);
+app.delete(
+	'/api/teams/:team_name/requests',
+	middleware_auth,
+	cancelJoinRequest,
+);
+app.delete(
+	'/api/teams/:team_name/requests/:username',
+	middleware_auth,
+	declineJoinRequest,
 );
 
 app.use(middleware_error);

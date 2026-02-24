@@ -7,8 +7,9 @@ import { User } from './utils/types';
 import { JWT_Payload } from './jwt';
 import { SALT_ROUNDS } from './auth';
 import { password_validate, user_exists_email, user_exists_username } from './utils/utils';
-import { users as table_users, profiles as table_profiles, friends as table_friends, friend_requests as table_friend_requests } from './db/schema';
+import { users as table_users, profiles as table_profiles, friends as table_friends, friend_requests as table_friend_requests, team_join_requests as table_team_requests } from './db/schema';
 
+// TODO(xenobas): Continue the work on Request to Join matching the database status
 export async function route_user_me(
 	_req: Request,
 	res: Response<any, { user: JWT_Payload }>
@@ -114,7 +115,7 @@ export async function route_user_list(req: Request, res: Response<any, { user: J
 
 export async function route_user_update(
 	req: Request,
-	res: Response<any, { user?: User }>,
+	res: Response<any, { user: JWT_Payload }>,
 	next: NextFunction
 ) {
 	if (!req.body || !res.locals.user)
@@ -171,4 +172,16 @@ export async function route_user_update(
 		.where(eq(table_users.id, user.id));
 
 	next();
+}
+
+export async function route_user_me_requests(
+	_req: Request,
+	res: Response<any, { user: JWT_Payload }>,
+) {
+	const { username } = res.locals.user;
+	const requests = await db
+		.select({ team_name: table_team_requests.team_name })
+		.from(table_team_requests)
+		.where(eq(table_team_requests.username, username));
+	return res.status(200).json({ data: requests.map(x => x.team_name) }).end()
 }

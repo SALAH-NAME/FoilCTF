@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 CREATE TABLE IF NOT EXISTS users (
-  id                  SERIAL PRIMARY KEY,
-  password            VARCHAR(256) NOT NULL,
+  id			SERIAL PRIMARY KEY,
+  password		VARCHAR(256) NOT NULL,
 
   created_at	TIMESTAMP DEFAULT now() NOT NULL,
   banned_until	TIMESTAMP DEFAULT NULL,
@@ -79,7 +79,6 @@ CREATE TABLE IF NOT EXISTS teams (
   name            TEXT NOT NULL UNIQUE,
 
   captain_name    TEXT NOT NULL,
-  max_members     INTEGER NOT NULL DEFAULT 1,
 
   members_count   INTEGER NOT NULL DEFAULT 1,
 

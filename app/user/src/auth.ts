@@ -135,5 +135,5 @@ export const route_auth_logout = async (req: Request, res: Response) => {
 	const cond = eq(table_sessions.refreshtoken, token_refresh);
 	await db.delete(table_sessions).where(cond);
 
-	return res.sendStatus(204);
+	return res.status(200).json({ ok: true }).end();
 };

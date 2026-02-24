@@ -1,7 +1,18 @@
-import { pgTable, foreignKey, serial, text, integer, boolean, varchar, timestamp, check, json } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
+import { pgTable, foreignKey, serial, text, integer, boolean, varchar, timestamp, check, json } from "drizzle-orm/pg-core"
 
-
+export const profiles = pgTable("profiles", {
+	id: serial().notNull(),
+	avatar: text(),
+	challengessolved: integer(),
+	eventsparticipated: integer(),
+	totalpoints: integer(),
+	bio: text(),
+	location: text(),
+	socialmedialinks: text(),
+	isprivate: boolean().default(false),
+	username: text().notNull(),
+});
 
 export const users = pgTable("users", {
 	id: serial().notNull(),
@@ -16,24 +27,11 @@ export const users = pgTable("users", {
 	team_name: text(),
 }, (table) => [
 	foreignKey({
-		columns: [table.profile_id],
-		foreignColumns: [profiles.id],
-		name: "profile"
-	}),
+			columns: [table.profile_id],
+			foreignColumns: [profiles.id],
+			name: "profile"
+		}),
 ]);
-
-export const profiles = pgTable("profiles", {
-	id: serial().notNull(),
-	avatar: text(),
-	challengessolved: integer(),
-	eventsparticipated: integer(),
-	totalpoints: integer(),
-	bio: text(),
-	location: text(),
-	socialmedialinks: text(),
-	isprivate: boolean().default(false),
-	username: text().notNull(),
-});
 
 export const sessions = pgTable("sessions", {
 	id: serial().notNull(),
@@ -318,7 +316,7 @@ export const containers = pgTable("containers", {
 		}),
 	foreignKey({
 			columns: [table.ctf_id, table.challenge_id],
-			foreignColumns: [ctfs_challenges.challenge_id, ctfs_challenges.ctf_id],
+			foreignColumns: [ctfs_challenges.ctf_id, ctfs_challenges.challenge_id],
 			name: "constraint_ctf_challenge"
 		}),
 ]);
