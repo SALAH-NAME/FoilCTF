@@ -13,7 +13,7 @@ import {
 import { db } from './db';
 import { users } from '../db/schema';
 import { User, AuthRequest } from './types';
-import { JWT_sign, JWT_verify } from '../jwt';
+import { JWT_Payload, JWT_sign, JWT_verify } from '../jwt';
 
 export function generateAccessToken(
 	username: string,
@@ -82,6 +82,25 @@ export function authenticateToken(
 	res.locals.user = user;
 
 	next();
+}
+
+export function extractor_request_token(req: Request): string | null {
+	const token_query = req.query['token'];
+	if (typeof token_query === 'string' && token_query) return token_query;
+
+	const value_header = req.get('Authorization');
+	if (typeof value_header !== 'string' || !value_header.startsWith('Bearer '))
+		return null;
+
+	return value_header.slice('Bearer '.length) || null;
+};
+
+export function middleware_auth_optional(req: Request, res: Response, next: NextFunction) {
+	const token = extractor_request_token(req);
+	if (!token)
+		return next();
+	res.locals.user = JWT_verify<JWT_Payload>(token, AccessTokenSecret);
+	return next();
 }
 
 export function middleware_schema_validate<T extends ZodObject>(schema: T) {

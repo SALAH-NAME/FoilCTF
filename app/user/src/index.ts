@@ -20,6 +20,7 @@ import {
 	middleware_logger,
 	middleware_schema_validate,
 	folder_exists,
+    middleware_auth_optional,
 } from './utils/utils';
 import {
 	getPublicProfile,
@@ -128,7 +129,7 @@ app.get('/api/oauth/42/link/verify', route_oauth_42_verify('link'));
 app.get('/api/oauth/42/connect/verify', route_oauth_42_verify('connect'));
 
 // SECTION: Users
-app.get('/api/users', middleware_auth, route_user_list);
+app.get('/api/users', middleware_auth_optional, route_user_list); // TODO(xenobas): Continue implementing optional authentication
 app.get('/api/users/me', middleware_auth, route_user_me);
 app.get('/api/users/me/requests', middleware_auth, route_user_me_requests);
 app.put(
@@ -166,11 +167,6 @@ app.delete(
 	rejectFriendRequest
 );
 app.delete('/api/friends/:username', middleware_auth, removeFriend);
-
-// SECTION: Health
-app.get('/health', (_req, res) => {
-	return res.status(200).json(new FoilCTF_Success("OK", 200));
-});
 
 // SECTION: Teams
 app.get(
@@ -252,6 +248,11 @@ app.delete(
 	middleware_auth,
 	declineJoinRequest,
 );
+
+// SECTION: Health
+app.get('/health', (_req, res) => {
+	return res.status(200).json(new FoilCTF_Success("OK", 200));
+});
 
 app.use(middleware_error);
 

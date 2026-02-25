@@ -10,19 +10,9 @@ import { fetch_42_profile } from './routes/oauth';
 import { loginSchema, registerSchema } from './utils/types';
 import { RefreshTokenSecret, RefreshTokenExpiry } from './utils/env';
 import { users, sessions as table_sessions, profiles } from './db/schema';
-import { generateAccessToken, generateRefreshToken, user_exists } from './utils/utils';
+import { extractor_request_token, generateAccessToken, generateRefreshToken, user_exists } from './utils/utils';
 
 export const SALT_ROUNDS = 10;
-const request_token = (req: Request): string | null => {
-	const token_query = req.query['token'];
-	if (typeof token_query === 'string' && token_query) return token_query;
-
-	const value_header = req.get('Authorization');
-	if (typeof value_header !== 'string' || !value_header.startsWith('Bearer '))
-		return null;
-
-	return value_header.slice('Bearer '.length) || null;
-};
 
 export const route_auth_register = async (
 	req: Request<any, any, zod.infer<typeof registerSchema>['body']>,
@@ -99,7 +89,7 @@ export const route_auth_login = async (
 		.end();
 };
 export const route_auth_refresh = async (req: Request, res: Response) => {
-	const token = request_token(req);
+	const token = extractor_request_token(req);
 	if (!token)
 		return res
 			.status(400)

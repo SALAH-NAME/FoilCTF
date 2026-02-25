@@ -1,13 +1,13 @@
 import ms from 'ms';
 import path from 'node:path';
-import { eq } from 'drizzle-orm';
+import { and, eq, or } from 'drizzle-orm';
 import multer, { FileFilterCallback } from 'multer';
 import { Request, Response, NextFunction } from 'express';
 
 import { db } from './utils/db';
 import { sessions } from './db/schema';
 import { UploadError } from './error';
-import { profiles } from './db/schema';
+import { profiles as table_profiles, friend_requests as table_friend_requests, friends as table_friends } from './db/schema';
 import { AuthRequest, User } from './utils/types';
 import { AccessTokenSecret } from './utils/env';
 import { JWT_Payload, JWT_verify } from './jwt';
@@ -23,16 +23,17 @@ export const authenticateTokenProfile = async (
 	res: Response,
 	next: NextFunction
 ) => {
-	const authHeader = req.get('authorization');
-	if (authHeader === undefined) return next();
+	const header = req.get('authorization');
+	if (header === undefined) return next();
 
-	const [bearer, ...tokens] = authHeader?.split(' ') ?? '';
+	const [bearer, ...tokens] = header?.split(' ') ?? '';
 	if (bearer !== 'Bearer' || tokens.length !== 1) return next();
 
 	const token = tokens.join(' ');
 	const token_user = JWT_verify<JWT_Payload>(token, AccessTokenSecret);
 	if (!token_user) return next();
 
+	res.locals.user = token_user;
 	const req_username = req.params.username;
 	if (typeof req_username !== 'string' || !req_username)
 		return res.status(404).json({ error: 'Invalid request format' }).end();
@@ -41,40 +42,93 @@ export const authenticateTokenProfile = async (
 
 	const [profile] = await db
 		.select()
-		.from(profiles)
-		.where(eq(profiles.username, req_username));
+		.from(table_profiles)
+		.where(eq(table_profiles.username, req_username));
 	if (!profile) return res.status(404).json({ error: 'User has no profile attached' }).end();
 
-	const { avatar, id, ...profile_sane } = profile;
-
 	const res_data = {
-		avatar,
-		username: profile_sane.username,
+		avatar: profile.avatar,
+		username: profile.username,
 
-		challenges_solved: profile_sane.challengessolved,
-		events_participated: profile_sane.eventsparticipated,
-		total_points: profile_sane.totalpoints,
+		challenges_solved: profile.challengessolved,
+		events_participated: profile.eventsparticipated,
+		total_points: profile.totalpoints,
 
-		bio: profile_sane.bio,
-		location: profile_sane.location,
-		social_media_links: profile_sane.socialmedialinks,
+		bio: profile.bio,
+		location: profile.location,
+		social_media_links: profile.socialmedialinks,
 	};
 	return res.json(res_data);
 };
 
-export const getPublicProfile = async (req: Request, res: Response) => {
+export const getPublicProfile = async (req: Request, res: Response<any, { user?: JWT_Payload }>) => {
 	const req_username = req.params.username;
 	if (typeof req_username !== 'string' || !req_username)
 		return res.status(404).json({ error: 'Invalid username' }).end();
 
+	if (res.locals.user) {
+		const { user } = res.locals;
+		console.log(req_username, user);
+
+		const on_friends = or(
+			and(eq(table_friends.username_1, table_profiles.username), eq(table_friends.username_2, user.username)),
+			and(eq(table_friends.username_2, table_profiles.username), eq(table_friends.username_1, user.username)),
+		);
+		const on_friend_requests = or(
+			eq(table_friend_requests.sender_name, table_profiles.username),
+			eq(table_friend_requests.receiver_name, table_profiles.username),
+		);
+
+		const [row] = await db
+					.select({ profile: table_profiles, friendship: table_friends, request: table_friend_requests })
+					.from(table_profiles)
+					.leftJoin(table_friends, on_friends)
+					.leftJoin(table_friend_requests, on_friend_requests)
+					.where(eq(table_profiles.username, req_username));
+		if (!row)
+			return res.status(404).json({ error: 'User profile doesn\' exist' }).end();
+
+		const { request, friendship, profile } = row;
+		const friend_status = ((request, friendship) => {
+			console.log('Friendship:', friendship);
+			if (friendship)
+				return 'friends';
+			if (request) {
+				if (request?.sender_name === res.locals.user?.username)
+					return 'sent';
+				return 'received';
+			}
+			return 'none';
+		})(request, friendship);
+		const data = {
+			friend_status,
+
+			avatar: profile.avatar,
+			username: profile.username,
+
+			challenges_solved: profile.challengessolved,
+			events_participated: profile.eventsparticipated,
+			total_points: profile.totalpoints,
+
+			bio: profile.isprivate ? undefined : profile.bio,
+			location: profile.isprivate ? undefined : profile.location,
+			social_media_links: profile.isprivate
+				? undefined
+				: profile.socialmedialinks,
+		};
+		return res.status(200).json(data).end();
+	}
+
 	const [profile] = await db
-		.select()
-		.from(profiles)
-		.where(eq(profiles.username, req_username));
+			.select()
+			.from(table_profiles)
+			.where(eq(table_profiles.username, req_username));
 	if (!profile)
 		return res.status(404).json({ error: "User profile doesn't exist" }).end();
 
 	const res_data = {
+		friend_status: 'none',
+
 		avatar: profile.avatar,
 		username: profile.username,
 
@@ -150,9 +204,9 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 
 	const dbFilename = `/api/profiles/${user.username}/avatar/` + file.filename;
 	await db
-		.update(profiles)
+		.update(table_profiles)
 		.set({ avatar: dbFilename })
-		.where(eq(profiles.id, user.id));
+		.where(eq(table_profiles.id, user.id));
 	return res.status(201).json({ ok: true }).end()
 };
 
@@ -194,9 +248,9 @@ export const updateProfile = async (
 
 	if (!isEmpty(profileData)) {
 		const result = await db
-			.update(profiles)
+			.update(table_profiles)
 			.set(profileData)
-			.where(eq(profiles.username, user.username)); // "isprivate": "" to set the profile to private
+			.where(eq(table_profiles.username, user.username)); // "isprivate": "" to set the profile to private
 		if (result.rowCount === 0)
 			return res
 				.status(404)
