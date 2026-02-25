@@ -313,6 +313,12 @@ services:
       - foilctf_net
     depends_on:
       - gateway
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/monitoring/prometheus/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
   grafana:
@@ -337,6 +343,12 @@ services:
       - foilctf_net
     depends_on:
       - prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9091/monitoring/grafana/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
 networks:
