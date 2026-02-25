@@ -64,7 +64,7 @@ func (hub *Hub) HandleDeleteAll(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		log.Printf("Transaction failed for userId %s while deleting all notifications: %v", userID, err)
+		log.Printf("Transaction failed for userId %d while deleting all notifications: %v", userID, err)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -100,7 +100,7 @@ func (hub *Hub) HandleDeleteSingle(w http.ResponseWriter, r *http.Request) {
 		}).Error
 
 	if err != nil {
-		log.Printf("Error dismissing notification %d for user %s: %v", notifID, userID, err)
+		log.Printf("Error dismissing notification %d for user %d: %v", notifID, userID, err)
 		JSONError(w, "internal Server Error", 500)
 		return
 	}

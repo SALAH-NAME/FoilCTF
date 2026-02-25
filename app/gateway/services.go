@@ -9,10 +9,11 @@ type ServiceConfig struct {
 }
 
 type RouteConfig struct {
-	Prefix      string
-	Protected   bool // is requires JWT authentication
-	WebSocket   bool // if it supports WebSocket upgrades
-	StripPrefix bool // if true, remove the prefix when forwarding
+	Prefix       string
+	Protected    bool   // is requires JWT authentication
+	RequiredRole string // optional required role (e.g. "admin")
+	WebSocket    bool   // if it supports WebSocket upgrades
+	StripPrefix  bool   // if true, remove the prefix when forwarding
 }
 
 func getEnv(key, fallback string) string {
@@ -35,25 +36,31 @@ var ServiceRegistry = []ServiceConfig{
 			},
 			{
 				Prefix:      "/api/profiles",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
 			{
 				Prefix:      "/api/teams",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
 			{
 				Prefix:      "/api/friends",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
 			{
 				Prefix:      "/api/users",
-				Protected:   true,
+				Protected:   false,
+				WebSocket:   false,
+				StripPrefix: false,
+			},
+			{
+				Prefix:      "/api/requests",
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
@@ -66,19 +73,19 @@ var ServiceRegistry = []ServiceConfig{
 		Routes: []RouteConfig{
 			{
 				Prefix:      "/api/challenges",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
 			{
 				Prefix:      "/api/hints",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
 			{
 				Prefix:      "/api/submissions",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
@@ -91,7 +98,7 @@ var ServiceRegistry = []ServiceConfig{
 		Routes: []RouteConfig{
 			{
 				Prefix:      "/api/chat",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   true,
 				StripPrefix: false,
 			},
@@ -104,7 +111,7 @@ var ServiceRegistry = []ServiceConfig{
 		Routes: []RouteConfig{
 			{
 				Prefix:      "/api/notifications",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   true,
 				StripPrefix: false,
 			},
@@ -112,11 +119,11 @@ var ServiceRegistry = []ServiceConfig{
 	},
 
 	{
-		Name:    "scoreboard",
-		BaseURL: getEnv("GATEWAY_SCOREBOARD_URL", "http://scoreboard:3005"),
+		Name:    "event",
+		BaseURL: getEnv("GATEWAY_EVENT_URL", "http://event:3005"),
 		Routes: []RouteConfig{
 			{
-				Prefix:      "/api/scoreboard",
+				Prefix:      "/api/event",
 				Protected:   false,
 				WebSocket:   true,
 				StripPrefix: false,
@@ -130,7 +137,7 @@ var ServiceRegistry = []ServiceConfig{
 		Routes: []RouteConfig{
 			{
 				Prefix:      "/api/sandbox",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
@@ -142,10 +149,11 @@ var ServiceRegistry = []ServiceConfig{
 		BaseURL: getEnv("GATEWAY_PROMETHEUS_URL", "http://prometheus:9090"),
 		Routes: []RouteConfig{
 			{
-				Prefix:      "/monitoring/prometheus",
-				Protected:   false,
-				WebSocket:   false,
-				StripPrefix: false,
+				Prefix:       "/monitoring/prometheus",
+				Protected:    false,
+				RequiredRole: "",
+				WebSocket:    false,
+				StripPrefix:  false,
 			},
 		},
 	},
@@ -155,9 +163,22 @@ var ServiceRegistry = []ServiceConfig{
 		BaseURL: getEnv("GATEWAY_GRAFANA_URL", "http://grafana:9091"),
 		Routes: []RouteConfig{
 			{
-				Prefix:      "/monitoring/grafana",
+				Prefix:       "/monitoring/grafana",
+				Protected:    false,
+				RequiredRole: "",
+				WebSocket:    true,
+				StripPrefix:  false,
+			},
+		},
+	},
+	{
+		Name:    "web",
+		BaseURL: getEnv("GATEWAY_WEB_URL", "http://web:3000"),
+		Routes: []RouteConfig{
+			{
+				Prefix:      "/",
 				Protected:   false,
-				WebSocket:   false,
+				WebSocket:   true,
 				StripPrefix: false,
 			},
 		},

@@ -44,6 +44,7 @@ const routes = [
 			]),
 		]),
 	]),
+	route('health', 'routes/health.tsx'),
 	route('*', 'routes/not_found.tsx'),
 ] satisfies RouteConfig;
 

@@ -4,6 +4,7 @@ import express, { json as middleware_json } from 'express';
 
 import { middleware_error } from './error';
 import { AvatarsDir, PORT } from './utils/env';
+import { pool } from './utils/db';
 import {
 	registerSchema,
 	loginSchema,
@@ -72,6 +73,7 @@ import {
 	cancelFriendRequest,
 	notifyUser,
 } from './friend';
+import { route_metrics } from './routes/metrics';
 
 const app = express();
 app.use(middleware_cors());
@@ -171,8 +173,16 @@ app.delete('/api/friends/:username', middleware_auth, removeFriend);
 // SECTION: Teams
 app.get(
 	'/api/teams',
-	getTeams,
+	getTeams
 );
+
+// SECTION: Health
+app.get('/health', (_req, res) => {
+	return res.status(200).json(new FoilCTF_Success('OK', 200));
+});
+app.get('/metrics', route_metrics);
+
+app.get('/api/teams', getTeams);
 app.get(
 	'/api/teams/:team_name',
 	getTeamDetails,
@@ -261,7 +271,7 @@ if (!folder_exists(AvatarsDir))
 		`Environment variable AVATARS_DIR="${AvatarsDir}" is not a valid path (doesn't exist, no permission, ...etc)"`
 	);
 
-app.listen(PORT, (err?: Error) => {
+const server = app.listen(PORT, (err?: Error) => {
 	if (!err) {
 		console.log(`INFO :: SERVER :: Listening at ${PORT}`);
 		return;
@@ -270,3 +280,35 @@ app.listen(PORT, (err?: Error) => {
 	console.error(`ERROR :: SERVER :: An error has occurred during listen:`);
 	console.error(err);
 });
+
+const gracefulShutdown = (signal: string) => {
+	console.log(`Received ${signal}, shutting down gracefully...`);
+
+	const forceTimer = setTimeout(() => {
+		console.error(
+			'Could not close connections in time, forcefully shutting down'
+		);
+		process.exit(1);
+	}, 10000);
+
+	server.close(async (err) => {
+		if (err) {
+			console.error('Error closing HTTP server:', err);
+		} else {
+			console.log('HTTP server closed.');
+		}
+
+		try {
+			await pool.end();
+			console.log('Database connection closed.');
+			clearTimeout(forceTimer);
+			process.exit(err ? 1 : 0);
+		} catch (dbErr) {
+			console.error('Error closing database connection:', dbErr);
+			process.exit(1);
+		}
+	});
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

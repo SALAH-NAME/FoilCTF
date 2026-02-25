@@ -110,7 +110,7 @@ try {
 	process.exit(1);
 }
 
-web.listen(ENV_API_PORT, ENV_API_HOST, (error?: Error) => {
+const server = web.listen(ENV_API_PORT, ENV_API_HOST, (error?: any) => {
 	if (error) {
 		console.error(error);
 		return;
@@ -118,3 +118,35 @@ web.listen(ENV_API_PORT, ENV_API_HOST, (error?: Error) => {
 
 	console.log(`REST API listening on port ${ENV_API_PORT}`);
 });
+
+const gracefulShutdown = (signal: string) => {
+	console.log(`Received ${signal}, shutting down gracefully...`);
+
+	const forceTimer = setTimeout(() => {
+		console.error(
+			'Could not close connections in time, forcefully shutting down'
+		);
+		process.exit(1);
+	}, 10000);
+
+	server.close(async (err) => {
+		if (err) {
+			console.error('Error closing HTTP server:', err);
+		} else {
+			console.log('HTTP server closed.');
+		}
+
+		try {
+			await orm.close();
+			console.log('Database connection closed.');
+			clearTimeout(forceTimer);
+			process.exit(err ? 1 : 0);
+		} catch (dbErr) {
+			console.error('Error closing database connection:', dbErr);
+			process.exit(1);
+		}
+	});
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

@@ -5,12 +5,55 @@ global:
     cluster: 'foilctf'
     environment: 'production'
 
+rule_files:
+  - "rules.yml"
+
 scrape_configs:
   - job_name: 'prometheus'
+    metrics_path: '/monitoring/prometheus/metrics'
     static_configs:
       - targets: ['localhost:9090']
 
   - job_name: 'gateway'
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
     static_configs:
       - targets: ['gateway:443']
+    metrics_path: '/metrics'
+
+  - job_name: 'user'
+    scheme: http
+    static_configs:
+      - targets: ['user:3001']
+    metrics_path: '/metrics'
+
+  - job_name: 'challenge'
+    scheme: http
+    static_configs:
+      - targets: ['challenge:3002']
+    metrics_path: '/metrics'
+
+  - job_name: 'chat'
+    scheme: http
+    static_configs:
+      - targets: ['chat:3003']
+    metrics_path: '/metrics'
+
+  - job_name: 'notification'
+    scheme: http
+    static_configs:
+      - targets: ['notification:3004']
+    metrics_path: '/metrics'
+
+  - job_name: 'event'
+    scheme: http
+    static_configs:
+      - targets: ['event:3005']
+    metrics_path: '/metrics'
+
+  - job_name: 'sandbox'
+    scheme: http
+    static_configs:
+      - targets: ['sandbox:3006']
     metrics_path: '/metrics'

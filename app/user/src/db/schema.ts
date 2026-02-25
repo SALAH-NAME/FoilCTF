@@ -43,9 +43,10 @@ export const sessions = pgTable("sessions", {
 	foreignKey({
 			columns: [table.user_id],
 			foreignColumns: [users.id],
-			name: "fk_id"
-		}).onDelete("cascade"),
-]);
+			name: 'fk_id',
+		}).onDelete('cascade'),
+	]
+);
 
 export const ctfs = pgTable("ctfs", {
 	id: serial().notNull(),
@@ -72,14 +73,15 @@ export const ctf_organizers = pgTable("ctf_organizers", {
 	foreignKey({
 			columns: [table.ctf_id],
 			foreignColumns: [ctfs.id],
-			name: "constraint_ctf"
+			name: 'constraint_ctf',
 		}),
 	foreignKey({
 			columns: [table.organizer_id],
 			foreignColumns: [users.id],
-			name: "constraint_organizer"
+			name: 'constraint_organizer',
 		}),
-]);
+	]
+);
 
 export const teams = pgTable("teams", {
 	id: serial().notNull(),
@@ -125,9 +127,10 @@ export const team_join_requests = pgTable("team_join_requests", {
 	foreignKey({
 			columns: [table.username],
 			foreignColumns: [users.username],
-			name: "constraint_member"
-		}).onUpdate("cascade"),
-]);
+			name: 'constraint_member',
+		}).onUpdate('cascade'),
+	]
+);
 
 export const friends = pgTable("friends", {
 	username_1: text().notNull(),
@@ -180,11 +183,12 @@ export const challenges = pgTable("challenges", {
 	foreignKey({
 			columns: [table.author_id],
 			foreignColumns: [users.id],
-			name: "constraint_author"
+			name: 'constraint_author',
 		}),
-	check("constraint_reward", sql`reward >= reward_min`),
-	check("constraint_reward_min", sql`reward_min >= 0`),
-]);
+		check('constraint_reward', sql`reward >= reward_min`),
+		check('constraint_reward_min', sql`reward_min >= 0`),
+	]
+);
 
 export const challenges_attachments = pgTable("challenges_attachments", {
 	challenge_id: integer().notNull(),
@@ -373,7 +377,7 @@ export const messages = pgTable("messages", {
 	foreignKey({
 			columns: [table.writer_id],
 			foreignColumns: [users.id],
-			name: "constraint_writer"
+			name: 'constraint_writer',
 		}),
 	foreignKey({
 			columns: [table.chatroom_id],

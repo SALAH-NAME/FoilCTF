@@ -3,12 +3,14 @@ package main
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 )
 
 type Message struct {
 	Id         uint       `json:"id" gorm:"primaryKey;column:id"`
-	SenderID   string     `json:"sender_id,omitempty" gorm:"column:writer_id"`
+	SenderID   string     `json:"sender_id,omitempty" gorm:"-"`
+	WriterID   *int64     `json:"-" gorm:"column:writer_id"`
 	ChatRoomID int        `json:"chatroom_id" gorm:"column:chatroom_id"`
 	SentTime   time.Time  `json:"sent_time" gorm:"column:sent_at"`
 	Content    string     `json:"content" gorm:"column:contents"`
@@ -69,6 +71,10 @@ func SendError(userID string, h *Hub, mssg Message) {
 func HandleMessageEvent(h *Hub, eventMessage *Message) {
 	eventMessage.SentTime = time.Now()
 
+	if id, err := strconv.ParseInt(eventMessage.SenderID, 10, 64); err == nil {
+		eventMessage.WriterID = &id
+	}
+
 	err := h.Db.Create(eventMessage).Error
 	if err != nil {
 		log.Printf("ERROR: DATABASE: Failed to save message: %v", err)
@@ -84,8 +90,9 @@ func HandleMessageEvent(h *Hub, eventMessage *Message) {
 
 func HandleEditEvent(h *Hub, eventMessage *Message) {
 	now := time.Now()
+	writerID, _ := strconv.ParseInt(eventMessage.SenderID, 10, 64)
 	result := h.Db.Model(&Message{}).Where("id = ? AND writer_id = ? AND sent_at > ?",
-		eventMessage.Id, eventMessage.SenderID, now.Add(-h.Conf.EditLimit)).
+		eventMessage.Id, writerID, now.Add(-h.Conf.EditLimit)).
 		Updates(map[string]any{
 			"contents":  eventMessage.Content,
 			"edited_at": &now,
@@ -115,8 +122,9 @@ func HandleEditEvent(h *Hub, eventMessage *Message) {
 
 func HandleDeleteEvent(h *Hub, eventMessage *Message) {
 	now := time.Now()
-	result := h.Db.Model(&Message{}).Where("id = ? AND writer_id = ?",
-		eventMessage.Id, eventMessage.SenderID).
+	writerID, _ := strconv.ParseInt(eventMessage.SenderID, 10, 64)
+	result := h.Db.Model(&Message{}).Where("id = ? AND writer_id = ? AND deleted_at IS NULL",
+		eventMessage.Id, writerID).
 		Updates(map[string]any{
 			"deleted_at": &now,
 		})

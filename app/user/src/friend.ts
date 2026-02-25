@@ -47,7 +47,6 @@ export class FoilCTF_Success {
 export async function listFriends(
 	req: Request,
 	res: Response,
-	_next: NextFunction
 ) {
 	const decodedUser = res.locals.user;
 	const limit = Math.max(Number(req.query.limit) || 10, 1);
@@ -272,7 +271,6 @@ export async function acceptFriendRequest(
 export async function rejectFriendRequest(
 	req: Request,
 	res: Response,
-	_next: NextFunction
 ) {
 	const target = req.params.username as string;
 	const decodedUser = res.locals.user;
@@ -299,7 +297,6 @@ export async function rejectFriendRequest(
 export async function removeFriend(
 	req: Request,
 	res: Response,
-	_next: NextFunction
 ) {
 	const target = req.params.username as string;
 	const decodedUser = res.locals.user;
@@ -332,7 +329,6 @@ export async function removeFriend(
 export const notifyUser = async (
 	_req: Request,
 	res: Response,
-	_next: NextFunction
 ) => {
 	const username = res.locals.userNameToNotify;
 	const notification = res.locals.contents;

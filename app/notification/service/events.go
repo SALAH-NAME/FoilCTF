@@ -12,6 +12,7 @@ func HandleJoin(hub *Hub, client *Client) {
 		hub.Clients[client.ID] = make(map[*Client]bool)
 	}
 	hub.Clients[client.ID][client] = true
+	WebsocketConnectedClients.Inc()
 	log.Printf("INFO: WEBSOCKET: User #%03d has joined the server", client.ID)
 }
 
@@ -29,12 +30,15 @@ func HandleUnjoin(hub *Hub, client *Client) {
 	if len(connections) == 0 {
 		delete(hub.Clients, client.ID)
 	}
+	WebsocketConnectedClients.Dec()
 	client.Connection.Close()
 	close(client.Send) // now guaranteed to be closed once.
 	log.Printf("INFO: userID: %03v has left the server", client.ID)
 }
 
 func HandleWsEvent(hub *Hub, eventws *WsEvent) {
+	WebsocketMessagesTotal.Inc()
+	WebsocketEventsTotal.WithLabelValues(eventws.Event).Inc()
 	switch eventws.Event {
 	case "new":
 		BroadcastNotification(hub, eventws)
@@ -58,7 +62,7 @@ func BroadcastNotification(hub *Hub, eventws *WsEvent) {
 func SendToClient(hub *Hub, client *Client, ev WsEvent) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("ERROR: Panic in SendToClient for user %s: %v", client.ID, r)
+			log.Printf("ERROR: Panic in SendToClient for user %d: %v", client.ID, r)
 			hub.UnregisterChan <- client
 		}
 	}()
@@ -66,7 +70,7 @@ func SendToClient(hub *Hub, client *Client, ev WsEvent) {
 	case client.Send <- ev:
 	case <-time.After(hub.Conf.BroadcastTimeout):
 		{
-			log.Printf("userid %s timed out, disconnecting", client.ID)
+			log.Printf("userid %03d timed out, disconnecting", client.ID)
 			hub.UnregisterChan <- client
 		}
 	}

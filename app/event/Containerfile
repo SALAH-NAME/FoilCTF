@@ -16,6 +16,6 @@ WORKDIR /usr/src/app
 
 COPY --from=builder /usr/local/bin/event /usr/local/bin/event
 
-EXPOSE 3004
+EXPOSE 3005
 
 ENTRYPOINT ["event"]

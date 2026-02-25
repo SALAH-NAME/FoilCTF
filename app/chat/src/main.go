@@ -1,14 +1,18 @@
 package main
 
 import (
-	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 func (hub *Hub) RegisterRoutes() http.Handler {
 	r := mux.NewRouter()
 	r.HandleFunc("/health", hub.ServeHealth).Methods(http.MethodGet)
+	r.Handle("/metrics", metricsHandler()).Methods(http.MethodGet)
+
+	r.Use(metricsMiddleware)
 
 	rAuthProtected := r.NewRoute().Subrouter()
 	rAuthProtected.Use(hub.AuthMiddleware)

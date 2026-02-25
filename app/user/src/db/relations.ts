@@ -10,6 +10,7 @@ export const profilesRelations = relations(profiles, ({one, many}) => ({
 	users: many(users, {
 		relationName: "users_profile_id_profiles_id"
 	}),
+	teams: many(teams),
 }));
 
 export const usersRelations = relations(users, ({one, many}) => ({
@@ -44,7 +45,7 @@ export const usersRelations = relations(users, ({one, many}) => ({
 	reports: many(reports),
 }));
 
-export const sessionsRelations = relations(sessions, ({one}) => ({
+export const sessionsRelations = relations(sessions, ({ one }) => ({
 	user: one(users, {
 		fields: [sessions.user_id],
 		references: [users.id]
@@ -70,7 +71,7 @@ export const ctfsRelations = relations(ctfs, ({many}) => ({
 	chat_rooms: many(chat_rooms),
 }));
 
-export const teamsRelations = relations(teams, ({one, many}) => ({
+export const teamsRelations = relations(teams, ({ one, many }) => ({
 	user: one(users, {
 		fields: [teams.captain_name],
 		references: [users.username]
@@ -156,7 +157,7 @@ export const attachmentsRelations = relations(attachments, ({many}) => ({
 	challenges_attachments: many(challenges_attachments),
 }));
 
-export const hintsRelations = relations(hints, ({one}) => ({
+export const hintsRelations = relations(hints, ({ one }) => ({
 	challenge: one(challenges, {
 		fields: [hints.challenge_id],
 		references: [challenges.id]
@@ -206,7 +207,7 @@ export const solvesRelations = relations(solves, ({one}) => ({
 	}),
 }));
 
-export const containersRelations = relations(containers, ({one}) => ({
+export const containersRelations = relations(containers, ({ one }) => ({
 	participation: one(participations, {
 		fields: [containers.participation_id],
 		references: [participations.id]
@@ -240,7 +241,7 @@ export const chat_roomsRelations = relations(chat_rooms, ({one, many}) => ({
 	messages: many(messages),
 }));
 
-export const messagesRelations = relations(messages, ({one}) => ({
+export const messagesRelations = relations(messages, ({ one }) => ({
 	user: one(users, {
 		fields: [messages.writer_id],
 		references: [users.id]
