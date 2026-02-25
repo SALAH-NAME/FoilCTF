@@ -16,6 +16,7 @@ services:
       - SERVICE_NAME=${GATEWAY_SERVICE_NAME:-gateway}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
       - CERT_DIR=/certs
+      - GATEWAY_WEB_URL=http://web:${USER_SERVICE_PORT:-3000}
       - GATEWAY_USER_URL=http://user:${USER_SERVICE_PORT:-3001}
       - GATEWAY_CHALLENGE_URL=http://challenge:${CHALLENGE_SERVICE_PORT:-3002}
       - GATEWAY_CHAT_URL=http://chat:${CHAT_SERVICE_PORT:-3003}
@@ -25,7 +26,7 @@ services:
     networks:
       - foilctf_net
     ports:
-      - "3443:${GATEWAY_PORT:-443}" # For development access
+      - "3443:${GATEWAY_PORT:-443}"
     healthcheck:
       test:
         [
@@ -38,70 +39,6 @@ services:
       start_period: 10s
     volumes:
       - gateway-certs:/certs
-    restart: unless-stopped
-
-  user:
-    container_name: foilctf_user
-    build:
-      tags:
-        - "foilctf/user:latest"
-      context: ./app/user/
-      dockerfile: Containerfile
-    environment:
-      - PORT=${USER_PORT:-3001}
-      - DATABASE_URL=postgresql://${DATABASE_DEVELOPER_USER}:${DATABASE_DEVELOPER_PASS}@database:5432/${DATABASE_NAME:-foilctf}
-      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET:?ACCESS_TOKEN_SECRET must be set}
-      - REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET:?REFRESH_TOKEN_SECRET must be set}
-      - ACCESS_TOKEN_EXPIRY=${ACCESS_TOKEN_EXPIRY:-15m}
-      - REFRESH_TOKEN_EXPIRY=${REFRESH_TOKEN_EXPIRY:-7d}
-      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-2097152}
-      - AVATARS_DIR=${AVATARS_DIR:-./uploads/avatars}
-    volumes:
-      - user-avatars:/app/uploads/avatars
-    networks:
-      - foilctf_net
-    ports:
-      - "3001:3001" # For development access
-    depends_on:
-      database:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    restart: unless-stopped
-
-  challenge:
-    container_name: foilctf_challenge
-    build:
-      tags:
-        - "foilctf/challenge:latest"
-      context: ./app/challenge/
-      dockerfile: Containerfile
-    environment:
-      - API_PORT=${CHALLENGE_PORT:-3002}
-      - API_HOST=0.0.0.0
-      - API_ORIGINS_WHITELIST=${API_ORIGINS_WHITELIST:-http://localhost:443,http://127.0.0.1:443}
-      - DATABASE_HOST=database
-      - DATABASE_PORT=5432
-      - DATABASE_USER=${DATABASE_DEVELOPER_USER:?DATABASE_DEVELOPER_USER must be set}
-      - DATABASE_PASS=${DATABASE_DEVELOPER_PASS:?DATABASE_DEVELOPER_PASS must be set}
-      - DATABASE_NAME=${DATABASE_NAME:-foilctf}
-    networks:
-      - foilctf_net
-    ports:
-      - "3002:3002" # For development access
-    depends_on:
-      database:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3002/health || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
     restart: unless-stopped
 
   # PostgreSQL Database Service
@@ -136,8 +73,6 @@ services:
         read_only: true
     networks:
       - foilctf_net
-    ports:
-      - "5432:5432" # For development access
     healthcheck:
       test:
         [
@@ -163,12 +98,70 @@ services:
 
     networks:
       - foilctf_net
-    ports:
-      - "3000:3000" # For development access
     depends_on:
       - gateway
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  user:
+    container_name: foilctf_user
+    build:
+      tags:
+        - "foilctf/user:latest"
+      context: ./app/user/
+      dockerfile: Containerfile
+    environment:
+      - PORT=${USER_PORT:-3001}
+      - DATABASE_URL=postgresql://${DATABASE_DEVELOPER_USER}:${DATABASE_DEVELOPER_PASS}@database:5432/${DATABASE_NAME:-foilctf}
+      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET:?ACCESS_TOKEN_SECRET must be set}
+      - REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET:?REFRESH_TOKEN_SECRET must be set}
+      - ACCESS_TOKEN_EXPIRY=${ACCESS_TOKEN_EXPIRY:-15m}
+      - REFRESH_TOKEN_EXPIRY=${REFRESH_TOKEN_EXPIRY:-7d}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-2097152}
+      - AVATARS_DIR=${AVATARS_DIR:-./uploads/avatars}
+    volumes:
+      - user-avatars:/app/uploads/avatars
+    networks:
+      - foilctf_net
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  challenge:
+    container_name: foilctf_challenge
+    build:
+      tags:
+        - "foilctf/challenge:latest"
+      context: ./app/challenge/
+      dockerfile: Containerfile
+    environment:
+      - API_PORT=${CHALLENGE_PORT:-3002}
+      - API_HOST=0.0.0.0
+      - API_ORIGINS_WHITELIST=${API_ORIGINS_WHITELIST:-http://localhost:443,http://127.0.0.1:443}
+      - DATABASE_HOST=database
+      - DATABASE_PORT=5432
+      - DATABASE_USER=${DATABASE_DEVELOPER_USER:?DATABASE_DEVELOPER_USER must be set}
+      - DATABASE_PASS=${DATABASE_DEVELOPER_PASS:?DATABASE_DEVELOPER_PASS must be set}
+      - DATABASE_NAME=${DATABASE_NAME:-foilctf}
+    networks:
+      - foilctf_net
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3002/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -192,8 +185,6 @@ services:
       - DB_NAME=${DATABASE_NAME:-foilctf}
     networks:
       - foilctf_net
-    ports:
-      - "3003:3003" # For development access
     depends_on:
       database:
         condition: service_healthy
@@ -222,8 +213,6 @@ services:
       - DB_NAME=${DATABASE_NAME:-foilctf}
     networks:
       - foilctf_net
-    ports:
-      - "3004:3004" # For development access
     depends_on:
       database:
         condition: service_healthy
@@ -252,8 +241,6 @@ services:
       - DB_NAME=${DATABASE_NAME:-foilctf}
     networks:
       - foilctf_net
-    ports:
-      - "3005:3005" # For development access
     depends_on:
       database:
         condition: service_healthy
@@ -283,8 +270,6 @@ services:
       - ${PODMAN_SOCKET:-/run/podman/podman.sock}:/run/podman/podman.sock:ro
     networks:
       - foilctf_net
-    ports:
-      - "3006:3006" # For development access
     depends_on:
       database:
         condition: service_healthy
@@ -316,7 +301,11 @@ services:
     depends_on:
       - gateway
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/monitoring/prometheus/-/healthy || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:9090/monitoring/prometheus/-/healthy || exit 1",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -347,7 +336,11 @@ services:
     depends_on:
       - prometheus
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9091/monitoring/grafana/api/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:9091/monitoring/grafana/api/health || exit 1",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
