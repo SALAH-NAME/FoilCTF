@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
-import InfoText from './InfoText';
+
 import Button from './Button';
+import InfoText from './InfoText';
 
 interface TeamCardProps {
 	id: number;

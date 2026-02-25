@@ -1,8 +1,10 @@
 import { Link } from 'react-router';
-import Icon from './Icon';
-import InfoText from './InfoText';
-import Button from './Button';
-import { useUserAuth } from '~/contexts/UserContext';
+
+import type { SessionUser } from '~/session.server';
+
+import Icon from '~/components/Icon';
+import Button from '~/components/Button';
+import InfoText from '~/components/InfoText';
 
 export type FriendStatus = 'none' | 'sent' | 'received' | 'friends';
 
@@ -14,6 +16,7 @@ interface UserCardProps {
 	totalPoints: number;
 	friendStatus?: FriendStatus;
 	disabled?: boolean;
+	userState?: SessionUser,
 	onAddFriend?: () => void;
 }
 
@@ -25,10 +28,9 @@ export default function UserCard({
 	totalPoints,
 	friendStatus = 'none',
 	disabled = false,
+	userState,
 	onAddFriend,
 }: UserCardProps) {
-	const { userState: user_curr } = useUserAuth();
-
 	const getButtonContent = (friendStatus: FriendStatus) => {
 		switch (friendStatus) {
 			case 'friends':
@@ -121,7 +123,7 @@ export default function UserCard({
 					</div>
 				</div>
 
-				{user_curr.username !== username && true && (
+				{userState && userState.username !== username && true && (
 					<Button size="sm" {...getButtonProps(friendStatus)}>
 						{getButtonContent(friendStatus)}
 					</Button>

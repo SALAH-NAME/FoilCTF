@@ -5,13 +5,17 @@ import UserCard, { type FriendStatus } from '~/components/UserCard';
 import SearchInput from '~/components/SearchInput';
 import Pagination from '~/components/Pagination';
 import type { Route } from './+types/users';
-import { useUserAuth } from '~/contexts/UserContext';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '~/contexts/ToastContext';
 import { remote_send_friend_request } from './friends';
+import { request_session } from '~/session.server';
 
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Users' }];
+}
+export async function loader({ request }: Route.LoaderArgs) {
+	const session = await request_session(request);
+	return { userState: session.get('user') };
 }
 
 interface User {
@@ -23,24 +27,22 @@ interface User {
 	friendStatus: FriendStatus;
 }
 
-// TODO(xenobas): Continue fixing the bug where if you don't type the exact bastard it doesn't show up despite the response containing all matching bastards
-
 async function remote_fetch_users(
-	token: string,
+	token: string | undefined,
 	q: string,
 	page: number,
 	limit: number
 ) {
+	const headers = new Headers();
+	if (token)
+		headers.set('Authorization', `Bearer ${token}`);
+
 	const url = new URL('/api/users', import.meta.env.VITE_REST_USER_ORIGIN);
 	if (q) url.searchParams.set('q', q);
 	url.searchParams.set('page', page.toString());
 	url.searchParams.set('limit', limit.toString());
 
-	const res = await fetch(url, {
-		headers: {
-			Authorization: `Bearer ${token}`,
-		},
-	});
+	const res = await fetch(url, { headers });
 	const content_type =
 		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
 	if (content_type !== 'application/json')
@@ -65,11 +67,10 @@ async function remote_fetch_users(
 	};
 	return json as JSONData_Users;
 }
-export default function Page() {
+export default function Page({ loaderData }: Route.ComponentProps) {
 	const { addToast } = useToast();
-	const {
-		userState: { token_access },
-	} = useUserAuth();
+	const { userState } = loaderData;
+	const token_access = userState?.token_access;
 
 	const [queryTerm, setQueryTerm] = useState<string>('');
 	const [searchParams, setSearchParams] = useSearchParams();
@@ -117,6 +118,8 @@ export default function Page() {
 	});
 	const mut_friend_request_send = useMutation<unknown, Error, string>({
 		mutationFn: async (target) => {
+			if (!token_access)
+				throw new Error('Unauthorized');
 			await remote_send_friend_request(token_access, target);
 			await queryClient.invalidateQueries({ queryKey: ['users'] });
 		},
@@ -173,7 +176,6 @@ export default function Page() {
 	const handleAddFriend = (target: string) => {
 		mut_friend_request_send.mutate(target);
 	};
-
 	return (
 		<>
 			<PageHeader title="Find Users" />
@@ -222,6 +224,7 @@ export default function Page() {
 								<div key={user.username} role="listitem">
 									<UserCard
 										{...user}
+										userState={userState}
 										disabled={mut_friend_request_send.isPending}
 										onAddFriend={() => handleAddFriend(user.username)}
 									/>

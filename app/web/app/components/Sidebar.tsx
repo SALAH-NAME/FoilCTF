@@ -111,6 +111,28 @@ export default function Sidebar({ session_user }: SidebarProps) {
 									item={{ to: '/signin', label: 'Sign In', icon: 'user' }}
 								/>
 							)}
+							{user && (
+							<NavLink
+								item={{ to: '/dashboard', label: 'Dashboard', icon: 'chart' }}
+							>
+								<NavLink
+									item={{
+										to: '/challenges',
+										label: 'Challenges',
+										icon: 'challenge',
+									}}
+									isNested
+								/>
+								<NavLink
+									item={{
+										to: '/instances',
+										label: 'Instances',
+										icon: 'instance',
+									}}
+									isNested
+								/>
+							</NavLink>
+							)}
 							<NavLink
 								item={{ to: '/events', label: 'Events', icon: 'calendar' }}
 							>
@@ -135,26 +157,6 @@ export default function Sidebar({ session_user }: SidebarProps) {
 										to: '/events?filter=ended',
 										label: 'Past',
 										icon: 'calendar',
-									}}
-									isNested
-								/>
-							</NavLink>
-							<NavLink
-								item={{ to: '/dashboard', label: 'Dashboard', icon: 'chart' }}
-							>
-								<NavLink
-									item={{
-										to: '/challenges',
-										label: 'Challenges',
-										icon: 'challenge',
-									}}
-									isNested
-								/>
-								<NavLink
-									item={{
-										to: '/instances',
-										label: 'Instances',
-										icon: 'instance',
 									}}
 									isNested
 								/>

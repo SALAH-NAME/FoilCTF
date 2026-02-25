@@ -8,6 +8,9 @@ import {
 const routes = [
 	layout('./layouts/dashboard.tsx', [
 		index('routes/index.tsx'),
+		route('users', 'routes/users.tsx'),
+		route('users/:username', 'routes/users.$username.tsx'),
+
 		route('events', 'routes/events.tsx'),
 		route('events/:id', 'routes/events.$id.tsx'),
 		route('events/:id/leaderboard', 'routes/events.$id.leaderboard.tsx'),
@@ -29,8 +32,6 @@ const routes = [
 		]),
 
 		layout('./layouts/auth.tsx', [
-			route('users', 'routes/users.tsx'),
-			route('users/:username', 'routes/users.$username.tsx'),
 
 			route('team', 'routes/team.tsx'),
 
