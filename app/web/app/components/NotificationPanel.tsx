@@ -72,13 +72,12 @@ export default function NotificationPanel() {
 		}
 	}, []);
 
-	const [isDesktop, setIsDesktop] = useState(() =>
-		typeof window !== 'undefined' ? window.innerWidth >= 768 : true
-	);
+	const [isDesktop, setIsDesktop] = useState(false);
 	useEffect(() => {
 		const mq = window.matchMedia('(min-width: 768px)');
 		const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
 		setIsDesktop(mq.matches);
+
 		mq.addEventListener('change', handler);
 		return () => mq.removeEventListener('change', handler);
 	}, []);
