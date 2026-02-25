@@ -33,7 +33,7 @@ func HandleUnjoin(hub *Hub, client *Client) {
 	WebsocketConnectedClients.Dec()
 	client.Connection.Close()
 	close(client.Send) // now guaranteed to be closed once.
-	log.Printf("INFO: userID: %s has left the server", client.ID)
+	log.Printf("INFO: userID: %d has left the server", client.ID)
 }
 
 func HandleWsEvent(hub *Hub, eventws *WsEvent) {
@@ -62,7 +62,7 @@ func BroadcastNotification(hub *Hub, eventws *WsEvent) {
 func SendToClient(hub *Hub, client *Client, ev WsEvent) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("ERROR: Panic in SendToClient for user %s: %v", client.ID, r)
+			log.Printf("ERROR: Panic in SendToClient for user %d: %v", client.ID, r)
 			hub.UnregisterChan <- client
 		}
 	}()
@@ -70,7 +70,7 @@ func SendToClient(hub *Hub, client *Client, ev WsEvent) {
 	case client.Send <- ev:
 	case <-time.After(hub.Conf.BroadcastTimeout):
 		{
-			log.Printf("userid %s timed out, disconnecting", client.ID)
+			log.Printf("userid %d timed out, disconnecting", client.ID)
 			hub.UnregisterChan <- client
 		}
 	}

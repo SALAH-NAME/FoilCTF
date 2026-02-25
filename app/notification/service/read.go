@@ -53,7 +53,7 @@ func (hub *Hub) HandleReadAll(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		log.Printf("Transaction failed for userId %s while making all notifications as read: %v", userID, err)
+		log.Printf("Transaction failed for userId %d while making all notifications as read: %v", userID, err)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -79,13 +79,13 @@ func (hub *Hub) HandleReadSingle(w http.ResponseWriter, r *http.Request) {
 			Columns:   []clause.Column{{Name: "notification_id"}, {Name: "notified_id"}},
 			DoUpdates: clause.Assignments(map[string]interface{}{"is_read": true}),
 		}).
-		Create(UserNotification{
+		Create(&UserNotification{
 			NotificationID: notifID,
 			NotifiedID:     userID,
 			IsRead:         true,
 		}).Error
 	if err != nil {
-		log.Printf("Error while marking notification %d as read for userId %s: %v", notifID, userID, err)
+		log.Printf("Error while marking notification %d as read for userId %d: %v", notifID, userID, err)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
