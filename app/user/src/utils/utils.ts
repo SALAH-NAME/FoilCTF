@@ -142,17 +142,27 @@ export function folder_exists(folder_path: string): boolean {
 	}
 }
 
-// TODO(xenobas): Metrics
+// SECTION: Metrics
+import { metric_lats, metric_reqs } from '../prometheus';
+
 export function middleware_logger(
 	req: Request,
 	res: Response,
 	next: NextFunction
 ) {
 	const time_start = Date.now();
-	const DateTimeFormatter = new Intl.DateTimeFormat(); // NOTE(xenobas): Useless instantiation on each request!
+	const DateTimeFormatter = new Intl.DateTimeFormat();
+
 	res.on('finish', () => {
 		const time_end = Date.now();
-		const latency = time_end - time_start;
+		const latency = (time_end - time_start) / 1000;
+
+		metric_lats.observe(latency);
+		metric_reqs.inc({
+			status_code: res.statusCode,
+			method: req.method,
+			path: req.path,
+		});
 
 		const datetime = DateTimeFormatter.format(new Date(time_end));
 		console.log(
@@ -161,7 +171,7 @@ export function middleware_logger(
 			req.path,
 			req.method,
 			res.statusCode,
-			latency
+			time_end - time_start
 		);
 	});
 

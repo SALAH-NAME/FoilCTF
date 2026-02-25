@@ -66,6 +66,7 @@ import {
 	cancelFriendRequest,
 	notifyUser,
 } from './friend';
+import { route_metrics } from './routes/metrics';
 
 const app = express();
 app.use(middleware_logger);
@@ -160,6 +161,7 @@ app.delete('/api/friends/:username', authenticateToken, removeFriend);
 app.get('/health', (_req, res) => {
 	return res.status(200).json(new FoilCTF_Success('OK', 200));
 });
+app.get('/metrics', route_metrics);
 
 // SECTION: Teams
 app.post(
