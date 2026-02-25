@@ -166,6 +166,12 @@ services:
       - "3000:3000" # For development access
     depends_on:
       - gateway
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
   chat:
