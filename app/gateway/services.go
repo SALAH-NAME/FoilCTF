@@ -36,31 +36,31 @@ var ServiceRegistry = []ServiceConfig{
 			},
 			{
 				Prefix:      "/api/profiles",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
 			{
 				Prefix:      "/api/teams",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
 			{
 				Prefix:      "/api/friends",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
 			{
 				Prefix:      "/api/users",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
 			{
 				Prefix:      "/api/requests",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
@@ -73,19 +73,19 @@ var ServiceRegistry = []ServiceConfig{
 		Routes: []RouteConfig{
 			{
 				Prefix:      "/api/challenges",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
 			{
 				Prefix:      "/api/hints",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
 			{
 				Prefix:      "/api/submissions",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
@@ -98,7 +98,7 @@ var ServiceRegistry = []ServiceConfig{
 		Routes: []RouteConfig{
 			{
 				Prefix:      "/api/chat",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   true,
 				StripPrefix: false,
 			},
@@ -111,7 +111,7 @@ var ServiceRegistry = []ServiceConfig{
 		Routes: []RouteConfig{
 			{
 				Prefix:      "/api/notifications",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   true,
 				StripPrefix: false,
 			},
@@ -137,7 +137,7 @@ var ServiceRegistry = []ServiceConfig{
 		Routes: []RouteConfig{
 			{
 				Prefix:      "/api/sandbox",
-				Protected:   true,
+				Protected:   false,
 				WebSocket:   false,
 				StripPrefix: false,
 			},
