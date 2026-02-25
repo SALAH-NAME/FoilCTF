@@ -82,3 +82,66 @@ groups:
           summary: "No WebSocket traffic on Notification"
           description: "Notification service is processing 0 messages despite having active connections for 10 minutes."
 
+      - alert: UserDown
+        expr: up{job="user"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "User service is down"
+          description: "User service has been down for more than 1 minute."
+
+      - alert: UserHighRequestLatency
+        expr: (sum(rate(user_requests_latency_sum[5m])) by (instance)) / (sum(rate(user_requests_latency_count[5m])) by (instance)) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request latency on User"
+          description: "Average latency is above 0.5s for more than 5 minutes."
+
+      - alert: ChallengeDown
+        expr: up{job="challenge"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Challenge service is down"
+          description: "Challenge service has been down for more than 1 minute."
+
+      - alert: ChallengeHighRequestLatency
+        expr: (sum(rate(requests_latency_sum[5m])) by (instance)) / (sum(rate(requests_latency_count[5m])) by (instance)) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request latency on Challenge"
+          description: "Average latency is above 0.5s for more than 5 minutes."
+
+      - alert: EventDown
+        expr: up{job="event"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Event service is down"
+          description: "Event service has been down for more than 1 minute."
+
+      - alert: EventHighRequestLatency
+        expr: (sum(rate(event_http_request_duration_seconds_sum[5m])) by (instance)) / (sum(rate(event_http_request_duration_seconds_count[5m])) by (instance)) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request latency on Event"
+          description: "Average latency is above 0.5s for more than 5 minutes."
+
+      - alert: SandboxDown
+        expr: up{job="sandbox"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Sandbox service is down"
+          description: "Sandbox service has been down for more than 1 minute."
+
