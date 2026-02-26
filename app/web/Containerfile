@@ -12,6 +12,9 @@ COPY tsconfig.json vite.config.ts react-router.config.ts ./
 COPY app ./app
 COPY public ./public
 
+ARG VITE_REST_USER_ORIGIN
+ENV VITE_REST_USER_ORIGIN=$VITE_REST_USER_ORIGIN
+
 RUN pnpm run build
 
 # Production stage

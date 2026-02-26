@@ -89,9 +89,12 @@ services:
     build:
       context: ./app/web/
       dockerfile: Containerfile
+      args:
+        - VITE_REST_USER_ORIGIN=${VITE_REST_USER_ORIGIN:-https://localhost:3443}
     environment:
       - PORT=${WEB_PORT:-3000}
       - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET:?ACCESS_TOKEN_SECRET must be set}
+      - VITE_REST_USER_ORIGIN=http://user:${USER_SERVICE_PORT:-3001}
 
     networks:
       - foilctf_net
@@ -120,6 +123,8 @@ services:
       - REFRESH_TOKEN_EXPIRY=${REFRESH_TOKEN_EXPIRY:-7d}
       - MAX_FILE_SIZE=${MAX_FILE_SIZE:-2097152}
       - AVATARS_DIR=${AVATARS_DIR:-./uploads/avatars}
+      - OAUTH_42_UID=${OAUTH_42_UID:?OAUTH_42_UID must be set}
+      - OAUTH_42_SECRET=${OAUTH_42_SECRET:?OAUTH_42_SECRET must be set}
     volumes:
       - user-avatars:/app/uploads/avatars
     networks:
