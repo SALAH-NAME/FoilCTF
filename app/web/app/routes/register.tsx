@@ -36,7 +36,7 @@ type RegisterPayload = {
 async function register_user(payload: RegisterPayload) {
 	const url = new URL(
 		'/api/auth/register',
-		import.meta.env.VITE_REST_USER_ORIGIN
+		import.meta.env.BROWSER_REST_USER_ORIGIN
 	);
 	const res = await fetch(url, {
 		method: 'POST',

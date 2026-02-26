@@ -15,7 +15,7 @@ import OAuthButton from '~/components/OAuthButton';
 
 type Credentials = { username: string; password: string };
 async function fetch_tokens(credentials: Credentials) {
-	const url = new URL('/api/auth/login', import.meta.env.VITE_REST_USER_ORIGIN);
+	const url = new URL('/api/auth/login', process.env.SERVER_REST_USER_ORIGIN);
 	const res = await fetch(url, {
 		method: 'POST',
 		headers: new Headers({
@@ -38,7 +38,7 @@ async function fetch_tokens(credentials: Credentials) {
 	return json as JSONData_Tokens;
 }
 async function fetch_user(token: string) {
-	const url = new URL('/api/users/me', import.meta.env.VITE_REST_USER_ORIGIN);
+	const url = new URL('/api/users/me', process.env.SERVER_REST_USER_ORIGIN);
 	const res = await fetch(url, {
 		headers: new Headers({
 			Authorization: `Bearer ${token}`,
@@ -103,6 +103,7 @@ export async function action({ request }: Route.ActionArgs) {
 			headers: { 'Set-Cookie': await commitSession(session) },
 		});
 	} catch (err) {
+		console.error(err);
 		return data({
 			error:
 				(err instanceof Error ? err.message : err?.toString()) ??
@@ -142,7 +143,7 @@ export default function Page({ actionData }: Route.ComponentProps) {
 			uri_redirect.searchParams.set('redirect_uri', uri_redirect_prev);
 
 		const origin =
-			import.meta.env.VITE_REST_USER_ORIGIN ?? 'http://localhost:3001';
+			import.meta.env.BROWSER_REST_USER_ORIGIN ?? 'http://localhost:3001';
 		const uri_oauth = new URL('/api/oauth/42/connect', origin);
 		uri_oauth.searchParams.set('redirect_uri', uri_redirect.toString());
 

@@ -1,6 +1,6 @@
 function api_endpoint_challenges(...components: any): URL {
-	const origin = import.meta.env.VITE_REST_CHALLENGES_ORIGIN;
-	const pathRoot = (import.meta.env.VITE_REST_CHALLENGES_PATH ?? '').replace(
+	const origin = import.meta.env.BROWSER_REST_CHALLENGES_ORIGIN;
+	const pathRoot = (import.meta.env.BROWSER_REST_CHALLENGES_PATH ?? '').replace(
 		/\/+$/g,
 		''
 	);
@@ -9,8 +9,8 @@ function api_endpoint_challenges(...components: any): URL {
 	return new URL(path, origin);
 }
 function api_endpoint_sandbox(...components: any): URL {
-	const origin = import.meta.env.VITE_REST_SANDBOX_ORIGIN;
-	const pathRoot = (import.meta.env.VITE_REST_SANDBOX_PATH ?? '').replace(
+	const origin = import.meta.env.BROWSER_REST_SANDBOX_ORIGIN;
+	const pathRoot = (import.meta.env.BROWSER_REST_SANDBOX_PATH ?? '').replace(
 		/\/+$/g,
 		''
 	);

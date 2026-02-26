@@ -34,7 +34,7 @@ type RequestPayload<T> = {
 } & T;
 
 export async function remote_fetch_members(team: string) {
-	const uri = new URL(`/api/teams/${team}/members`, import.meta.env.VITE_REST_USER_ORIGIN);
+	const uri = new URL(`/api/teams/${team}/members`, import.meta.env.BROWSER_REST_USER_ORIGIN);
 	const res = await fetch(uri);
 
 	const content_type =
@@ -56,7 +56,7 @@ export async function remote_fetch_members(team: string) {
 	return json as { members: JSONData_Member[] };
 }
 export async function remote_fetch_details(team: string) {
-	const uri = new URL(`/api/teams/${team}`, import.meta.env.VITE_REST_USER_ORIGIN);
+	const uri = new URL(`/api/teams/${team}`, import.meta.env.BROWSER_REST_USER_ORIGIN);
 	const res = await fetch(uri);
 
 	const content_type =
@@ -79,7 +79,7 @@ export async function remote_fetch_details(team: string) {
 	return json as JSONData_Details;
 }
 export async function remote_fetch_requests(token: string, team: string) {
-	const uri = new URL(`/api/teams/${team}/requests`, import.meta.env.VITE_REST_USER_ORIGIN);
+	const uri = new URL(`/api/teams/${team}/requests`, import.meta.env.BROWSER_REST_USER_ORIGIN);
 	const res = await fetch(uri, {
 		headers: {
 			'Authorization': `Bearer ${token}`,
@@ -102,7 +102,7 @@ export async function remote_fetch_requests(token: string, team: string) {
 	return json as JSONData_Requests;
 }
 export async function remote_update_team(token: string, payload: any) {
-	const uri = new URL(`/api/teams`, import.meta.env.VITE_REST_USER_ORIGIN);
+	const uri = new URL(`/api/teams`, import.meta.env.BROWSER_REST_USER_ORIGIN);
 	const res = await fetch(uri, {
 		method: 'PUT',
 		headers: {
@@ -122,7 +122,7 @@ export async function remote_update_team(token: string, payload: any) {
 		throw new Error(json.error ?? 'Internal server error');
 }
 export async function remote_update_team_request(token: string, team_name: string, username: string, method: 'PUT' | 'DELETE') {
-	const uri = new URL(`/api/teams/${team_name}/requests/${username}`, import.meta.env.VITE_REST_USER_ORIGIN);
+	const uri = new URL(`/api/teams/${team_name}/requests/${username}`, import.meta.env.BROWSER_REST_USER_ORIGIN);
 	const res = await fetch(uri, {
 		method,
 		headers: {
@@ -140,7 +140,7 @@ export async function remote_update_team_request(token: string, team_name: strin
 		throw new Error(json.error ?? 'Internal server error');
 }
 export async function remote_update_team_member_kick(token: string, team_name: string, username: string) {
-	const uri = new URL(`/api/teams/${team_name}/members/${username}`, import.meta.env.VITE_REST_USER_ORIGIN);
+	const uri = new URL(`/api/teams/${team_name}/members/${username}`, import.meta.env.BROWSER_REST_USER_ORIGIN);
 	const res = await fetch(uri, {
 		method: 'DELETE',
 		headers: {
@@ -158,7 +158,7 @@ export async function remote_update_team_member_kick(token: string, team_name: s
 		throw new Error(json.error ?? 'Internal server error');
 }
 export async function remote_update_team_member_crown(token: string, team_name: string, username: string) {
-	const uri = new URL(`/api/teams/${team_name}/crown`, import.meta.env.VITE_REST_USER_ORIGIN);
+	const uri = new URL(`/api/teams/${team_name}/crown`, import.meta.env.BROWSER_REST_USER_ORIGIN);
 	const res = await fetch(uri, {
 		method: 'PUT',
 		headers: {
@@ -178,7 +178,7 @@ export async function remote_update_team_member_crown(token: string, team_name: 
 		throw new Error(json.error ?? 'Internal server error');
 }
 export async function remote_update_team_member_leave(token: string, team_name: string) {
-	const uri = new URL(`/api/teams/${team_name}/members/me`, import.meta.env.VITE_REST_USER_ORIGIN);
+	const uri = new URL(`/api/teams/${team_name}/members/me`, import.meta.env.BROWSER_REST_USER_ORIGIN);
 	const res = await fetch(uri, {
 		method: 'DELETE',
 		headers: {
@@ -196,7 +196,7 @@ export async function remote_update_team_member_leave(token: string, team_name: 
 		throw new Error(json.error ?? 'Internal server error');
 }
 export async function remote_delete_team(token: string, team_name: string) {
-	const uri = new URL(`/api/teams/${team_name}`, import.meta.env.VITE_REST_USER_ORIGIN);
+	const uri = new URL(`/api/teams/${team_name}`, import.meta.env.BROWSER_REST_USER_ORIGIN);
 	const res = await fetch(uri, {
 		method: 'DELETE',
 		headers: {
