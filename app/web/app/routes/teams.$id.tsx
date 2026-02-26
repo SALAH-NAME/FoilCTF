@@ -154,7 +154,13 @@ export default function Page() {
 							>
 								{team.members.map((member) => (
 									<div key={member.username} role="listitem">
-										<TeamMemberCard {...member} isCaptain={false} />
+										<TeamMemberCard
+											username={member.username}
+											avatar={member.avatar ?? null}
+											is_captain={member.role === 'captain'}
+											challenges_solved={member.challengesSolved}
+											total_points={member.totalPoints}
+										/>
 									</div>
 								))}
 							</div>
