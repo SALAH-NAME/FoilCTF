@@ -5,9 +5,8 @@ name: foilctf
 services:
   gateway:
     container_name: foilctf_gateway
+    image: foilctf/gateway:latest
     build:
-      tags:
-        - "foilctf/gateway:latest"
       context: ./app/gateway/
       dockerfile: Containerfile
     environment:
@@ -45,9 +44,8 @@ services:
   # REFERENCE: https://github.com/docker-library/docs/blob/master/postgres/README.md
   database:
     container_name: foilctf_database
+    image: foilctf/database:latest
     build:
-      tags:
-        - "foilctf/database:latest"
       context: app/database/
       dockerfile: Containerfile
     environment: # TODO(xenobas): POSTGRES_HOST_AUTH_METHOD, POSTGRES_INITDB_ARGS for networking
@@ -87,9 +85,8 @@ services:
 
   web:
     container_name: foilctf_web
+    image: foilctf/web:latest
     build:
-      tags:
-        - "foilctf/web:latest"
       context: ./app/web/
       dockerfile: Containerfile
     environment:
@@ -110,9 +107,8 @@ services:
 
   user:
     container_name: foilctf_user
+    image: foilctf/user:latest
     build:
-      tags:
-        - "foilctf/user:latest"
       context: ./app/user/
       dockerfile: Containerfile
     environment:
@@ -141,9 +137,8 @@ services:
 
   challenge:
     container_name: foilctf_challenge
+    image: foilctf/challenge:latest
     build:
-      tags:
-        - "foilctf/challenge:latest"
       context: ./app/challenge/
       dockerfile: Containerfile
     environment:
@@ -170,9 +165,8 @@ services:
 
   chat:
     container_name: foilctf_chat
+    image: foilctf/chat:latest
     build:
-      tags:
-        - "foilctf/chat:latest"
       context: ./app/chat/
       dockerfile: Containerfile
     environment:
@@ -198,9 +192,8 @@ services:
 
   notification:
     container_name: foilctf_notification
+    image: foilctf/notification:latest
     build:
-      tags:
-        - "foilctf/notification:latest"
       context: ./app/notification/
       dockerfile: Containerfile
     environment:
@@ -226,9 +219,8 @@ services:
 
   event:
     container_name: foilctf_event
+    image: foilctf/event:latest
     build:
-      tags:
-        - "foilctf/event:latest"
       context: ./app/event/
       dockerfile: Containerfile
     environment:
@@ -254,9 +246,8 @@ services:
 
   sandbox:
     container_name: foilctf_sandbox
+    image: foilctf/sandbox:latest
     build:
-      tags:
-        - "foilctf/sandbox:latest"
       context: ./app/sandbox/
       dockerfile: Containerfile
     environment:
