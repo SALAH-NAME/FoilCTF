@@ -25,6 +25,7 @@ const routes = [
 
 		route('privacy-policy', 'routes/privacy-policy.tsx'),
 		route('terms-of-service', 'routes/terms-of-service.tsx'),
+		route('api-docs', 'routes/api-docs.tsx'),
 
 		layout('./layouts/guest.tsx', [
 			route('register', 'routes/register.tsx'),
@@ -32,7 +33,6 @@ const routes = [
 		]),
 
 		layout('./layouts/auth.tsx', [
-
 			route('team', 'routes/team.tsx'),
 
 			route('signout', 'routes/signout.tsx'),
