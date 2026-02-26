@@ -12,7 +12,7 @@ async function fetch_signout(token: string) {
 	try {
 		const url = new URL(
 			'/api/auth/logout',
-			import.meta.env.VITE_REST_USER_ORIGIN
+			import.meta.env.BROWSER_REST_USER_ORIGIN
 		);
 		url.searchParams.set('token', token);
 

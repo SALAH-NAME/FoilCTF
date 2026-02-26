@@ -29,7 +29,7 @@ async function fetch_profile(username: string, token?: string) {
 
 	const uri = new URL(
 		`/api/profiles/${username}`,
-		import.meta.env.VITE_REST_USER_ORIGIN
+		import.meta.env.BROWSER_REST_USER_ORIGIN
 	);
 	const res = await fetch(uri, { headers });
 

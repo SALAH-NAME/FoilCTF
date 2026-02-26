@@ -22,7 +22,7 @@ export function meta({}: Route.MetaArgs) {
 }
 
 async function remote_fetch_teams(q: string, page: number, limit: number) {
-	const url = new URL('/api/teams', import.meta.env.VITE_REST_USER_ORIGIN);
+	const url = new URL('/api/teams', import.meta.env.BROWSER_REST_USER_ORIGIN);
 	if (q) url.searchParams.set('q', q);
 	url.searchParams.set('page', page.toString());
 	url.searchParams.set('limit', limit.toString());
@@ -50,7 +50,7 @@ async function remote_fetch_teams(q: string, page: number, limit: number) {
 	return json as JSONData_Teams;
 }
 async function remote_fetch_user_requests(token: string) {
-	const url = new URL('/api/users/me/requests', import.meta.env.VITE_REST_USER_ORIGIN);
+	const url = new URL('/api/users/me/requests', import.meta.env.BROWSER_REST_USER_ORIGIN);
 	const res = await fetch(url, {
 		headers: {
 			'Authorization': `Bearer ${token}`,
@@ -72,7 +72,7 @@ async function remote_fetch_user_requests(token: string) {
 	return (json as JSONData_Teams).data;
 }
 async function remote_request_team_join(token: string, team_name: string) {
-	const url = new URL(`/api/teams/${team_name}/requests`, import.meta.env.VITE_REST_USER_ORIGIN);
+	const url = new URL(`/api/teams/${team_name}/requests`, import.meta.env.BROWSER_REST_USER_ORIGIN);
 	const res = await fetch(url, {
 		method: 'POST',
 		headers: {
@@ -95,7 +95,7 @@ async function remote_request_team_join(token: string, team_name: string) {
 	return (json as JSONData_Teams).data;
 }
 async function remote_request_team_cancel(token: string, team_name: string) {
-	const url = new URL(`/api/teams/${team_name}/requests`, import.meta.env.VITE_REST_USER_ORIGIN);
+	const url = new URL(`/api/teams/${team_name}/requests`, import.meta.env.BROWSER_REST_USER_ORIGIN);
 	const res = await fetch(url, {
 		method: 'DELETE',
 		headers: {
@@ -402,7 +402,7 @@ type RequestPayload<T> = {
 	token?: string | null;
 } & T;
 export async function remote_create_team(token: string, name: string) {
-	const uri = new URL('/api/teams', import.meta.env.VITE_REST_USER_ORIGIN);
+	const uri = new URL('/api/teams', import.meta.env.BROWSER_REST_USER_ORIGIN);
 	const res = await fetch(uri, {
 		method: 'POST',
 		headers: {

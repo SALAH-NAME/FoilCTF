@@ -68,7 +68,7 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 				});
 				console.debug('Session has been refreshed');
 			},
-			1_000 * parseInt(import.meta.env.VITE_REFRESH_INTERVAL_SECS ?? '60')
+			1_000 * parseInt(import.meta.env.BROWSER_REFRESH_INTERVAL_SECS ?? '60')
 		);
 		return () => {
 			cancelled = true;

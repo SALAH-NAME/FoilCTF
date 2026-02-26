@@ -1,6 +1,9 @@
 package service
 
 import (
+	"bufio"
+	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -47,14 +50,53 @@ var (
 	)
 )
 
-type responseWriter struct {
+type responseWriterStatusful struct {
 	http.ResponseWriter
-	statusCode int
-}
 
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
+	Status int
+	wroteHeader bool
+}
+func (w *responseWriterStatusful) WriteHeader(statusCode int) {
+	if w.wroteHeader {
+		return
+	}
+
+	w.ResponseWriter.WriteHeader(statusCode)
+	w.Status = statusCode
+	w.wroteHeader = true
+}
+func (w *responseWriterStatusful) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(w.Status)
+		w.wroteHeader = true
+	}
+	return w.ResponseWriter.Write(b)
+}
+func (w *responseWriterStatusful) Flush() {
+	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+func (w *responseWriterStatusful) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hijacker, ok := w.ResponseWriter.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+	return nil, nil, http.ErrNotSupported
+}
+func (w *responseWriterStatusful) Push(target string, opts *http.PushOptions) error {
+	if pusher, ok := w.ResponseWriter.(http.Pusher); ok {
+		return pusher.Push(target, opts)
+	}
+	return http.ErrNotSupported
+}
+func (w *responseWriterStatusful) ReadFrom(src io.Reader) (int64, error) {
+	if readerFrom, ok := w.ResponseWriter.(io.ReaderFrom); ok {
+		if !w.wroteHeader {
+			w.WriteHeader(http.StatusOK)
+		}
+		return readerFrom.ReadFrom(src)
+	}
+	return io.Copy(w.ResponseWriter, src)
 }
 
 func MetricsMiddleware(next http.Handler) http.Handler {
@@ -64,13 +106,13 @@ func MetricsMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		start := time.Now()
-		rw := &responseWriter{w, http.StatusOK}
+		wStatus := responseWriterStatusful{ w, http.StatusOK, false }
 
-		next.ServeHTTP(rw, r)
+		start := time.Now()
+		next.ServeHTTP(&wStatus, r)
 
 		duration := time.Since(start).Seconds()
-		status := strconv.Itoa(rw.statusCode)
+		status := strconv.Itoa(wStatus.Status)
 
 		httpRequestsTotal.WithLabelValues(r.Method, status).Inc()
 		httpRequestDuration.WithLabelValues(r.Method, status).Observe(duration)

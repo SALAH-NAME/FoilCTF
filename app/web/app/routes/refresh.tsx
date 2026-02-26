@@ -24,7 +24,7 @@ async function update_access(token: string) {
 	try {
 		const url = new URL(
 			'/api/auth/refresh',
-			import.meta.env.VITE_REST_USER_ORIGIN
+			process.env.SERVER_REST_USER_ORIGIN
 		);
 		const res = await fetch(url, {
 			method: 'POST',

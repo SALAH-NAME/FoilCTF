@@ -37,7 +37,7 @@ async function remote_fetch_users(
 	if (token)
 		headers.set('Authorization', `Bearer ${token}`);
 
-	const url = new URL('/api/users', import.meta.env.VITE_REST_USER_ORIGIN);
+	const url = new URL('/api/users', import.meta.env.BROWSER_REST_USER_ORIGIN);
 	if (q) url.searchParams.set('q', q);
 	url.searchParams.set('page', page.toString());
 	url.searchParams.set('limit', limit.toString());

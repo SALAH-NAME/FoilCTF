@@ -30,7 +30,7 @@ export async function remote_fetch_friends(
 	page: number,
 	limit: number
 ) {
-	const url = new URL('/api/friends', import.meta.env.VITE_REST_USER_ORIGIN);
+	const url = new URL('/api/friends', import.meta.env.BROWSER_REST_USER_ORIGIN);
 	if (q) url.searchParams.set('q', q);
 	url.searchParams.set('page', page.toString());
 	url.searchParams.set('limit', limit.toString());
@@ -57,7 +57,7 @@ export async function remote_fetch_friends(
 export async function remote_remove_friend(token: string, target: string) {
 	const url = new URL(
 		'/api/friends/' + target,
-		import.meta.env.VITE_REST_USER_ORIGIN
+		import.meta.env.BROWSER_REST_USER_ORIGIN
 	);
 
 	const res = await fetch(url, {
@@ -83,7 +83,7 @@ export async function remote_fetch_friend_requests(
 ) {
 	const url = new URL(
 		'/api/friends/requests',
-		import.meta.env.VITE_REST_USER_ORIGIN
+		import.meta.env.BROWSER_REST_USER_ORIGIN
 	);
 	if (q) url.searchParams.set('q', q);
 	url.searchParams.set('page', page.toString());
@@ -114,7 +114,7 @@ export async function remote_send_friend_request(
 ) {
 	const url = new URL(
 		'/api/friends/requests/' + target,
-		import.meta.env.VITE_REST_USER_ORIGIN
+		import.meta.env.BROWSER_REST_USER_ORIGIN
 	);
 
 	const res = await fetch(url, {
@@ -137,7 +137,7 @@ export async function remote_cancel_friend_request(
 ) {
 	const url = new URL(
 		'/api/friends/requests/' + target,
-		import.meta.env.VITE_REST_USER_ORIGIN
+		import.meta.env.BROWSER_REST_USER_ORIGIN
 	);
 
 	const res = await fetch(url, {
@@ -160,7 +160,7 @@ export async function remote_accept_friend_request(
 ) {
 	const url = new URL(
 		'/api/friends/requests/pending/' + target,
-		import.meta.env.VITE_REST_USER_ORIGIN
+		import.meta.env.BROWSER_REST_USER_ORIGIN
 	);
 
 	const res = await fetch(url, {
@@ -183,7 +183,7 @@ export async function remote_refuse_friend_request(
 ) {
 	const url = new URL(
 		'/api/friends/requests/pending/' + target,
-		import.meta.env.VITE_REST_USER_ORIGIN
+		import.meta.env.BROWSER_REST_USER_ORIGIN
 	);
 
 	const res = await fetch(url, {

@@ -27,7 +27,7 @@ async function update_email(
 ) {
 	const uri = new URL(
 		`/api/users/${username}`,
-		import.meta.env.VITE_REST_USER_ORIGIN
+		process.env.SERVER_REST_USER_ORIGIN,
 	);
 	const res = await fetch(uri, {
 		method: 'PUT',
@@ -62,7 +62,7 @@ async function update_password(
 ) {
 	const uri = new URL(
 		`/api/users/${username}`,
-		import.meta.env.VITE_REST_USER_ORIGIN
+		process.env.SERVER_REST_USER_ORIGIN
 	);
 	const res = await fetch(uri, {
 		method: 'PUT',
@@ -96,7 +96,7 @@ async function update_profile_information(
 ) {
 	const uri = new URL(
 		`/api/profiles/${username}`,
-		import.meta.env.VITE_REST_USER_ORIGIN
+		import.meta.env.BROWSER_REST_USER_ORIGIN
 	);
 	const res = await fetch(uri, {
 		method: 'PUT',
@@ -122,7 +122,7 @@ async function update_profile_information(
 async function fetch_profile(token: string, username: string) {
 	const uri = new URL(
 		`/api/profiles/${username}`,
-		import.meta.env.VITE_REST_USER_ORIGIN
+		import.meta.env.BROWSER_REST_USER_ORIGIN
 	);
 	const res = await fetch(uri, {
 		headers: new Headers({ Authorization: `Bearer ${token}` }),
@@ -151,7 +151,7 @@ async function fetch_profile(token: string, username: string) {
 	return json as JSONData_Profile;
 }
 export async function fetch_user(token: string) {
-	const uri = new URL(`/api/users/me`, import.meta.env.VITE_REST_USER_ORIGIN);
+	const uri = new URL(`/api/users/me`, import.meta.env.BROWSER_REST_USER_ORIGIN);
 	const res = await fetch(uri, {
 		headers: new Headers({ Authorization: `Bearer ${token}` }),
 	});
@@ -445,6 +445,7 @@ export async function action({ request }: Route.ActionArgs) {
 			}
 		);
 	} catch (err) {
+		console.error(err);
 		return data({
 			error:
 				(err instanceof Error ? err.message : err?.toString()) ??
@@ -685,7 +686,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 
 		const uri_oauth = new URL(
 			'/api/oauth/42/link',
-			import.meta.env.VITE_REST_USER_ORIGIN
+			import.meta.env.BROWSER_REST_USER_ORIGIN
 		);
 		uri_oauth.searchParams.set('redirect_uri', uri_redirect.toString());
 		uri_oauth.searchParams.set('token', token_access);
