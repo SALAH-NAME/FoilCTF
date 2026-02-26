@@ -16,7 +16,7 @@ services:
       - SERVICE_NAME=${GATEWAY_SERVICE_NAME:-gateway}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
       - CERT_DIR=/certs
-      - GATEWAY_WEB_URL=http://web:${USER_SERVICE_PORT:-3000}
+      - GATEWAY_WEB_URL=http://web:${WEB_PORT:-3000}
       - GATEWAY_USER_URL=http://user:${USER_SERVICE_PORT:-3001}
       - GATEWAY_CHALLENGE_URL=http://challenge:${CHALLENGE_SERVICE_PORT:-3002}
       - GATEWAY_CHAT_URL=http://chat:${CHAT_SERVICE_PORT:-3003}
