@@ -9,8 +9,9 @@ interface ImportMetaEnv {
 
 	readonly BROWSER_REFRESH_INTERVAL_SECS: string;
 	readonly BROWSER_REST_USER_ORIGIN: string;
-};
+	readonly BROWSER_SOCKET_NOTIFICATION: string;
+}
 
 interface ImportMeta {
 	env: ImportMetaEnv;
-}; 
+}

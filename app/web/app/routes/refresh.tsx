@@ -6,11 +6,13 @@ import { commitSession, request_session } from '~/session.server';
 
 function JWT_verify(token_access: string): JwtPayload | null {
 	try {
-		const ACCESS_SECRET = process.env['ACCESS_SECRET'];
-		if (!ACCESS_SECRET)
-			throw new Error('Missing required environemnt variable ACCESS_SECRET');
+		const SERVER_ACCESS_SECRET = process.env.SERVER_ACCESS_SECRET;
+		if (!SERVER_ACCESS_SECRET)
+			throw new Error(
+				'Missing required environemnt variable SERVER_ACCESS_SECRET'
+			);
 
-		const payload = jwt.verify(token_access, ACCESS_SECRET);
+		const payload = jwt.verify(token_access, SERVER_ACCESS_SECRET);
 		if (typeof payload === 'string') return null;
 
 		return payload;

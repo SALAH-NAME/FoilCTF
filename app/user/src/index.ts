@@ -1,10 +1,12 @@
 import path from 'node:path';
+import { eq } from 'drizzle-orm';
+import { hash } from 'bcrypt';
 import middleware_cors from 'cors';
 import express, { json as middleware_json } from 'express';
 
 import { middleware_error } from './error';
 import { AvatarsDir, PORT } from './utils/env';
-import { pool } from './utils/db';
+import { db, pool } from './utils/db';
 import {
 	registerSchema,
 	loginSchema,
@@ -21,7 +23,7 @@ import {
 	middleware_logger,
 	middleware_schema_validate,
 	folder_exists,
-    middleware_auth_optional,
+	middleware_auth_optional,
 } from './utils/utils';
 import {
 	getPublicProfile,
@@ -29,7 +31,7 @@ import {
 	updateProfile,
 	uploadAvatar,
 	upload,
-    updateTokens,
+	updateTokens,
 } from './profile';
 
 import {
@@ -43,8 +45,14 @@ import {
 	route_auth_login,
 	route_auth_refresh,
 	route_auth_logout,
+	SALT_ROUNDS,
 } from './auth';
-import { route_user_list, route_user_me, route_user_me_requests, route_user_update } from './user';
+import {
+	route_user_list,
+	route_user_me,
+	route_user_me_requests,
+	route_user_update,
+} from './user';
 import {
 	createTeam,
 	getTeamDetails,
@@ -61,7 +69,7 @@ import {
 	route_team_requests,
 	notifyAllMembers,
 	notifyCaptain,
-    route_team_delete,
+	route_team_delete,
 } from './team';
 import {
 	sendFriendRequest,
@@ -74,6 +82,7 @@ import {
 	notifyUser,
 } from './friend';
 import { route_metrics } from './routes/metrics';
+import { users } from './db/schema';
 
 const app = express();
 app.use(middleware_cors());
@@ -171,10 +180,7 @@ app.delete(
 app.delete('/api/friends/:username', middleware_auth, removeFriend);
 
 // SECTION: Teams
-app.get(
-	'/api/teams',
-	getTeams
-);
+app.get('/api/teams', getTeams);
 
 // SECTION: Health
 app.get('/health', (_req, res) => {
@@ -183,85 +189,78 @@ app.get('/health', (_req, res) => {
 app.get('/metrics', route_metrics);
 
 app.get('/api/teams', getTeams);
-app.get(
-	'/api/teams/:team_name',
-	getTeamDetails,
-);
+app.get('/api/teams/:team_name', getTeamDetails);
 app.put(
 	'/api/teams',
 	middleware_auth,
 	middleware_schema_validate(updateTeamSchema),
-	updateTeam,
+	updateTeam
 );
 app.post(
 	'/api/teams',
 	middleware_schema_validate(teamCreationSchema),
 	middleware_auth,
-	createTeam,
+	createTeam
 );
-app.delete(
-	'/api/teams/:team_name',
-	middleware_auth,
-	route_team_delete,
-);
+app.delete('/api/teams/:team_name', middleware_auth, route_team_delete);
 
 // SECTION: Team membership
 app.get(
 	'/api/teams/:team_name/members',
-	getTeamMembers, // public data
+	getTeamMembers // public data
 );
 app.put(
 	'/api/teams/:team_name/crown',
 	middleware_schema_validate(transferLeadershipSchema),
 	middleware_auth,
 	handOverLeadership,
-	notifyCaptain,
+	notifyCaptain
 );
 app.delete(
 	'/api/teams/:team_name/members/me',
 	middleware_auth,
 	leaveTeam,
-	notifyAllMembers,
+	notifyAllMembers
 );
 app.delete(
 	'/api/teams/:team_name/members/:username',
 	middleware_auth,
 	deleteMember,
-	notifyAllMembers,
+	notifyAllMembers
 );
 
 // SECTION: Team requests
 app.get(
 	'/api/teams/:team_name/requests', // !!!!!!!!!!! conflicts with /api/teams/:team_name, getTeamDetails
 	middleware_auth,
-	route_team_requests,
+	route_team_requests
 );
 app.post(
 	'/api/teams/:team_name/requests',
 	middleware_auth,
 	sendJoinRequest,
-	notifyCaptain,
+	notifyCaptain
 );
 app.put(
 	'/api/teams/:team_name/requests/:username',
 	middleware_auth,
 	acceptJoinRequest,
-	notifyAllMembers,
+	notifyAllMembers
 );
 app.delete(
 	'/api/teams/:team_name/requests',
 	middleware_auth,
-	cancelJoinRequest,
+	cancelJoinRequest
 );
 app.delete(
 	'/api/teams/:team_name/requests/:username',
 	middleware_auth,
-	declineJoinRequest,
+	declineJoinRequest
 );
 
 // SECTION: Health
 app.get('/health', (_req, res) => {
-	return res.status(200).json(new FoilCTF_Success("OK", 200));
+	return res.status(200).json(new FoilCTF_Success('OK', 200));
 });
 
 app.use(middleware_error);
@@ -271,9 +270,53 @@ if (!folder_exists(AvatarsDir))
 		`Environment variable AVATARS_DIR="${AvatarsDir}" is not a valid path (doesn't exist, no permission, ...etc)"`
 	);
 
-const server = app.listen(PORT, (err?: Error) => {
+async function ensure_user_admin() {
+	const { FOILCTF_ADMIN_USERNAME, FOILCTF_ADMIN_PASSWORD } = process.env;
+	if (typeof FOILCTF_ADMIN_USERNAME !== 'string' || !FOILCTF_ADMIN_USERNAME)
+		throw new Error(
+			'Please provide an FOILCTF_ADMIN_USERNAME environment variable'
+		);
+	if (typeof FOILCTF_ADMIN_PASSWORD !== 'string' || !FOILCTF_ADMIN_PASSWORD)
+		throw new Error(
+			'Please provide an FOILCTF_ADMIN_PASSWORD environment variable'
+		);
+
+	const password = await hash(FOILCTF_ADMIN_PASSWORD, SALT_ROUNDS);
+
+	const is_created = await db.transaction(async (tx) => {
+		const rows = await tx
+			.select()
+			.from(users)
+			.where(eq(users.username, FOILCTF_ADMIN_USERNAME));
+		if (rows.length !== 0) return false;
+
+		const row = {
+			username: FOILCTF_ADMIN_USERNAME,
+			role: 'admin',
+			email: 'admin@foilctf.ma',
+			password,
+		};
+		await tx.insert(users).values(row);
+		return true;
+	});
+
+	if (is_created)
+		console.log(
+			"INFO :: SERVER :: Admin user '%s' has been created",
+			FOILCTF_ADMIN_USERNAME
+		);
+	else
+		console.log(
+			"INFO :: SERVER :: Admin user '%s' already exists",
+			FOILCTF_ADMIN_USERNAME
+		);
+}
+
+const server = app.listen(PORT, async (err?: Error) => {
 	if (!err) {
 		console.log(`INFO :: SERVER :: Listening at ${PORT}`);
+		await ensure_user_admin();
+
 		return;
 	}
 
