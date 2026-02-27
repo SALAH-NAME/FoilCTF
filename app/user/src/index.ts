@@ -21,7 +21,7 @@ import {
 	middleware_logger,
 	middleware_schema_validate,
 	folder_exists,
-    middleware_auth_optional,
+	middleware_auth_optional,
 } from './utils/utils';
 import {
 	getPublicProfile,
@@ -29,7 +29,7 @@ import {
 	updateProfile,
 	uploadAvatar,
 	upload,
-    updateTokens,
+	updateTokens,
 } from './profile';
 
 import {
@@ -44,7 +44,12 @@ import {
 	route_auth_refresh,
 	route_auth_logout,
 } from './auth';
-import { route_user_list, route_user_me, route_user_me_requests, route_user_update } from './user';
+import {
+	route_user_list,
+	route_user_me,
+	route_user_me_requests,
+	route_user_update,
+} from './user';
 import {
 	createTeam,
 	getTeamDetails,
@@ -61,7 +66,7 @@ import {
 	route_team_requests,
 	notifyAllMembers,
 	notifyCaptain,
-    route_team_delete,
+	route_team_delete,
 } from './team';
 import {
 	sendFriendRequest,
@@ -171,10 +176,7 @@ app.delete(
 app.delete('/api/friends/:username', middleware_auth, removeFriend);
 
 // SECTION: Teams
-app.get(
-	'/api/teams',
-	getTeams
-);
+app.get('/api/teams', getTeams);
 
 // SECTION: Health
 app.get('/health', (_req, res) => {
@@ -183,85 +185,78 @@ app.get('/health', (_req, res) => {
 app.get('/metrics', route_metrics);
 
 app.get('/api/teams', getTeams);
-app.get(
-	'/api/teams/:team_name',
-	getTeamDetails,
-);
+app.get('/api/teams/:team_name', getTeamDetails);
 app.put(
 	'/api/teams',
 	middleware_auth,
 	middleware_schema_validate(updateTeamSchema),
-	updateTeam,
+	updateTeam
 );
 app.post(
 	'/api/teams',
 	middleware_schema_validate(teamCreationSchema),
 	middleware_auth,
-	createTeam,
+	createTeam
 );
-app.delete(
-	'/api/teams/:team_name',
-	middleware_auth,
-	route_team_delete,
-);
+app.delete('/api/teams/:team_name', middleware_auth, route_team_delete);
 
 // SECTION: Team membership
 app.get(
 	'/api/teams/:team_name/members',
-	getTeamMembers, // public data
+	getTeamMembers // public data
 );
 app.put(
 	'/api/teams/:team_name/crown',
 	middleware_schema_validate(transferLeadershipSchema),
 	middleware_auth,
 	handOverLeadership,
-	notifyCaptain,
+	notifyCaptain
 );
 app.delete(
 	'/api/teams/:team_name/members/me',
 	middleware_auth,
 	leaveTeam,
-	notifyAllMembers,
+	notifyAllMembers
 );
 app.delete(
 	'/api/teams/:team_name/members/:username',
 	middleware_auth,
 	deleteMember,
-	notifyAllMembers,
+	notifyAllMembers
 );
 
 // SECTION: Team requests
 app.get(
 	'/api/teams/:team_name/requests', // !!!!!!!!!!! conflicts with /api/teams/:team_name, getTeamDetails
 	middleware_auth,
-	route_team_requests,
+	route_team_requests
 );
 app.post(
 	'/api/teams/:team_name/requests',
 	middleware_auth,
 	sendJoinRequest,
-	notifyCaptain,
+	notifyCaptain
 );
 app.put(
 	'/api/teams/:team_name/requests/:username',
 	middleware_auth,
 	acceptJoinRequest,
-	notifyAllMembers,
+	notifyAllMembers
 );
 app.delete(
 	'/api/teams/:team_name/requests',
 	middleware_auth,
-	cancelJoinRequest,
+	cancelJoinRequest
 );
 app.delete(
 	'/api/teams/:team_name/requests/:username',
 	middleware_auth,
-	declineJoinRequest,
+	declineJoinRequest
 );
 
 // SECTION: Health
 app.get('/health', (_req, res) => {
-	return res.status(200).json(new FoilCTF_Success("OK", 200));
+	return res.status(200).json(new FoilCTF_Success('OK', 200));
 });
 
 app.use(middleware_error);

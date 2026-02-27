@@ -6,8 +6,18 @@ import { db } from './utils/db';
 import { User } from './utils/types';
 import { JWT_Payload } from './jwt';
 import { SALT_ROUNDS } from './auth';
-import { password_validate, user_exists_email, user_exists_username } from './utils/utils';
-import { users as table_users, profiles as table_profiles, friends as table_friends, friend_requests as table_friend_requests, team_join_requests as table_team_requests } from './db/schema';
+import {
+	password_validate,
+	user_exists_email,
+	user_exists_username,
+} from './utils/utils';
+import {
+	users as table_users,
+	profiles as table_profiles,
+	friends as table_friends,
+	friend_requests as table_friend_requests,
+	team_join_requests as table_team_requests,
+} from './db/schema';
 
 // TODO(xenobas): Continue the work on Request to Join matching the database status
 export async function route_user_me(
@@ -29,8 +39,11 @@ export async function route_user_me(
 		.end();
 }
 
-export async function route_user_list(req: Request, res: Response<any, { user?: JWT_Payload }>) {
-	const search = req.query.q as string ?? '';
+export async function route_user_list(
+	req: Request,
+	res: Response<any, { user?: JWT_Payload }>
+) {
+	const search = (req.query.q as string) ?? '';
 	const page = Math.max(Number(req.query.page) || 1, 1);
 	const limit = Math.max(Number(req.query.limit) || 10, 1);
 
@@ -47,12 +60,18 @@ export async function route_user_list(req: Request, res: Response<any, { user?: 
 
 	if (user_dispatcher) {
 		const orm_on_friends = or(
-			and(eq(table_friends.username_1, table_users.username), ilike(table_friends.username_2, user_dispatcher?.username ?? '')),
-			and(eq(table_friends.username_2, table_users.username), ilike(table_friends.username_1, user_dispatcher?.username ?? '')),
+			and(
+				eq(table_friends.username_1, table_users.username),
+				ilike(table_friends.username_2, user_dispatcher?.username ?? '')
+			),
+			and(
+				eq(table_friends.username_2, table_users.username),
+				ilike(table_friends.username_1, user_dispatcher?.username ?? '')
+			)
 		);
 		const orm_on_friend_requests = or(
 			eq(table_friend_requests.sender_name, table_users.username),
-			eq(table_friend_requests.receiver_name, table_users.username),
+			eq(table_friend_requests.receiver_name, table_users.username)
 		);
 		const orm_select = {
 			user: table_users,
@@ -71,16 +90,22 @@ export async function route_user_list(req: Request, res: Response<any, { user?: 
 			.limit(limit)
 			.offset(limit * (page - 1));
 
-		const calculateFriendStatus = ({ user, friendship, friend_request }: typeof orm_users[number]): FriendStatus  => {
-			if (user.username === user_dispatcher?.username)
-				return ('none');
-			if (friendship?.username_1 === user_dispatcher?.username || friendship?.username_2 === user_dispatcher?.username)
-				return ('friends');
+		const calculateFriendStatus = ({
+			user,
+			friendship,
+			friend_request,
+		}: (typeof orm_users)[number]): FriendStatus => {
+			if (user.username === user_dispatcher?.username) return 'none';
+			if (
+				friendship?.username_1 === user_dispatcher?.username ||
+				friendship?.username_2 === user_dispatcher?.username
+			)
+				return 'friends';
 			if (friend_request?.sender_name === user_dispatcher?.username)
-				return ('sent');
+				return 'sent';
 			if (friend_request?.receiver_name === user_dispatcher?.username)
-				return ('received');
-			return ('none');
+				return 'received';
+			return 'none';
 		};
 		const users = orm_users.map((orm_user) => {
 			const { user, profile, friendship, friend_request } = orm_user;
@@ -104,23 +129,31 @@ export async function route_user_list(req: Request, res: Response<any, { user?: 
 			};
 		});
 
-		return res.status(200).json({
-			data: users,
-			limit,
-			page,
-		}).end();
+		return res
+			.status(200)
+			.json({
+				data: users,
+				limit,
+				page,
+			})
+			.end();
 	}
 
 	const orm_users = await db
-		.selectDistinctOn([table_users.username], { user: table_users, profile: table_profiles })
+		.selectDistinctOn([table_users.username], {
+			user: table_users,
+			profile: table_profiles,
+		})
 		.from(table_users)
 		.leftJoin(table_profiles, orm_on_profiles)
 		.where(or(...or_conditions))
 		.limit(limit)
 		.offset(limit * (page - 1));
 
-	const calculateFriendStatus = (_user: typeof orm_users[number]): FriendStatus  => {
-		return ('none');
+	const calculateFriendStatus = (
+		_user: (typeof orm_users)[number]
+	): FriendStatus => {
+		return 'none';
 	};
 	const users = orm_users.map((orm_user) => {
 		const { user, profile } = orm_user;
@@ -144,11 +177,14 @@ export async function route_user_list(req: Request, res: Response<any, { user?: 
 		};
 	});
 
-	return res.status(200).json({
-		data: users,
-		limit,
-		page,
-	}).end();
+	return res
+		.status(200)
+		.json({
+			data: users,
+			limit,
+			page,
+		})
+		.end();
 }
 
 export async function route_user_update(
@@ -214,12 +250,15 @@ export async function route_user_update(
 
 export async function route_user_me_requests(
 	_req: Request,
-	res: Response<any, { user: JWT_Payload }>,
+	res: Response<any, { user: JWT_Payload }>
 ) {
 	const { username } = res.locals.user;
 	const requests = await db
 		.select({ team_name: table_team_requests.team_name })
 		.from(table_team_requests)
 		.where(eq(table_team_requests.username, username));
-	return res.status(200).json({ data: requests.map(x => x.team_name) }).end()
+	return res
+		.status(200)
+		.json({ data: requests.map((x) => x.team_name) })
+		.end();
 }

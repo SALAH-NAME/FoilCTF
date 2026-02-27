@@ -93,12 +93,15 @@ export function extractor_request_token(req: Request): string | null {
 		return null;
 
 	return value_header.slice('Bearer '.length) || null;
-};
+}
 
-export function middleware_auth_optional(req: Request, res: Response, next: NextFunction) {
+export function middleware_auth_optional(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
 	const token = extractor_request_token(req);
-	if (!token)
-		return next();
+	if (!token) return next();
 	res.locals.user = JWT_verify<JWT_Payload>(token, AccessTokenSecret);
 	return next();
 }

@@ -307,7 +307,11 @@ export function route_oauth_42_verify(route_origin: 'connect' | 'link') {
 					} else {
 						uri.searchParams.set(
 							'data',
-							base64_encode({ did_authenticate: false, profile, oauth_token: token })
+							base64_encode({
+								did_authenticate: false,
+								profile,
+								oauth_token: token,
+							})
 						);
 					}
 				}

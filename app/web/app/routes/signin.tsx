@@ -103,7 +103,6 @@ export async function action({ request }: Route.ActionArgs) {
 			headers: { 'Set-Cookie': await commitSession(session) },
 		});
 	} catch (err) {
-		console.error(err);
 		return data({
 			error:
 				(err instanceof Error ? err.message : err?.toString()) ??

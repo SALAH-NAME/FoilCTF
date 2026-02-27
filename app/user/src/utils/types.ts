@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { Request } from 'express';
 
 import { users, sessions, profiles } from '../db/schema';
-import {
-	PASSWORD_MIN_CHARACTERS,
-	PASSWORD_MAX_CHARACTERS,
-} from './env'
+import { PASSWORD_MIN_CHARACTERS, PASSWORD_MAX_CHARACTERS } from './env';
 
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
@@ -33,7 +30,7 @@ export class FoilCTF_Error extends Error {
 		return {
 			ok: false,
 			error: this.message,
-		}
+		};
 	}
 }
 
@@ -43,14 +40,14 @@ export class FoilCTF_Success {
 
 	constructor(message: string, statusCode: number) {
 		this.statusCode = statusCode;
-		this.message = message
+		this.message = message;
 	}
 
 	toJSON() {
 		return {
 			ok: true,
 			message: this.message,
-		}
+		};
 	}
 }
 
@@ -66,10 +63,12 @@ export const registerSchema = z.object({
 			.string()
 			.min(PASSWORD_MIN_CHARACTERS)
 			.max(PASSWORD_MAX_CHARACTERS),
-		oauth42: z.optional(z.object({
-			login: z.string().min(1),
-			token: z.string().min(1),
-		})),
+		oauth42: z.optional(
+			z.object({
+				login: z.string().min(1),
+				token: z.string().min(1),
+			})
+		),
 	}),
 });
 
@@ -134,9 +133,9 @@ export const updateTeamSchema = z.object({
 export const transferLeadershipSchema = z.object({
 	body: z.object({
 		username: z
-		.string()
-		.min(3)
-		.max(15)
-		.regex(/^[a-zA-Z0-9_-]+$/),
+			.string()
+			.min(3)
+			.max(15)
+			.regex(/^[a-zA-Z0-9_-]+$/),
 	}),
-})
+});

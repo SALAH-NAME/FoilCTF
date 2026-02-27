@@ -10,7 +10,12 @@ import { fetch_42_profile } from './routes/oauth';
 import { loginSchema, registerSchema } from './utils/types';
 import { RefreshTokenSecret, RefreshTokenExpiry } from './utils/env';
 import { users, sessions as table_sessions, profiles } from './db/schema';
-import { extractor_request_token, generateAccessToken, generateRefreshToken, user_exists } from './utils/utils';
+import {
+	extractor_request_token,
+	generateAccessToken,
+	generateRefreshToken,
+	user_exists,
+} from './utils/utils';
 
 export const SALT_ROUNDS = 10;
 
@@ -30,10 +35,16 @@ export const route_auth_register = async (
 	if (oauth42) {
 		const profile = await fetch_42_profile(oauth42.token);
 		if (!profile)
-			return res.status(401).json({ error: '42OAuth token is either invalid, or has expired' }).end();
+			return res
+				.status(401)
+				.json({ error: '42OAuth token is either invalid, or has expired' })
+				.end();
 		if (profile.login !== oauth42.login)
-			return res.status(401).json({ error: 'Token does not belong to requested 42Network member' }).end();
-		console.log("Creating account with 42login: %s", oauth42_login);
+			return res
+				.status(401)
+				.json({ error: 'Token does not belong to requested 42Network member' })
+				.end();
+		console.log('Creating account with 42login: %s', oauth42_login);
 	}
 
 	const password_hash = await bcrypt.hash(password, SALT_ROUNDS);

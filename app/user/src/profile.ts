@@ -7,7 +7,11 @@ import { Request, Response, NextFunction } from 'express';
 import { db } from './utils/db';
 import { sessions } from './db/schema';
 import { UploadError } from './error';
-import { profiles as table_profiles, friend_requests as table_friend_requests, friends as table_friends } from './db/schema';
+import {
+	profiles as table_profiles,
+	friend_requests as table_friend_requests,
+	friends as table_friends,
+} from './db/schema';
 import { AuthRequest, User } from './utils/types';
 import { AccessTokenSecret } from './utils/env';
 import { JWT_Payload, JWT_verify } from './jwt';
@@ -44,7 +48,11 @@ export const authenticateTokenProfile = async (
 		.select()
 		.from(table_profiles)
 		.where(eq(table_profiles.username, req_username));
-	if (!profile) return res.status(404).json({ error: 'User has no profile attached' }).end();
+	if (!profile)
+		return res
+			.status(404)
+			.json({ error: 'User has no profile attached' })
+			.end();
 
 	const res_data = {
 		avatar: profile.avatar,
@@ -61,7 +69,10 @@ export const authenticateTokenProfile = async (
 	return res.json(res_data);
 };
 
-export const getPublicProfile = async (req: Request, res: Response<any, { user?: JWT_Payload }>) => {
+export const getPublicProfile = async (
+	req: Request,
+	res: Response<any, { user?: JWT_Payload }>
+) => {
 	const req_username = req.params.username;
 	if (typeof req_username !== 'string' || !req_username)
 		return res.status(404).json({ error: 'Invalid username' }).end();
@@ -71,31 +82,39 @@ export const getPublicProfile = async (req: Request, res: Response<any, { user?:
 		console.log(req_username, user);
 
 		const on_friends = or(
-			and(eq(table_friends.username_1, table_profiles.username), eq(table_friends.username_2, user.username)),
-			and(eq(table_friends.username_2, table_profiles.username), eq(table_friends.username_1, user.username)),
+			and(
+				eq(table_friends.username_1, table_profiles.username),
+				eq(table_friends.username_2, user.username)
+			),
+			and(
+				eq(table_friends.username_2, table_profiles.username),
+				eq(table_friends.username_1, user.username)
+			)
 		);
 		const on_friend_requests = or(
 			eq(table_friend_requests.sender_name, table_profiles.username),
-			eq(table_friend_requests.receiver_name, table_profiles.username),
+			eq(table_friend_requests.receiver_name, table_profiles.username)
 		);
 
 		const [row] = await db
-					.select({ profile: table_profiles, friendship: table_friends, request: table_friend_requests })
-					.from(table_profiles)
-					.leftJoin(table_friends, on_friends)
-					.leftJoin(table_friend_requests, on_friend_requests)
-					.where(eq(table_profiles.username, req_username));
+			.select({
+				profile: table_profiles,
+				friendship: table_friends,
+				request: table_friend_requests,
+			})
+			.from(table_profiles)
+			.leftJoin(table_friends, on_friends)
+			.leftJoin(table_friend_requests, on_friend_requests)
+			.where(eq(table_profiles.username, req_username));
 		if (!row)
-			return res.status(404).json({ error: 'User profile doesn\' exist' }).end();
+			return res.status(404).json({ error: "User profile doesn' exist" }).end();
 
 		const { request, friendship, profile } = row;
 		const friend_status = ((request, friendship) => {
 			console.log('Friendship:', friendship);
-			if (friendship)
-				return 'friends';
+			if (friendship) return 'friends';
 			if (request) {
-				if (request?.sender_name === res.locals.user?.username)
-					return 'sent';
+				if (request?.sender_name === res.locals.user?.username) return 'sent';
 				return 'received';
 			}
 			return 'none';
@@ -120,9 +139,9 @@ export const getPublicProfile = async (req: Request, res: Response<any, { user?:
 	}
 
 	const [profile] = await db
-			.select()
-			.from(table_profiles)
-			.where(eq(table_profiles.username, req_username));
+		.select()
+		.from(table_profiles)
+		.where(eq(table_profiles.username, req_username));
 	if (!profile)
 		return res.status(404).json({ error: "User profile doesn't exist" }).end();
 
@@ -195,8 +214,7 @@ export const upload = multer({
 
 export const uploadAvatar = async (req: Request, res: Response) => {
 	const file = req.file;
-	if (!file)
-		return res.status(400).json({ error: 'File too large' }).end();
+	if (!file) return res.status(400).json({ error: 'File too large' }).end();
 
 	const user = res.locals.user;
 	if (!user || user.id === undefined)
@@ -207,7 +225,7 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 		.update(table_profiles)
 		.set({ avatar: dbFilename })
 		.where(eq(table_profiles.id, user.id));
-	return res.status(201).json({ ok: true }).end()
+	return res.status(201).json({ ok: true }).end();
 };
 
 export const updateTokens = async (

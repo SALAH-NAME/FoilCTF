@@ -44,10 +44,7 @@ export class FoilCTF_Success {
 	}
 }
 
-export async function listFriends(
-	req: Request,
-	res: Response,
-) {
+export async function listFriends(req: Request, res: Response) {
 	const decodedUser = res.locals.user;
 	const limit = Math.max(Number(req.query.limit) || 10, 1);
 	const page = Math.max(Number(req.query.page) || 1, 1);
@@ -57,11 +54,11 @@ export async function listFriends(
 		? or(
 				and(
 					eq(friends.username_1, decodedUser.username),
-					search ? ilike(friends.username_2, `%${search}%`) : undefined,
+					search ? ilike(friends.username_2, `%${search}%`) : undefined
 				),
 				and(
 					eq(friends.username_2, decodedUser.username),
-					search ? ilike(friends.username_1, `%${search}%`) : undefined,
+					search ? ilike(friends.username_1, `%${search}%`) : undefined
 				)
 			)
 		: or(
@@ -98,8 +95,15 @@ export async function listFriendRequests(
 	const page = Math.max(Number(req.query.page) || 1, 1);
 	const search = req.query.q as string;
 
-	const filters = [eq(friend_requests.receiver_name, decodedUser.username), eq(friend_requests.sender_name, decodedUser.username)];
-	if (search) filters.push(ilike(friend_requests.sender_name, `${search}%`), ilike(friend_requests.receiver_name, `${search}%`));
+	const filters = [
+		eq(friend_requests.receiver_name, decodedUser.username),
+		eq(friend_requests.sender_name, decodedUser.username),
+	];
+	if (search)
+		filters.push(
+			ilike(friend_requests.sender_name, `${search}%`),
+			ilike(friend_requests.receiver_name, `${search}%`)
+		);
 
 	const requests = await db
 		.select()
@@ -268,10 +272,7 @@ export async function acceptFriendRequest(
 	}
 }
 
-export async function rejectFriendRequest(
-	req: Request,
-	res: Response,
-) {
+export async function rejectFriendRequest(req: Request, res: Response) {
 	const target = req.params.username as string;
 	const decodedUser = res.locals.user;
 
@@ -294,10 +295,7 @@ export async function rejectFriendRequest(
 	}
 }
 
-export async function removeFriend(
-	req: Request,
-	res: Response,
-) {
+export async function removeFriend(req: Request, res: Response) {
 	const target = req.params.username as string;
 	const decodedUser = res.locals.user;
 
@@ -326,10 +324,7 @@ export async function removeFriend(
 	}
 }
 
-export const notifyUser = async (
-	_req: Request,
-	res: Response,
-) => {
+export const notifyUser = async (_req: Request, res: Response) => {
 	const username = res.locals.userNameToNotify;
 	const notification = res.locals.contents;
 
