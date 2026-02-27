@@ -138,7 +138,7 @@ export default function Sidebar({ session_user }: SidebarProps) {
 							>
 								<NavLink
 									item={{
-										to: '/events?filter=upcoming',
+										to: '/events?filter=published',
 										label: 'Active',
 										icon: 'calendar',
 									}}

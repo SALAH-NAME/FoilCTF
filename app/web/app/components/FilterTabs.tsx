@@ -1,7 +1,6 @@
 interface FilterTab {
 	label: string;
 	value: string;
-	count?: number;
 }
 
 interface FilterTabsProps {
@@ -19,7 +18,7 @@ export default function FilterTabs({
 		<div
 			role="tablist"
 			aria-label="Filter by category"
-			className="flex flex-wrap gap-2 pb-2 scrollbar-hide"
+			className="flex flex-wrap gap-2 scrollbar-hide"
 		>
 			{tabs.map((tab) => (
 				<button

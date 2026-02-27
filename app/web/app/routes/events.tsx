@@ -1,7 +1,10 @@
-import { data, useSearchParams } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
+import { data, useSearchParams } from 'react-router';
 
 import type { Route } from './+types/events';
+
+import { request_session } from '~/session.server';
 
 import Icon from '~/components/Icon';
 import Button from '~/components/Button';
@@ -11,108 +14,22 @@ import Pagination from '~/components/Pagination';
 import PageHeader from '~/components/PageHeader';
 import SearchInput from '~/components/SearchInput';
 import AdminEventModal from '~/components/AdminEventModal';
-import { useQuery } from '@tanstack/react-query';
-import { request_session } from '~/session.server';
+import Checkbox from '~/components/Checkbox';
 
-type EventStatus = 'upcoming' | 'active' | 'ended';
-interface Event {
-	id: string;
-	name: string;
-	status: EventStatus;
-	startDate: string;
-	endDate: string;
-	organizer: string;
-	teams: number;
-	maxTeams: number;
-}
+const OEventStatus = {
+	draft: 'draft',
+	published: 'published',
+	active: 'active',
+	ended: 'ended',
+} as const;
 
-// Mock data
-const mockEvents: Event[] = [
-	{
-		id: '1',
-		name: 'Winter Cyber Challenge 2026',
-		status: 'active',
-		startDate: '2026-02-01',
-		endDate: '2026-02-15',
-		organizer: 'CyberSec Team',
-		teams: 145,
-		maxTeams: 200,
-	},
-	{
-		id: '2',
-		name: 'New Year Security Sprint',
-		status: 'ended',
-		startDate: '2026-01-10',
-		endDate: '2026-01-25',
-		organizer: 'SecurityPros',
-		teams: 89,
-		maxTeams: 100,
-	},
-	{
-		id: '3',
-		name: 'Spring CTF Championship',
-		status: 'upcoming',
-		startDate: '2026-03-15',
-		endDate: '2026-03-29',
-		organizer: 'HackMasters',
-		teams: 23,
-		maxTeams: 150,
-	},
-	{
-		id: '4',
-		name: 'Easter Egg Hunt CTF',
-		status: 'upcoming',
-		startDate: '2026-04-05',
-		endDate: '2026-04-12',
-		organizer: 'Digital Detectives',
-		teams: 8,
-		maxTeams: 80,
-	},
-	{
-		id: '5',
-		name: 'Global Pwn Competition',
-		status: 'active',
-		startDate: '2026-02-05',
-		endDate: '2026-02-12',
-		organizer: 'International CTF League',
-		teams: 287,
-		maxTeams: 300,
-	},
-	{
-		id: '6',
-		name: 'Holiday Hacking Challenge',
-		status: 'ended',
-		startDate: '2025-12-20',
-		endDate: '2026-01-05',
-		organizer: 'PwnStars',
-		teams: 156,
-		maxTeams: 160,
-	},
-	{
-		id: '7',
-		name: "Valentine's Day Crypto CTF",
-		status: 'upcoming',
-		startDate: '2026-02-14',
-		endDate: '2026-02-16',
-		organizer: 'CryptoMasters',
-		teams: 0,
-		maxTeams: 50,
-	},
-	{
-		id: '8',
-		name: 'January Forensics Fest',
-		status: 'ended',
-		startDate: '2026-01-15',
-		endDate: '2026-01-22',
-		organizer: 'ForensicsPro',
-		teams: 67,
-		maxTeams: 75,
-	},
-];
+type EventStatus = keyof typeof OEventStatus;
 
-export async function remote_fetch_events(q: string, page: number, limit: number) {
+export async function remote_fetch_events(q: string, status: 'all' | EventStatus, sort: 'asc' | 'desc', page: number, limit: number) {
 	const url = new URL('/api/events', import.meta.env.BROWSER_REST_EVENTS_ORIGIN);
 	if (q) url.searchParams.set('q', q);
+	if (status !== 'all') url.searchParams.set('status', status.toString());
+	url.searchParams.set('sort', sort.toString());
 	url.searchParams.set('page', page.toString());
 	url.searchParams.set('limit', limit.toString());
 
@@ -124,20 +41,22 @@ export async function remote_fetch_events(q: string, page: number, limit: number
 
 	const json = await res.json();
 	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
-	type JSONData_Teams = {
-		data: {
+	type JSONData_Events = {
+		events: {
 			id: number;
 			name: string;
-			captain_name: string;
-			members_count: number;
-			description: string | null;
-			is_locked: boolean | null;
+			team_members_min: number;
+			team_members_max: number;
+			metadata: Record<string, any>;
+			start_time: string;
+			end_time: string;
+			status: 'draft' | 'published' | 'active' | 'ended';
+			max_teams: number | null;
+			teams_count: number;
 		}[];
-		limit: number;
-		page: number;
+		count: number;
 	};
-	return json as JSONData_Teams;
-	return [];
+	return json as JSONData_Events;
 }
 
 export function meta() {
@@ -150,60 +69,33 @@ export async function loader({ request }: Route.LoaderArgs) {
 	const session = await request_session(request);
 	return data({ user: session.get('user') });
 }
-export default function Page({ loaderData}: Route.ComponentProps) {
+export default function Page({ loaderData }: Route.ComponentProps) {
 	const { user } = loaderData;
 
+	const [sortOldest, setSortOldest] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [activeFilter, setActiveFilter] = useState<'all' | EventStatus>('all');
-	const [searchParams, setSearchParams] = useSearchParams();
-	useEffect(() => {
-		const idDebounce = setTimeout(() => {
-			const newParams = new URLSearchParams(searchParams);
-			if (searchQuery) {
-				newParams.set('q', searchQuery);
-			} else {
-				newParams.delete('q');
-			}
-			newParams.delete('page');
-			setSearchParams(newParams);
-		}, 200);
-		return (() => clearTimeout(idDebounce));
-	}, [searchQuery]);
-	useEffect(() => {
-		const urlFilter = searchParams.get('filter');
-		if (urlFilter && ['upcoming', 'active', 'ended'].includes(urlFilter)) {
-			setActiveFilter(urlFilter as 'upcoming' | 'active' | 'ended');
-		} else if (!urlFilter) {
-			setActiveFilter('all');
-		}
-	}, [searchParams]);
-	
 	const [showCreateModal, setShowCreateModal] = useState(false);
 
+	const [searchParams, setSearchParams] = useSearchParams();
+
 	const searchTerm = searchParams.get('q') || '';
-	const currentPage = parseInt(searchParams.get('page') || '1', 10);
-	const itemsPerPage = parseInt(searchParams.get('perPage') || '9', 10);
+	const currentPage = Math.max(parseInt(searchParams.get('page') || '1'), 1);
+	const itemsPerPage = Math.max(parseInt(searchParams.get('perPage') || '10'), 10);
 
 	const query_events = useQuery({
-		queryKey: ['events', { searchTerm, currentPage, itemsPerPage }],
-		initialData: [],
-		queryFn: async (context) => {
-			return await remote_fetch_events(searchTerm, currentPage, itemsPerPage);
+		queryKey: ['events', { searchTerm, activeFilter, sortOldest, currentPage, itemsPerPage }],
+		initialData: { events: [], count: 0 },
+		queryFn: async () => {
+			const sortOrder = sortOldest ? 'asc' : 'desc';
+			return await remote_fetch_events(searchTerm, activeFilter, sortOrder, currentPage, itemsPerPage);
 		},
 	});
+	const { data: { events, count: pagination_count_elements } } = query_events;
 
-	const filteredEvents = mockEvents.filter((event) => {
-		const matchesSearch = event.name
-			.toLowerCase()
-			.includes(searchQuery.toLowerCase());
-		const matchesFilter =
-			activeFilter === 'all' || event.status === activeFilter;
-		return matchesSearch && matchesFilter;
-	});
-
-	const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
-	const startIndex = (currentPage - 1) * itemsPerPage;
-	const paginatedEvents = filteredEvents.slice(startIndex, startIndex + itemsPerPage);
+	// TODO(xenobas): Fix bug where `page` query parameter doesn't persist across refreshes
+	// TODO(xenobas): Run over all of these and make them sourced from the database instead
+	const pagination_count_pages = Math.max(1, Math.ceil(pagination_count_elements / itemsPerPage));
 
 	const handlePageChange = (page: number) => {
 		const newParams = new URLSearchParams(searchParams);
@@ -222,19 +114,49 @@ export default function Page({ loaderData}: Route.ComponentProps) {
 		}
 		setSearchParams(newParams);
 	};
+	const handleSortChange = (value: boolean) => {
+		setSortOldest(value);
 
-	const counts = {
-		all: mockEvents.length,
-		upcoming: mockEvents.filter((e) => e.status === 'upcoming').length,
-		active: mockEvents.filter((e) => e.status === 'active').length,
-		ended: mockEvents.filter((e) => e.status === 'ended').length,
+		const newParams = new URLSearchParams(searchParams);
+		newParams.delete('page');
+		if (value) {
+			newParams.set('sort', 'asc');
+		} else {
+			newParams.delete('sort');
+		}
+		setSearchParams(newParams);
 	};
+
 	const filters = [
-		{ id: 'all', label: 'All Events', count: counts.all },
-		{ id: 'upcoming', label: 'Upcoming', count: counts.upcoming },
-		{ id: 'active', label: 'Active', count: counts.active },
-		{ id: 'ended', label: 'Past Events', count: counts.ended },
+		{ id: 'all', label: 'All Events' },
+		{ id: 'published', label: 'Upcoming' },
+		{ id: 'active', label: 'Active' },
+		{ id: 'ended', label: 'Past Events' },
 	];
+
+	useEffect(() => {
+		const idDebounce = setTimeout(() => {
+			const newParams = new URLSearchParams(searchParams);
+			if (searchQuery) {
+				newParams.set('q', searchQuery);
+			} else {
+				newParams.delete('q');
+			}
+			newParams.delete('page');
+			setSearchParams(newParams);
+		}, 200);
+		return (() => clearTimeout(idDebounce));
+	}, [searchQuery]);
+	useEffect(() => {
+		const param_filter = searchParams.get('filter');
+		const valid_filter = (param_filter && Object.keys(OEventStatus).includes(param_filter));
+		if (!valid_filter) setActiveFilter('all');
+		else setActiveFilter(param_filter as EventStatus);
+
+		const param_sort = searchParams.get('sort');
+		setSortOldest(param_sort === 'asc');
+	}, [searchParams]);
+
 	return (
 		<>
 			<PageHeader
@@ -262,17 +184,18 @@ export default function Page({ loaderData}: Route.ComponentProps) {
 					tabs={filters.map((f) => ({
 						label: f.label,
 						value: f.id,
-						count: f.count,
 					}))}
 					activeTab={activeFilter}
 					onChange={handleFilterChange}
 				/>
 
+				<Checkbox id="events-sort" label="Sort by Oldest" checked={sortOldest} setChecked={handleSortChange} />
+
 				<div aria-live="polite" aria-atomic="true" className="sr-only">
-					{filteredEvents.length} events found
+					{events.length} events found
 				</div>
 
-				{filteredEvents.length === 0 ? (
+				{events.length === 0 ? (
 					<div className="text-center py-12">
 						<p className="text-muted">
 							No events found matching your criteria.
@@ -281,26 +204,26 @@ export default function Page({ loaderData}: Route.ComponentProps) {
 				) : (
 					<>
 						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-							{paginatedEvents.map((event) => (
+							{events.map(event => (
 								<EventCard
 									key={event.id}
 									id={event.id}
 									name={event.name}
 									status={event.status}
-									startDate={event.startDate}
-									endDate={event.endDate}
-									teamsCount={event.teams}
-									maxTeams={event.maxTeams}
-									organizer={event.organizer}
+									startDate={event.start_time}
+									endDate={event.end_time}
+									teamsCount={event.teams_count}
+									maxTeams={event.max_teams}
 								/>
 							))}
 						</div>
 
 						<Pagination
+							totalPages={pagination_count_pages}
 							currentPage={currentPage}
-							totalPages={Math.max(1, totalPages)}
-							onPageChange={handlePageChange}
 							itemsPerPage={itemsPerPage}
+
+							onPageChange={handlePageChange}
 							onItemsPerPageChange={(items) => {
 								const newParams = new URLSearchParams(searchParams);
 								newParams.set('perPage', items.toString());
@@ -313,10 +236,13 @@ export default function Page({ loaderData}: Route.ComponentProps) {
 				)}
 			</div>
 
-			<AdminEventModal
-				isOpen={showCreateModal}
-				onClose={() => setShowCreateModal(false)}
-			/>
+			{
+				user?.role === "admin" && 
+				<AdminEventModal
+					isOpen={showCreateModal}
+					onClose={() => setShowCreateModal(false)}
+				/>
+			}
 		</>
 	);
 }

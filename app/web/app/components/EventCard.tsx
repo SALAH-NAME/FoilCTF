@@ -3,17 +3,16 @@ import Icon from './Icon';
 import StatusBadge from './StatusBadge';
 import InfoText from './InfoText';
 
-type EventStatus = 'upcoming' | 'active' | 'ended';
+export type EventStatus = 'draft' | 'published' | 'active' | 'ended';
 
 interface EventCardProps {
-	id: string;
+	id: number;
 	name: string;
 	status: EventStatus;
 	startDate: string;
 	endDate: string;
 	teamsCount: number;
-	maxTeams: number;
-	organizer: string;
+	maxTeams: number | null;
 }
 
 export default function EventCard({
@@ -24,27 +23,25 @@ export default function EventCard({
 	endDate,
 	teamsCount,
 	maxTeams,
-	organizer,
 }: EventCardProps) {
 	const slug = id;
 
 	return (
 		<article>
-			<Link
-				to={`/events/${slug}`}
+			<div
 				aria-label={`View details for ${name} event`}
 				className="h-full group bg-white/70 rounded-md p-6 border border-dark/10 hover:border-primary transition-all duration-200 hover:shadow-lg no-underline block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 			>
 				<div className="flex flex-wrap gap-4 items-start justify-between mb-4">
-					<h3 className="text-xl font-bold text-dark group-hover:text-primary transition-colors flex-1 break-all line-clamp-1 ">
+					<Link to={`/events/${slug}`} className="text-xl font-bold text-dark group-hover:text-primary transition-colors flex-1 break-all line-clamp-1 ">
 						{name}
-					</h3>
+					</Link>
 					<StatusBadge status={status} variant="outline" />
 				</div>
-
-				<InfoText icon="user" className="text-sm text-dark/60 mb-4">
-					by {organizer}
-				</InfoText>
+				
+				{/* <InfoText icon="user" className="text-sm text-dark/60 mb-4"> */}
+				{/* 	by {organizer} */}
+				{/* </InfoText> */}
 
 				<div className="space-y-2 mb-4 text-sm text-dark/80">
 					<InfoText icon="calendar" iconClassName="size-4 text-primary">
@@ -66,9 +63,9 @@ export default function EventCard({
 				<div className="flex flex-wrap gap-4 items-center justify-between pt-4 border-t border-dark/10">
 					<InfoText icon="user" className="text-sm text-dark/60">
 						<span className="font-semibold">
-							{teamsCount}/{maxTeams}
-						</span>{' '}
-						<span>Teams</span>
+							{typeof maxTeams === "number" ? `${teamsCount} / ${maxTeams}` : teamsCount}
+						</span>
+						<span> Teams</span>
 					</InfoText>
 					{(status === 'active' || status === 'ended') && (
 						<Link
@@ -82,7 +79,7 @@ export default function EventCard({
 						</Link>
 					)}
 				</div>
-			</Link>
+			</div>
 		</article>
 	);
 }
