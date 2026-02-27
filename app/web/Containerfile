@@ -12,6 +12,13 @@ COPY tsconfig.json vite.config.ts react-router.config.ts ./
 COPY app ./app
 COPY public ./public
 
+ARG BROWSER_REST_USER_ORIGIN
+ENV BROWSER_REST_USER_ORIGIN=$BROWSER_REST_USER_ORIGIN
+
+
+ARG BROWSER_SOCKET_NOTIFICATION
+ENV BROWSER_SOCKET_NOTIFICATION=$BROWSER_SOCKET_NOTIFICATION
+
 RUN pnpm run build
 
 # Production stage

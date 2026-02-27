@@ -49,7 +49,8 @@
 	--color-square-yellow: #f0cb43;
 	--color-square-purple: #dd43f0;
 
-	/* --font-sans: ui-sans-serif, system-ui, sans-serif; */
+	--font-sans: 'Roboto', ui-sans-serif, system-ui, sans-serif;
+	--font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
 	/* --font-mono: "JetBrains Mono", ui-monospace, monospace; */
 
 	/* Toast animations */
@@ -62,6 +63,7 @@
 		opacity: 0;
 		transform: translateX(0.75rem) scale(0.97);
 	}
+
 	to {
 		opacity: 1;
 		transform: translateX(0) scale(1);
@@ -72,6 +74,7 @@
 	from {
 		width: 100%;
 	}
+
 	to {
 		width: 0%;
 	}
@@ -80,7 +83,18 @@
 @layer base {
 	html {
 		box-sizing: border-box;
+		font-family: var(--font-display);
 	}
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		font-family: var(--font-sans);
+	}
+
 	*,
 	*::after,
 	*::before {
@@ -128,6 +142,7 @@
 
 	label + input[type='file'] {
 		@apply py-1 px-2 rounded-md w-full;
+
 		&:hover {
 			@apply cursor-pointer;
 		}
@@ -135,9 +150,11 @@
 
 	button {
 		@apply py-2 px-4 text-sm font-bold rounded-md bg-primary text-white items-center;
+
 		&.snippet-icon {
 			@apply py-1 px-2 aspect-square inline-block w-fit;
 		}
+
 		&:hover {
 			@apply cursor-pointer;
 		}
@@ -146,6 +163,7 @@
 	dialog {
 		place-self: center;
 		@apply shadow-xl rounded-md border text-dark;
+
 		&:focus-within {
 			@apply outline-none border-primary;
 		}
@@ -153,9 +171,11 @@
 
 	table {
 		@apply w-full table-fixed;
+
 		td {
 			@apply overflow-hidden text-ellipsis;
 		}
+
 		th,
 		td {
 			@apply py-2 px-2;

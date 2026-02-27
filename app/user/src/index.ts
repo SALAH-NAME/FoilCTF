@@ -1,10 +1,12 @@
 import path from 'node:path';
+import { eq } from 'drizzle-orm';
+import { hash } from 'bcrypt';
 import middleware_cors from 'cors';
 import express, { json as middleware_json } from 'express';
 
 import { middleware_error } from './error';
 import { AvatarsDir, PORT } from './utils/env';
-import { pool } from './utils/db';
+import { db, pool } from './utils/db';
 import {
 	registerSchema,
 	loginSchema,
@@ -43,6 +45,7 @@ import {
 	route_auth_login,
 	route_auth_refresh,
 	route_auth_logout,
+	SALT_ROUNDS,
 } from './auth';
 import {
 	route_user_list,
@@ -79,6 +82,7 @@ import {
 	notifyUser,
 } from './friend';
 import { route_metrics } from './routes/metrics';
+import { users } from './db/schema';
 
 const app = express();
 app.use(middleware_cors());
@@ -266,9 +270,53 @@ if (!folder_exists(AvatarsDir))
 		`Environment variable AVATARS_DIR="${AvatarsDir}" is not a valid path (doesn't exist, no permission, ...etc)"`
 	);
 
-const server = app.listen(PORT, (err?: Error) => {
+async function ensure_user_admin() {
+	const { FOILCTF_ADMIN_USERNAME, FOILCTF_ADMIN_PASSWORD } = process.env;
+	if (typeof FOILCTF_ADMIN_USERNAME !== 'string' || !FOILCTF_ADMIN_USERNAME)
+		throw new Error(
+			'Please provide an FOILCTF_ADMIN_USERNAME environment variable'
+		);
+	if (typeof FOILCTF_ADMIN_PASSWORD !== 'string' || !FOILCTF_ADMIN_PASSWORD)
+		throw new Error(
+			'Please provide an FOILCTF_ADMIN_PASSWORD environment variable'
+		);
+
+	const password = await hash(FOILCTF_ADMIN_PASSWORD, SALT_ROUNDS);
+
+	const is_created = await db.transaction(async (tx) => {
+		const rows = await tx
+			.select()
+			.from(users)
+			.where(eq(users.username, FOILCTF_ADMIN_USERNAME));
+		if (rows.length !== 0) return false;
+
+		const row = {
+			username: FOILCTF_ADMIN_USERNAME,
+			role: 'admin',
+			email: 'admin@foilctf.ma',
+			password,
+		};
+		await tx.insert(users).values(row);
+		return true;
+	});
+
+	if (is_created)
+		console.log(
+			"INFO :: SERVER :: Admin user '%s' has been created",
+			FOILCTF_ADMIN_USERNAME
+		);
+	else
+		console.log(
+			"INFO :: SERVER :: Admin user '%s' already exists",
+			FOILCTF_ADMIN_USERNAME
+		);
+}
+
+const server = app.listen(PORT, async (err?: Error) => {
 	if (!err) {
 		console.log(`INFO :: SERVER :: Listening at ${PORT}`);
+		await ensure_user_admin();
+
 		return;
 	}
 

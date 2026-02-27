@@ -5,9 +5,8 @@ name: foilctf
 services:
   gateway:
     container_name: foilctf_gateway
+    image: foilctf/gateway:latest
     build:
-      tags:
-        - "foilctf/gateway:latest"
       context: ./app/gateway/
       dockerfile: Containerfile
     environment:
@@ -16,7 +15,7 @@ services:
       - SERVICE_NAME=${GATEWAY_SERVICE_NAME:-gateway}
       - LOG_LEVEL=${LOG_LEVEL:-warn}
       - CERT_DIR=/certs
-      - GATEWAY_WEB_URL=http://web:${USER_SERVICE_PORT:-3000}
+      - GATEWAY_WEB_URL=http://web:${WEB_PORT:-3000}
       - GATEWAY_USER_URL=http://user:${USER_SERVICE_PORT:-3001}
       - GATEWAY_CHALLENGE_URL=http://challenge:${CHALLENGE_SERVICE_PORT:-3002}
       - GATEWAY_CHAT_URL=http://chat:${CHAT_SERVICE_PORT:-3003}
@@ -45,9 +44,8 @@ services:
   # REFERENCE: https://github.com/docker-library/docs/blob/master/postgres/README.md
   database:
     container_name: foilctf_database
+    image: foilctf/database:latest
     build:
-      tags:
-        - "foilctf/database:latest"
       context: app/database/
       dockerfile: Containerfile
     environment: # TODO(xenobas): POSTGRES_HOST_AUTH_METHOD, POSTGRES_INITDB_ARGS for networking
@@ -63,8 +61,6 @@ services:
       # Users
       DATABASE_DEVELOPER_USER: ${DATABASE_DEVELOPER_USER:?DATABASE_DEVELOPER_USER must be set}
       DATABASE_DEVELOPER_PASS: ${DATABASE_DEVELOPER_PASS:?DATABASE_DEVELOPER_PASS must be set}
-      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
     volumes:
       - postgres:${DATABASE_VOLUME_DATA_MOUNT}
       - type: volume
@@ -87,14 +83,17 @@ services:
 
   web:
     container_name: foilctf_web
+    image: foilctf/web:latest
     build:
-      tags:
-        - "foilctf/web:latest"
       context: ./app/web/
       dockerfile: Containerfile
+      args:
+        - BROWSER_REST_USER_ORIGIN=${BROWSER_REST_USER_ORIGIN:-https://localhost:3443}
+        - BROWSER_SOCKET_NOTIFICATION=${BROWSER_SOCKET_NOTIFICATION:-wss://localhost:3443}
     environment:
       - PORT=${WEB_PORT:-3000}
-      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET:?ACCESS_TOKEN_SECRET must be set}
+      - SERVER_ACCESS_SECRET=${ACCESS_TOKEN_SECRET:?ACCESS_TOKEN_SECRET must be set}
+      - SERVER_REST_USER_ORIGIN=http://user:${USER_SERVICE_PORT:-3001}
 
     networks:
       - foilctf_net
@@ -110,9 +109,8 @@ services:
 
   user:
     container_name: foilctf_user
+    image: foilctf/user:latest
     build:
-      tags:
-        - "foilctf/user:latest"
       context: ./app/user/
       dockerfile: Containerfile
     environment:
@@ -124,6 +122,10 @@ services:
       - REFRESH_TOKEN_EXPIRY=${REFRESH_TOKEN_EXPIRY:-7d}
       - MAX_FILE_SIZE=${MAX_FILE_SIZE:-2097152}
       - AVATARS_DIR=${AVATARS_DIR:-./uploads/avatars}
+      - OAUTH_42_UID=${OAUTH_42_UID:?OAUTH_42_UID must be set}
+      - OAUTH_42_SECRET=${OAUTH_42_SECRET:?OAUTH_42_SECRET must be set}
+      - FOILCTF_ADMIN_USERNAME=${FOILCTF_ADMIN_USERNAME:-admin}
+      - FOILCTF_ADMIN_PASSWORD=${FOILCTF_ADMIN_PASSWORD:-adminadminadmin}
     volumes:
       - user-avatars:/app/uploads/avatars
     networks:
@@ -141,9 +143,8 @@ services:
 
   challenge:
     container_name: foilctf_challenge
+    image: foilctf/challenge:latest
     build:
-      tags:
-        - "foilctf/challenge:latest"
       context: ./app/challenge/
       dockerfile: Containerfile
     environment:
@@ -170,9 +171,8 @@ services:
 
   chat:
     container_name: foilctf_chat
+    image: foilctf/chat:latest
     build:
-      tags:
-        - "foilctf/chat:latest"
       context: ./app/chat/
       dockerfile: Containerfile
     environment:
@@ -198,9 +198,8 @@ services:
 
   notification:
     container_name: foilctf_notification
+    image: foilctf/notification:latest
     build:
-      tags:
-        - "foilctf/notification:latest"
       context: ./app/notification/
       dockerfile: Containerfile
     environment:
@@ -226,9 +225,8 @@ services:
 
   event:
     container_name: foilctf_event
+    image: foilctf/event:latest
     build:
-      tags:
-        - "foilctf/event:latest"
       context: ./app/event/
       dockerfile: Containerfile
     environment:
@@ -254,9 +252,8 @@ services:
 
   sandbox:
     container_name: foilctf_sandbox
+    image: foilctf/sandbox:latest
     build:
-      tags:
-        - "foilctf/sandbox:latest"
       context: ./app/sandbox/
       dockerfile: Containerfile
     environment:

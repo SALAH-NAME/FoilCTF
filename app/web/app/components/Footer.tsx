@@ -17,6 +17,12 @@ export default function Component() {
 				>
 					Terms of Service
 				</Link>
+				<Link
+					to={'/api-docs'}
+					className="text-dark text-sm font-normal hover:underline"
+				>
+					API Docs
+				</Link>
 			</span>
 		</footer>
 	);

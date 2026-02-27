@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS users (
 
   email			TEXT DEFAULT NULL UNIQUE,
   username		TEXT NOT NULL UNIQUE,
-  role			VARCHAR(64) NOT NULL DEFAULT 'user',
+  role			VARCHAR(64) NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
 
   oauth42_login	TEXT DEFAULT NULL UNIQUE,
 
