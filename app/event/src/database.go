@@ -6,7 +6,10 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
+
+const GormLoggerLevel = logger.Silent
 
 func DbInit() (*gorm.DB, error) {
 	dbHost := GetEnv("DB_HOST", "localhost")
@@ -16,7 +19,7 @@ func DbInit() (*gorm.DB, error) {
 	dbPort := GetEnv("DB_PORT", "5432")
 
 	dns := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", dbHost, dbUser, dbPass, dbName, dbPort)
-	db, err := gorm.Open(postgres.Open(dns), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dns), &gorm.Config{ Logger: logger.Default.LogMode(GormLoggerLevel) })
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to database: %v", err)
 	}

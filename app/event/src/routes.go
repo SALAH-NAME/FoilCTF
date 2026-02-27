@@ -3,12 +3,17 @@ package main
 import (
 	"net/http"
 
+	"github.com/go-chi/cors"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
 func (h *Hub) RegisterRoutes() http.Handler {
 	r := chi.NewRouter()
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins: []string{"https://localhost:5173", "http://localhost:5173", "http://127.0.0.1:5173", "https://127.0.0.1:5173"},
+		AllowedMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodHead, http.MethodOptions},
+	}))
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RealIP)

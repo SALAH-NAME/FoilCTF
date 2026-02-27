@@ -2,38 +2,43 @@ package main
 
 import (
 	"log"
-	"strconv"
 	"net/http"
+	"slices"
+
+	"gorm.io/gorm"
 )
 
+
 func (h *Hub) ListEvents(w http.ResponseWriter, r *http.Request) {
+	pagination := ParsePagination(r)
+
+	statusFilter := ParsePaginationString(r, "status")
+	statusFilters := []string{ "active", "draft", "published", "ended" }
+
+	sortOrder := "CASE WHEN status = 'active' THEN 0 ELSE 1 END, start_time DESC"
+	if pagination.Sort {
+		sortOrder = "CASE WHEN status = 'active' THEN 0 ELSE 1 END, start_time ASC"
+	}
+
+	var query *gorm.DB
+	if slices.Contains(statusFilters, statusFilter) {
+		query = h.Db.Table("ctfs").Where("name LIKE ? AND status = ?", pagination.Search, statusFilter)
+	} else {
+		query = h.Db.Table("ctfs").Where("name LIKE ?", pagination.Search)
+	}
+
+	var count int64
+	query.Count(&count)
+
 	var events []Ctf
-	query := r.URL.Query()
-
-	limit, offset := 10, 0
-	if query.Has("limit") {
-		valueQuery := query.Get("limit")
-		value, err := strconv.ParseInt(valueQuery, 10, 32)
-		if err == nil && value >= 0 {
-			limit = int(value)
-		}
-	}
-	if query.Has("page") {
-		valueQuery := query.Get("page")
-		value, err := strconv.ParseInt(valueQuery, 10, 32)
-		if err == nil && value >= 0 {
-			offset = int(value) * limit
-		}
-	}
-
-	result := h.Db.Find(&events).Limit(limit).Offset(offset)
-	if result.Error != nil {
-		log.Printf("ERROR - Database - Could not query events: %v", result.Error)
+	query.Select("ctfs.*, COUNT(p.team_id) AS teams_count").Order(sortOrder).Limit(pagination.Limit).Offset(pagination.Offset).Joins("LEFT JOIN participations p ON p.ctf_id = ctfs.id").Group("ctfs.id").Find(&events)
+	if query.Error != nil {
+		log.Printf("ERROR - Database - Could not query events: %v", query.Error)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	JSONResponse(w, map[string]any{ "events": events }, http.StatusOK)
+	JSONResponse(w, map[string]any{ "events": events, "count": count }, http.StatusOK)
 }
 
 func (h *Hub) GetEvent(w http.ResponseWriter, r *http.Request) {

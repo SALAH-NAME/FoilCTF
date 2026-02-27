@@ -28,6 +28,7 @@ type Ctf struct {
 	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index"`
 	Status         string         `json:"status" gorm:"column:status"`
 	MaxTeams       *int           `json:"max_teams" gorm:"column:max_teams"`
+	TeamsCount     int            `json:"teams_count"`
 }
 
 type CtfOrganizers struct {
