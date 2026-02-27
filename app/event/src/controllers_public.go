@@ -2,22 +2,38 @@ package main
 
 import (
 	"log"
+	"strconv"
 	"net/http"
 )
 
 func (h *Hub) ListEvents(w http.ResponseWriter, r *http.Request) {
-	events := []Ctf{}
+	var events []Ctf
+	query := r.URL.Query()
 
-	err := h.Db.Table("ctfs").
-		Where("status IN (?)", []string{"active", "published", "ended"}).
-		Order("start_time DESC").
-		Find(&events).Error
-	if err != nil {
-		log.Printf("ERROR - Database - Could not query events: %v", err)
+	limit, offset := 10, 0
+	if query.Has("limit") {
+		valueQuery := query.Get("limit")
+		value, err := strconv.ParseInt(valueQuery, 10, 32)
+		if err == nil && value >= 0 {
+			limit = int(value)
+		}
+	}
+	if query.Has("page") {
+		valueQuery := query.Get("page")
+		value, err := strconv.ParseInt(valueQuery, 10, 32)
+		if err == nil && value >= 0 {
+			offset = int(value) * limit
+		}
+	}
+
+	result := h.Db.Find(&events).Limit(limit).Offset(offset)
+	if result.Error != nil {
+		log.Printf("ERROR - Database - Could not query events: %v", result.Error)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	JSONResponse(w, events, http.StatusOK)
+
+	JSONResponse(w, map[string]any{ "events": events }, http.StatusOK)
 }
 
 func (h *Hub) GetEvent(w http.ResponseWriter, r *http.Request) {
