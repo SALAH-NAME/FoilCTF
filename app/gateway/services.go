@@ -35,6 +35,12 @@ var ServiceRegistry = []ServiceConfig{
 				StripPrefix: false,
 			},
 			{
+				Prefix:      "/api/oauth",
+				Protected:   false,
+				WebSocket:   false,
+				StripPrefix: false,
+			},
+			{
 				Prefix:      "/api/profiles",
 				Protected:   false,
 				WebSocket:   false,
