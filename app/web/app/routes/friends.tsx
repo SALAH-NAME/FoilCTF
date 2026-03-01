@@ -218,7 +218,7 @@ export default function Page() {
 		| 'sent';
 	const searchQuery = searchParams.get('q') || '';
 	const currentPage = parseInt(searchParams.get('page') || '1', 10);
-	const itemsPerPage = parseInt(searchParams.get('perPage') || '6', 10);
+	const itemsPerPage = parseInt(searchParams.get('perPage') || '10', 10);
 	useEffect(() => {
 		const idDebounce = setTimeout(() => {
 			const newParams = new URLSearchParams(searchParams);
