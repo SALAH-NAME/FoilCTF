@@ -51,6 +51,7 @@ export async function remote_fetch_friends(
 		data: string[];
 		limit: number;
 		page: number;
+		count: number;
 	};
 	return json as JSONData_Friends;
 }
@@ -79,7 +80,8 @@ export async function remote_fetch_friend_requests(
 	token: string,
 	q: string,
 	page: number,
-	limit: number
+	limit: number,
+	type: 'sent' | 'received' | 'all' = 'all'
 ) {
 	const url = new URL(
 		'/api/friends/requests',
@@ -88,6 +90,7 @@ export async function remote_fetch_friend_requests(
 	if (q) url.searchParams.set('q', q);
 	url.searchParams.set('page', page.toString());
 	url.searchParams.set('limit', limit.toString());
+	url.searchParams.set('type', type);
 
 	const res = await fetch(url, {
 		headers: {
@@ -101,12 +104,13 @@ export async function remote_fetch_friend_requests(
 
 	const json = await res.json();
 	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
-	type JSONData_Friends = {
+	type JSONData_FriendRequests = {
 		data: { sender_name: string; receiver_name: string }[];
 		limit: number;
 		page: number;
+		count: number;
 	};
-	return json as JSONData_Friends;
+	return json as JSONData_FriendRequests;
 }
 export async function remote_send_friend_request(
 	token: string,
@@ -239,39 +243,60 @@ export default function Page() {
 			'friends',
 			{ token_access, searchQuery, currentPage, itemsPerPage },
 		],
-		initialData: [],
+		initialData: { data: [], limit: 10, page: 1, count: 0 },
 		queryFn: async ({ queryKey }) => {
 			const [_queryKeyPrime, variables] = queryKey;
-			if (typeof variables === 'string') return [];
+			if (typeof variables === 'string') return { data: [], limit: 10, page: 1, count: 0 };
 
 			const { searchQuery, currentPage, itemsPerPage } = variables;
-			const { data: friends } = await remote_fetch_friends(
+			return await remote_fetch_friends(
 				token_access,
 				searchQuery,
 				currentPage,
 				itemsPerPage
 			);
-			return friends;
 		},
 	});
-	const query_requests = useQuery({
+	const query_requests_received = useQuery({
 		queryKey: [
-			'friends-requests',
+			'friends-requests-received',
 			{ token_access, searchQuery, currentPage, itemsPerPage },
 		],
-		initialData: [],
+		initialData: { data: [], limit: 10, page: 1, count: 0 },
+		enabled: activeTab === 'received',
 		queryFn: async ({ queryKey }) => {
 			const [_queryKeyPrime, variables] = queryKey;
-			if (typeof variables === 'string') return [];
+			if (typeof variables === 'string') return { data: [], limit: 10, page: 1, count: 0 };
 
 			const { searchQuery, currentPage, itemsPerPage } = variables;
-			const { data: friends } = await remote_fetch_friend_requests(
+			return await remote_fetch_friend_requests(
 				token_access,
 				searchQuery,
 				currentPage,
-				itemsPerPage
+				itemsPerPage,
+				'received'
 			);
-			return friends;
+		},
+	});
+	const query_requests_sent = useQuery({
+		queryKey: [
+			'friends-requests-sent',
+			{ token_access, searchQuery, currentPage, itemsPerPage },
+		],
+		initialData: { data: [], limit: 10, page: 1, count: 0 },
+		enabled: activeTab === 'sent',
+		queryFn: async ({ queryKey }) => {
+			const [_queryKeyPrime, variables] = queryKey;
+			if (typeof variables === 'string') return { data: [], limit: 10, page: 1, count: 0 };
+
+			const { searchQuery, currentPage, itemsPerPage } = variables;
+			return await remote_fetch_friend_requests(
+				token_access,
+				searchQuery,
+				currentPage,
+				itemsPerPage,
+				'sent'
+			);
 		},
 	});
 	const mut_friend_remove = useMutation<unknown, Error, string>({
@@ -297,7 +322,7 @@ export default function Page() {
 	const mut_friend_request_cancel = useMutation<unknown, Error, string>({
 		mutationFn: async (target) => {
 			await remote_cancel_friend_request(token_access, target);
-			await queryClient.invalidateQueries({ queryKey: ['friends-requests'] });
+			await queryClient.invalidateQueries({ queryKey: ['friends-requests-sent'] });
 		},
 		onSuccess() {
 			addToast({
@@ -317,7 +342,7 @@ export default function Page() {
 	const mut_friend_request_accept = useMutation<unknown, Error, string>({
 		mutationFn: async (target) => {
 			await remote_accept_friend_request(token_access, target);
-			await queryClient.invalidateQueries({ queryKey: ['friends-requests'] });
+			await queryClient.invalidateQueries({ queryKey: ['friends-requests-received'] });
 			await queryClient.invalidateQueries({ queryKey: ['friends'] });
 		},
 		onSuccess() {
@@ -338,7 +363,7 @@ export default function Page() {
 	const mut_friend_request_refuse = useMutation<unknown, Error, string>({
 		mutationFn: async (target) => {
 			await remote_refuse_friend_request(token_access, target);
-			await queryClient.invalidateQueries({ queryKey: ['friends-requests'] });
+			await queryClient.invalidateQueries({ queryKey: ['friends-requests-received'] });
 			await queryClient.invalidateQueries({ queryKey: ['friends'] });
 		},
 		onSuccess() {
@@ -375,50 +400,43 @@ export default function Page() {
 			id: 'friends',
 			value: 'friends',
 			label: 'Friends',
-			count: query_friends.data.length,
+			count: query_friends.data.count,
 		},
 		{
 			id: 'received',
 			value: 'received',
 			label: 'Received',
-			count: 0,
+			count: query_requests_received.data.count,
 		},
 		{
 			id: 'sent',
 			value: 'sent',
 			label: 'Sent',
-			count: 0,
+			count: query_requests_sent.data.count,
 		},
 	];
 
-	const filteredSent: Friend[] = query_requests.data
-		.filter(({ sender_name: username }) => username === user.username)
+	const filteredSent: Friend[] = query_requests_sent.data.data
 		.map(({ receiver_name: username }) => ({
 			username,
 			challengesSolved: 0,
 			totalPoints: 0,
-		})); // getFilteredData(friendsData.received);
-	const filteredFriends: Friend[] = query_friends.data.map((username) => ({
+		}));
+	const filteredFriends: Friend[] = query_friends.data.data.map((username) => ({
 		username,
 		challengesSolved: 0,
 		totalPoints: 0,
-	})); // getFilteredData(friendsData.friends);
-	const filteredReceived: Friend[] = query_requests.data
-		.filter(({ receiver_name: username }) => username === user.username)
+	}));
+	const filteredReceived: Friend[] = query_requests_received.data.data
 		.map(({ sender_name: username }) => ({
 			username,
 			challengesSolved: 0,
 			totalPoints: 0,
-		})); // getFilteredData(friendsData.received);
+		}));
 
-	const getPaginatedData = (data: Friend[]) => {
-		const totalPages = Math.ceil(data.length / itemsPerPage);
-		const startIndex = (currentPage - 1) * itemsPerPage;
-		return {
-			items: data.slice(startIndex, startIndex + itemsPerPage),
-			totalPages,
-		};
-	};
+	const totalPages_friends = Math.max(1, Math.ceil(query_friends.data.count / itemsPerPage));
+	const totalPages_received = Math.max(1, Math.ceil(query_requests_received.data.count / itemsPerPage));
+	const totalPages_sent = Math.max(1, Math.ceil(query_requests_sent.data.count / itemsPerPage));
 
 	const handlePageChange = (page: number) => {
 		const newParams = new URLSearchParams(searchParams);
@@ -456,218 +474,209 @@ export default function Page() {
 					}}
 				/>
 
-				{activeTab === 'friends' &&
-					(() => {
-						const { items, totalPages } = getPaginatedData(filteredFriends);
-						return (
-							<section
-								aria-labelledby="friends-heading"
-								className="mt-6 h-full flex flex-col"
+				{activeTab === 'friends' && (
+					<section
+						aria-labelledby="friends-heading"
+						className="mt-6 h-full flex flex-col"
+					>
+						<h2 id="friends-heading" className="sr-only">
+							Friends list
+						</h2>
+						{query_friends.data.count === 0 ? (
+							<div
+								className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
+								role="status"
+								aria-live="polite"
 							>
-								<h2 id="friends-heading" className="sr-only">
-									Friends list
-								</h2>
-								{query_friends.data.length === 0 ? (
-									<div
-										className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
-										role="status"
-										aria-live="polite"
-									>
-										<p className="text-dark/60">
-											You don't have any friends yet. Start by searching for
-											users!
-										</p>
-									</div>
-								) : filteredFriends.length === 0 ? (
-									<div
-										className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
-										role="status"
-										aria-live="polite"
-									>
-										<p className="text-dark/60">
-											No friends found matching "{searchQuery}"
-										</p>
-									</div>
-								) : (
-									<>
-										<div
-											className="space-y-4 mb-8"
-											role="list"
-											aria-label="Friends list"
-										>
-											{items.map((friend) => (
-												<div key={friend.username} role="listitem">
-													<FriendCard
-														{...friend}
-														type="friend"
-														onRemove={() => handleRemoveFriend(friend.username)}
-													/>
-												</div>
-											))}
+								<p className="text-dark/60">
+									You don't have any friends yet. Start by searching for
+									users!
+								</p>
+							</div>
+						) : filteredFriends.length === 0 ? (
+							<div
+								className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
+								role="status"
+								aria-live="polite"
+							>
+								<p className="text-dark/60">
+									No friends found matching "{searchQuery}"
+								</p>
+							</div>
+						) : (
+							<>
+								<div
+									className="space-y-4 mb-8"
+									role="list"
+									aria-label="Friends list"
+								>
+									{filteredFriends.map((friend) => (
+										<div key={friend.username} role="listitem">
+											<FriendCard
+												{...friend}
+												type="friend"
+												onRemove={() => handleRemoveFriend(friend.username)}
+											/>
 										</div>
-										<Pagination
-											currentPage={currentPage}
-											totalPages={Math.max(1, totalPages)}
-											onPageChange={handlePageChange}
-											itemsPerPage={itemsPerPage}
-											onItemsPerPageChange={(items) => {
-												const newParams = new URLSearchParams(searchParams);
-												newParams.set('perPage', items.toString());
-												newParams.delete('page');
-												setSearchParams(newParams);
-											}}
-											className="mt-auto mb-12"
-										/>
-									</>
-								)}
-							</section>
-						);
-					})()}
+									))}
+								</div>
+								<Pagination
+									currentPage={currentPage}
+									totalPages={totalPages_friends}
+									totalItems={query_friends.data.count}
+									onPageChange={handlePageChange}
+									itemsPerPage={itemsPerPage}
+									onItemsPerPageChange={(items) => {
+										const newParams = new URLSearchParams(searchParams);
+										newParams.set('perPage', items.toString());
+										newParams.delete('page');
+										setSearchParams(newParams);
+									}}
+									className="mt-auto mb-12"
+								/>
+							</>
+						)}
+					</section>
+				)}
 
-				{activeTab === 'received' &&
-					(() => {
-						const { items, totalPages } = getPaginatedData(filteredReceived);
-						return (
-							<section
-								aria-labelledby="received-heading"
-								className="mt-6 h-full flex flex-col"
+				{activeTab === 'received' && (
+					<section
+						aria-labelledby="received-heading"
+						className="mt-6 h-full flex flex-col"
+					>
+						<h2 id="received-heading" className="sr-only">
+							Received friend requests
+						</h2>
+						{query_requests_received.data.count === 0 ? (
+							<div
+								className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
+								role="status"
+								aria-live="polite"
 							>
-								<h2 id="received-heading" className="sr-only">
-									Received friend requests
-								</h2>
-								{query_requests.data.length === 0 ? (
-									<div
-										className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
-										role="status"
-										aria-live="polite"
-									>
-										<p className="text-dark/60">No pending friend requests.</p>
-									</div>
-								) : filteredReceived.length === 0 ? (
-									<div
-										className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
-										role="status"
-										aria-live="polite"
-									>
-										<p className="text-dark/60">
-											No received requests found matching "{searchQuery}"
-										</p>
-									</div>
-								) : (
-									<>
-										<div
-											className="space-y-4 mb-8"
-											role="list"
-											aria-label="Received friend requests"
-										>
-											{items.map((request) => (
-												<div key={request.username} role="listitem">
-													<FriendCard
-														{...request}
-														type="received"
-														onAccept={() =>
-															handleAcceptRequest(request.username)
-														}
-														onReject={() =>
-															handleRefuseRequest(request.username)
-														}
-													/>
-												</div>
-											))}
+								<p className="text-dark/60">No pending friend requests.</p>
+							</div>
+						) : filteredReceived.length === 0 ? (
+							<div
+								className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
+								role="status"
+								aria-live="polite"
+							>
+								<p className="text-dark/60">
+									No received requests found matching "{searchQuery}"
+								</p>
+							</div>
+						) : (
+							<>
+								<div
+									className="space-y-4 mb-8"
+									role="list"
+									aria-label="Received friend requests"
+								>
+									{filteredReceived.map((request) => (
+										<div key={request.username} role="listitem">
+											<FriendCard
+												{...request}
+												type="received"
+												onAccept={() =>
+													handleAcceptRequest(request.username)
+												}
+												onReject={() =>
+													handleRefuseRequest(request.username)
+												}
+											/>
 										</div>
-										<Pagination
-											currentPage={currentPage}
-											totalPages={Math.max(1, totalPages)}
-											onPageChange={handlePageChange}
-											itemsPerPage={itemsPerPage}
-											onItemsPerPageChange={(items) => {
-												const newParams = new URLSearchParams(searchParams);
-												newParams.set('perPage', items.toString());
-												newParams.delete('page');
-												setSearchParams(newParams);
-											}}
-											className="mt-auto mb-12"
-										/>
-									</>
-								)}
-							</section>
-						);
-					})()}
+									))}
+								</div>
+								<Pagination
+									currentPage={currentPage}
+									totalPages={totalPages_received}
+									totalItems={query_requests_received.data.count}
+									onPageChange={handlePageChange}
+									itemsPerPage={itemsPerPage}
+									onItemsPerPageChange={(items) => {
+										const newParams = new URLSearchParams(searchParams);
+										newParams.set('perPage', items.toString());
+										newParams.delete('page');
+										setSearchParams(newParams);
+									}}
+									className="mt-auto mb-12"
+								/>
+							</>
+						)}
+					</section>
+				)}
 
-				{activeTab === 'sent' &&
-					(() => {
-						const { items, totalPages } = getPaginatedData(filteredSent);
-						return (
-							<section
-								aria-labelledby="sent-heading"
-								className="mt-6 h-full flex flex-col"
+				{activeTab === 'sent' && (
+					<section
+						aria-labelledby="sent-heading"
+						className="mt-6 h-full flex flex-col"
+					>
+						<h2 id="sent-heading" className="sr-only">
+							Sent friend requests
+						</h2>
+						{query_requests_sent.data.count === 0 ? (
+							<div
+								className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
+								role="status"
+								aria-live="polite"
 							>
-								<h2 id="sent-heading" className="sr-only">
-									Sent friend requests
-								</h2>
-								{query_requests.data.length === 0 ? (
-									<div
-										className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
-										role="status"
-										aria-live="polite"
-									>
-										<p className="text-dark/60">No pending sent requests.</p>
-									</div>
-								) : filteredSent.length === 0 ? (
-									<div
-										className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
-										role="status"
-										aria-live="polite"
-									>
-										<p className="text-dark/60">
-											No sent requests found matching "{searchQuery}"
-										</p>
-									</div>
-								) : (
-									<>
-										<div
-											className="space-y-4 mb-8"
-											role="list"
-											aria-label="Sent friend requests"
-										>
-											{items.map((request) => (
-												<div key={request.username} role="listitem">
-													<FriendCard
-														{...request}
-														type="sent"
-														onCancel={() =>
-															handleCancelRequest(request.username)
-														}
-													/>
-												</div>
-											))}
+								<p className="text-dark/60">No pending sent requests.</p>
+							</div>
+						) : filteredSent.length === 0 ? (
+							<div
+								className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
+								role="status"
+								aria-live="polite"
+							>
+								<p className="text-dark/60">
+									No sent requests found matching "{searchQuery}"
+								</p>
+							</div>
+						) : (
+							<>
+								<div
+									className="space-y-4 mb-8"
+									role="list"
+									aria-label="Sent friend requests"
+								>
+									{filteredSent.map((request) => (
+										<div key={request.username} role="listitem">
+											<FriendCard
+												{...request}
+												type="sent"
+												onCancel={() =>
+													handleCancelRequest(request.username)
+												}
+											/>
 										</div>
-										<Pagination
-											currentPage={currentPage}
-											totalPages={Math.max(1, totalPages)}
-											onPageChange={handlePageChange}
-											itemsPerPage={itemsPerPage}
-											onItemsPerPageChange={(items) => {
-												const newParams = new URLSearchParams(searchParams);
-												newParams.set('perPage', items.toString());
-												newParams.delete('page');
-												setSearchParams(newParams);
-											}}
-											className="mt-auto mb-12"
-										/>
-									</>
-								)}
-							</section>
-						);
-					})()}
+									))}
+								</div>
+								<Pagination
+									currentPage={currentPage}
+									totalPages={totalPages_sent}
+									totalItems={query_requests_sent.data.count}
+									onPageChange={handlePageChange}
+									itemsPerPage={itemsPerPage}
+									onItemsPerPageChange={(items) => {
+										const newParams = new URLSearchParams(searchParams);
+										newParams.set('perPage', items.toString());
+										newParams.delete('page');
+										setSearchParams(newParams);
+									}}
+									className="mt-auto mb-12"
+								/>
+							</>
+						)}
+					</section>
+				)}
 
 				<div className="sr-only" role="status" aria-live="polite">
 					{activeTab === 'friends' &&
-						`${filteredFriends.length} friend${filteredFriends.length !== 1 ? 's' : ''}`}
+						`${query_friends.data.count} friend${query_friends.data.count !== 1 ? 's' : ''}`}
 					{activeTab === 'received' &&
-						`${filteredReceived.length} received request${filteredReceived.length !== 1 ? 's' : ''}`}
+						`${query_requests_received.data.count} received request${query_requests_received.data.count !== 1 ? 's' : ''}`}
 					{activeTab === 'sent' &&
-						`${filteredSent.length} sent request${filteredSent.length !== 1 ? 's' : ''}`}
+						`${query_requests_sent.data.count} sent request${query_requests_sent.data.count !== 1 ? 's' : ''}`}
 				</div>
 			</main>
 		</>
