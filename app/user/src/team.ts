@@ -650,6 +650,10 @@ export const route_team_delete = async (
 		await tx // NOTE(xenobas): Delete all members in the team
 			.delete(table_team_members)
 			.where(eq(table_team_members.team_name, team.name));
+		await tx // NOTE: Clear team_name from all members' user records
+			.update(table_users)
+			.set({ team_name: null })
+			.where(eq(table_users.team_name, team.name));
 		await tx // NOTE(xenobas): Delete the team itself
 			.delete(table_teams)
 			.where(eq(table_teams.name, team.name));
