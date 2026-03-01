@@ -23,7 +23,7 @@ const (
 )
 
 type Claims struct {
-	UserID   *int   `json:"userid"`
+	UserID   *int   `json:"id"`
 	Username string `json:"username"`
 	UserRole string `json:"role"`
 	jwt.RegisteredClaims
@@ -48,6 +48,8 @@ func (h *Hub) IdentityMiddleware(next http.Handler) http.Handler {
 		claims := Claims{}
 		token, err := jwt.ParseWithClaims(tokenString, &claims, h.VerifySigningMethod)
 		if err != nil || !token.Valid {
+			log.Println("JWT Parsing failed")
+
 			log.Printf("DEBUG - Identity - Invalid or expired token, proceeding as guest: %v", err)
 			next.ServeHTTP(w, r)
 
@@ -67,7 +69,6 @@ func (h *Hub) EnsureEventExists(next http.Handler) http.Handler {
 		if err != nil {
 			log.Printf("ERROR - Invalid request path format event id: %v", err)
 			JSONError(w, "Invalid eventID", http.StatusBadRequest)
-
 			return
 		}
 
@@ -120,25 +121,25 @@ func (h *Hub) PlayerAuthMiddleware(next http.Handler) http.Handler {
 			}
 			return
 		}
-		if event.Status != "active" && event.Status != "published" {
+		if event.Status != "published" {
 			JSONError(w, "Not allowed to access event", http.StatusForbidden)
 			return
 		}
 
-		var count int64
-		err = h.Db.Table("ctfs_challenges").
-			Where("ctf_id = ?", event.ID).
-			Count(&count).Error
-		if err != nil {
-			log.Printf("ERROR - Auth - Could not query event challenges count: %v", err)
-			JSONError(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		if count == 0 {
-			log.Printf("ERROR - Auth - User %v can't access an active event without challenges", *userID)
-			JSONError(w, "Cannot join event witout challenges", http.StatusConflict)
-			return
-		}
+		// var count int64
+		// err = h.Db.Table("ctfs_challenges").
+		// 	Where("ctf_id = ?", event.ID).
+		// 	Count(&count).Error
+		// if err != nil {
+		// 	log.Printf("ERROR - Auth - Could not query event challenges count: %v", err)
+		// 	JSONError(w, "Internal Server Error", http.StatusInternalServerError)
+		// 	return
+		// }
+		// if count == 0 {
+		// 	log.Printf("ERROR - Auth - User %v can't access an active event without challenges", *userID)
+		// 	JSONError(w, "Cannot join event witout challenges", http.StatusConflict)
+		// 	return
+		// }
 
 		teamID, err := h.GetTeamIDByUserID(*userID)
 		if err != nil {

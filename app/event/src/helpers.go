@@ -24,6 +24,7 @@ func GetUserInfo(r *http.Request) (*int, string, error) {
 	userID, okID := r.Context().Value(userIDKey).(*int)
 	userRole, okRole := r.Context().Value(userRoleKey).(string)
 	if !okID || !okRole || userID == nil || userRole == "" {
+		log.Printf("DEBUG - okID = %v, okRole = %v, userID = %v, userRole = %q", okID, okRole, userID, userRole)
 		return nil, "", fmt.Errorf("User identity missing from the context")
 	}
 	return userID, userRole, nil
@@ -33,9 +34,7 @@ func JSONError(w http.ResponseWriter, message string, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	resp := map[string]any{
-		"status":  "error",
-		"code":    code,
-		"message": message,
+		"error": message,
 	}
 	json.NewEncoder(w).Encode(resp)
 }
@@ -57,10 +56,13 @@ func HandleJoinError(w http.ResponseWriter, err error) {
 	log.Printf("ERROR - Join: %v", err)
 
 	errorMap := map[string]int{
+		"user not found":          http.StatusNotFound,
+		"user is not captain":     http.StatusUnauthorized,
 		"event not found":         http.StatusNotFound,
 		"team not found":          http.StatusNotFound,
 		"event is full":           http.StatusForbidden,
-		"invalid team size":       http.StatusPreconditionFailed,
+		"team is too small":       http.StatusPreconditionFailed,
+		"team is too large":       http.StatusPreconditionFailed,
 		"already registered":      http.StatusConflict,
 		"ctf chat room not found": http.StatusNotFound,
 	}
@@ -74,9 +76,15 @@ func HandleJoinError(w http.ResponseWriter, err error) {
 
 func (h *Hub) GetTeamIDByUserID(userID int) (int, error) {
 	var teamID int
-	result := h.Db.Table("team_members").
-		Where("member_id = ?", userID).
-		Pluck("team_id", &teamID)
+	// result := h.Db.Table("team_members").
+	// 	Where("member_id = ?", userID).
+	// 	Pluck("team_id", &teamID)
+	result := h.Db.
+		Table("users").
+		Joins("LEFT JOIN team_members ON team_members.member_name = users.username").
+		Joins("LEFT JOIN teams ON teams.name = team_members.team_name").
+		Where("users.id = ?", userID).
+		Pluck("teams.id", &teamID)
 	if result.Error != nil {
 		return 0, result.Error
 	}
@@ -227,17 +235,14 @@ func (h *Hub) CheckVisibility(userRole string, eventID int, userID *int) (bool, 
 	}
 	return true, nil
 }
-func (h *Hub) GetUserStatus(hasprivilege bool, userID *int, eventID int) (UserStatus, *int) {
-	var userInfo UserStatus
-	userInfo.IsOrganizer = false
-	userInfo.IsGuest = false
-	userInfo.IsJoined = false
-	var participationTeam *int
+func (h *Hub) GetUserStatus(hasPrivilege bool, userID *int, eventID int) (UserStatus, *int) {
 	if userID == nil {
-		userInfo.IsGuest = true
-		return userInfo, nil
+		return UserStatus{false, true, false}, nil
 	}
-	switch hasprivilege {
+
+	var userInfo UserStatus
+	var participationTeam *int
+	switch hasPrivilege {
 	case true:
 		userInfo.IsOrganizer = true
 		return userInfo, nil
@@ -246,7 +251,8 @@ func (h *Hub) GetUserStatus(hasprivilege bool, userID *int, eventID int) (UserSt
 		teamID, err := h.GetTeamIDByUserID(*userID)
 		if err == nil {
 			participationTeam = &teamID
-			err := h.Db.Where("ctf_id = ? AND team_id = ?", eventID, teamID).
+			err := h.Db.
+				Where("ctf_id = ? AND team_id = ?", eventID, teamID).
 				First(&part).Error
 			if err == nil {
 				userInfo.IsJoined = true
@@ -292,10 +298,14 @@ func (h *Hub) CountChallenges(hasprivilege bool, eventID int, teamID *int) (int6
 
 func (h *Hub) GetOrganizersInfo(eventID int) ([]OrganizersInfo, error) {
 	var organizersInfo []OrganizersInfo
-	err := h.Db.Table("ctf_organizers").
-		Joins("JOIN profiles ON ctf_organizers.organizer_id = profiles.id").
-		Select("profiles.username, profiles.avatar").
-		Where("ctf_id = ?", eventID).
-		Find(&organizersInfo).Error
+
+	err := h.Db.
+		Table("ctf_organizers").
+		Select("profiles.username as username, profiles.avatar as avatar").
+		Joins("LEFT JOIN users ON users.id = ctf_organizers.organizer_id").
+		Joins("LEFT JOIN profiles ON profiles.username = users.username").
+		Where("ctf_organizers.ctf_id = ?", eventID).
+		Find(&organizersInfo).
+		Error
 	return organizersInfo, err
 }

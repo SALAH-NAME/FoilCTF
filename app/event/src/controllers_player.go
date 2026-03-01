@@ -223,9 +223,21 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 			return errors.New("team not found")
 		}
 
+		var user User
+		err = tx.First(&user, *userID).Error
+		if err != nil {
+			return errors.New("user not found")
+		}
+		if user.Username != team.CaptainName {
+			return errors.New("user is not captain")
+		}
+
 		var currentPanticipants int64
-		err := tx.Table("participations").Where("ctf_id = ?", event.ID).
-			Count(&currentPanticipants).Error
+		err := tx.
+			Table("participations").
+			Where("ctf_id = ?", event.ID).
+			Count(&currentPanticipants).
+			Error
 		if err != nil {
 			return err
 		}
@@ -233,8 +245,11 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 		if event.MaxTeams != nil && *event.MaxTeams <= int(currentPanticipants) {
 			return errors.New("event is full")
 		}
-		if team.TeamSize < event.TeamMembersMin || team.TeamSize > event.TeamMembersMax {
-			return errors.New("invalid team size")
+		if team.MembersCount < event.TeamMembersMin {
+			return errors.New("team is too small")
+		}
+		if team.MembersCount > event.TeamMembersMax {
+			return errors.New("team is too large")
 		}
 
 		participation := Participation{
@@ -242,8 +257,10 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 			CtfID:  event.ID,
 			Score:  0,
 		}
-		err = tx.Table("participations").
-			Create(&participation).Error
+		err = tx.
+			Table("participations").
+			Create(&participation).
+			Error
 		if err != nil {
 			return errors.New("already registered")
 		}
@@ -251,9 +268,12 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 		roomInstance = ChatRoom{
 			CtfID:     event.ID,
 			TeamID:    &teamID,
-			Room_Type: "team",
+			RoomType: "team",
 		}
-		err = tx.Table("chat_rooms").Create(&roomInstance).Error
+		err = tx.
+			Table("chat_rooms").
+			Create(&roomInstance).
+			Error
 		if err != nil {
 			return err
 		}
@@ -273,11 +293,7 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := map[string]any{
-		"event":          event,
-		"registered":     true,
-		"team_id":        teamID,
-		"team_chat_room": roomInstance.ID,
-		"ctf_chat_room":  globalChatRoomID,
+		"ok": true,
 	}
 	JSONResponse(w, resp, http.StatusCreated)
 }

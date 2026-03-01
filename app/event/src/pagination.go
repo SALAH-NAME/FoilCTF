@@ -6,7 +6,7 @@ import (
 )
 
 type Pagination struct {
-	Limit int
+	Limit  int
 	Offset int
 	Search string
 	Sort   bool
@@ -39,5 +39,5 @@ func ParsePagination(r *http.Request) Pagination {
 	search := ParsePaginationSearch(r)
 	sort := ParsePaginationString(r, "sort") == "asc"
 
-	return Pagination{ limit, offset, search, sort }
+	return Pagination{limit, offset, search, sort}
 }

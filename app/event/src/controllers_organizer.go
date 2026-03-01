@@ -44,6 +44,7 @@ func (h *Hub) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
 	var req EventRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("ERROR - HTTP - Invalid request format: %v", err)
@@ -51,18 +52,33 @@ func (h *Hub) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	status := "draft"
+	if req.IsOpen {
+		status = "published"
+	}
+
 	newCtf := Ctf{
 		Name:           req.Name,
+		MetaData:       req.MetaData,
 		TeamMembersMin: req.TeamMembersMin,
 		TeamMembersMax: req.TeamMembersMax,
-		MetaData:       req.MetaData,
 		StartTime:      req.StartTime,
 		EndTime:        req.EndTime,
+		Description:    req.Description,
 		MaxTeams:       intPtrOrNil(req.MaxTeams),
-		Status:         "draft",
+		Status:         status,
 	}
+
 	err = h.Db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Table("ctfs").Create(&newCtf).Error; err != nil {
+			return err
+		}
+
+		newChatRoom := ChatRoom{
+			CtfID: newCtf.ID,
+			RoomType: "global",
+		}
+		if err := tx.Table("chat_rooms").Create(&newChatRoom).Error; err != nil {
 			return err
 		}
 
@@ -70,7 +86,11 @@ func (h *Hub) CreateEvent(w http.ResponseWriter, r *http.Request) {
 			CtfID:       newCtf.ID,
 			OrganizerID: *userID,
 		}
-		return tx.Table("ctf_organizers").Create(&ctfToOrganizer).Error
+		if err := tx.Table("ctf_organizers").Create(&ctfToOrganizer).Error; err != nil {
+			return err
+		}
+
+		return nil
 	})
 	if err != nil {
 		log.Printf("ERROR - DATABASE - Could not commit transaction due to: %v", err)
@@ -99,10 +119,11 @@ func (h *Hub) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 
 	updatedEvent := Ctf{
 		Name:           req.Name,
+		MetaData:       req.MetaData,
 		TeamMembersMin: req.TeamMembersMin,
 		TeamMembersMax: req.TeamMembersMax,
-		MetaData:       req.MetaData,
 		EndTime:        req.EndTime,
+		Description:    req.Description,
 		MaxTeams:       intPtrOrNil(req.MaxTeams),
 	}
 	if currentEvent.Status == "draft" {
@@ -287,7 +308,7 @@ func (h *Hub) StartEvent(w http.ResponseWriter, r *http.Request) {
 
 		roomInstance = ChatRoom{
 			CtfID:     event.ID,
-			Room_Type: "global",
+			RoomType: "global",
 		}
 		return tx.Table("chat_rooms").Create(&roomInstance).Error
 	})
