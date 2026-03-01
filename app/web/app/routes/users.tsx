@@ -34,8 +34,7 @@ async function remote_fetch_users(
 	limit: number
 ) {
 	const headers = new Headers();
-	if (token)
-		headers.set('Authorization', `Bearer ${token}`);
+	if (token) headers.set('Authorization', `Bearer ${token}`);
 
 	const url = new URL('/api/users', import.meta.env.BROWSER_REST_USER_ORIGIN);
 	if (q) url.searchParams.set('q', q);
@@ -64,6 +63,7 @@ async function remote_fetch_users(
 		data: JSONData_User[];
 		limit: number;
 		page: number;
+		count: number;
 	};
 	return json as JSONData_Users;
 }
@@ -92,7 +92,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 
 	const searchQuery = searchParams.get('q') || '';
 	const currentPage = parseInt(searchParams.get('page') || '1', 10);
-	const itemsPerPage = parseInt(searchParams.get('perPage') || '6', 10);
+	const itemsPerPage = parseInt(searchParams.get('perPage') || '10', 10);
 
 	const queryClient = useQueryClient();
 
@@ -101,25 +101,24 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			'users',
 			{ token_access, searchQuery, currentPage, itemsPerPage },
 		],
-		initialData: [],
+		initialData: { data: [], limit: 10, page: 1, count: 0 },
 		queryFn: async ({ queryKey }) => {
 			const [_queryKeyPrime, variables] = queryKey;
-			if (typeof variables === 'string') return [];
+			if (typeof variables === 'string')
+				return { data: [], limit: 10, page: 1, count: 0 };
 
 			const { searchQuery, currentPage, itemsPerPage } = variables;
-			const { data: users } = await remote_fetch_users(
+			return await remote_fetch_users(
 				token_access,
 				searchQuery,
 				currentPage,
 				itemsPerPage
 			);
-			return users;
 		},
 	});
 	const mut_friend_request_send = useMutation<unknown, Error, string>({
 		mutationFn: async (target) => {
-			if (!token_access)
-				throw new Error('Unauthorized');
+			if (!token_access) throw new Error('Unauthorized');
 			await remote_send_friend_request(token_access, target);
 			await queryClient.invalidateQueries({ queryKey: ['users'] });
 		},
@@ -148,7 +147,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		});
 	}, [query_users.errorUpdateCount, query_users.errorUpdatedAt]);
 
-	const filtered_users = query_users.data.map((user) => ({
+	const filtered_users = query_users.data.data.map((user) => ({
 		username: user.username,
 		teamName: user.team_name || '',
 
@@ -159,12 +158,9 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		friendStatus: user.friend_status,
 	})) satisfies User[];
 
-	// Pagination
-	const totalPages = Math.ceil(filtered_users.length / itemsPerPage);
-	const startIndex = (currentPage - 1) * itemsPerPage;
-	const paginatedUsers = filtered_users.slice(
-		startIndex,
-		startIndex + itemsPerPage
+	const totalPages = Math.max(
+		1,
+		Math.ceil(query_users.data.count / itemsPerPage)
 	);
 
 	const handlePageChange = (page: number) => {
@@ -220,7 +216,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 							role="list"
 							aria-label="Search results"
 						>
-							{paginatedUsers.map((user) => (
+							{filtered_users.map((user) => (
 								<div key={user.username} role="listitem">
 									<UserCard
 										{...user}
@@ -234,7 +230,8 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 
 						<Pagination
 							currentPage={currentPage}
-							totalPages={Math.max(1, totalPages)}
+							totalPages={totalPages}
+							totalItems={query_users.data.count}
 							onPageChange={handlePageChange}
 							itemsPerPage={itemsPerPage}
 							onItemsPerPageChange={(items) => {

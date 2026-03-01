@@ -1,5 +1,5 @@
 import { hash } from 'bcrypt';
-import { and, eq, or, ilike } from 'drizzle-orm';
+import { and, eq, or, ilike, count as sql_count } from 'drizzle-orm';
 import type { Request, Response, NextFunction } from 'express';
 
 import { db } from './utils/db';
@@ -53,6 +53,14 @@ export async function route_user_list(
 		or_conditions.push(ilike(table_users.username, '%' + search + '%'));
 	}
 
+	const where_clause =
+		or_conditions.length > 0 ? or(...or_conditions) : undefined;
+	const count_result = await db
+		.select({ total: sql_count() })
+		.from(table_users)
+		.where(where_clause);
+	const total = count_result[0]?.total ?? 0;
+
 	type FriendStatus = 'none' | 'sent' | 'received' | 'friends';
 
 	const { user: user_dispatcher } = res.locals;
@@ -86,7 +94,7 @@ export async function route_user_list(
 			.leftJoin(table_friends, orm_on_friends)
 			.leftJoin(table_profiles, orm_on_profiles)
 			.leftJoin(table_friend_requests, orm_on_friend_requests)
-			.where(or(...or_conditions))
+			.where(where_clause)
 			.limit(limit)
 			.offset(limit * (page - 1));
 
@@ -135,6 +143,7 @@ export async function route_user_list(
 				data: users,
 				limit,
 				page,
+				count: total,
 			})
 			.end();
 	}
@@ -146,7 +155,7 @@ export async function route_user_list(
 		})
 		.from(table_users)
 		.leftJoin(table_profiles, orm_on_profiles)
-		.where(or(...or_conditions))
+		.where(where_clause)
 		.limit(limit)
 		.offset(limit * (page - 1));
 
@@ -183,6 +192,7 @@ export async function route_user_list(
 			data: users,
 			limit,
 			page,
+			count: total,
 		})
 		.end();
 }
