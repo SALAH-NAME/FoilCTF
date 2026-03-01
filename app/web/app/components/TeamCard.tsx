@@ -71,10 +71,7 @@ export default function TeamCard({
 				<div className="grid grid-cols-2 gap-4 my-4">
 					<div>
 						<InfoText icon="user" className="text-sm text-dark/80">
-							<span className="font-semibold">
-								{members_count}
-							</span>{' '}
-							Members
+							<span className="font-semibold">{members_count}</span> Members
 						</InfoText>
 					</div>
 					<div>

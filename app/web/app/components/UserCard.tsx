@@ -16,7 +16,7 @@ interface UserCardProps {
 	totalPoints: number;
 	friendStatus?: FriendStatus;
 	disabled?: boolean;
-	userState?: SessionUser,
+	userState?: SessionUser;
 	onAddFriend?: () => void;
 }
 

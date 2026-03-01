@@ -3,7 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Route } from './+types/users.$username';
 
 import { useToast } from '~/contexts/ToastContext';
-import { remote_cancel_friend_request, remote_refuse_friend_request, remote_send_friend_request } from '~/routes/friends';
+import {
+	remote_cancel_friend_request,
+	remote_refuse_friend_request,
+	remote_send_friend_request,
+} from '~/routes/friends';
 
 import Icon from '~/components/Icon';
 import Button from '~/components/Button';
@@ -24,8 +28,7 @@ type RequestPayload<T> = {
 
 async function fetch_profile(username: string, token?: string) {
 	const headers = new Headers();
-	if (token)
-		headers.set('Authorization', `Bearer ${token}`);
+	if (token) headers.set('Authorization', `Bearer ${token}`);
 
 	const uri = new URL(
 		`/api/profiles/${username}`,
@@ -35,10 +38,8 @@ async function fetch_profile(username: string, token?: string) {
 
 	const content_type =
 		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
-	if (content_type !== 'application/json')
-		return null;
-	if (!res.ok)
-		return null;
+	if (content_type !== 'application/json') return null;
+	if (!res.ok) return null;
 
 	const json = await res.json();
 	type JSONData_Profile = {
@@ -59,12 +60,19 @@ async function fetch_profile(username: string, token?: string) {
 
 export default function Page({ params, loaderData }: Route.ComponentProps) {
 	const query_profile = useQuery({
-		queryKey: ['profile', { username: params.username }, { token: loaderData.user?.token_access } ],
+		queryKey: [
+			'profile',
+			{ username: params.username },
+			{ token: loaderData.user?.token_access },
+		],
 		initialData: null,
 		async queryFn(context) {
 			const { queryKey } = context;
 			const [_key, _username, _token] = queryKey;
-			const { token } = _token as { token: string | undefined; username?: undefined; };
+			const { token } = _token as {
+				token: string | undefined;
+				username?: undefined;
+			};
 
 			return await fetch_profile(params.username, token);
 		},
@@ -75,10 +83,13 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 
 	const queryClient = useQueryClient();
 
-	const mut_friend_request_send = useMutation<unknown, Error, RequestPayload<{ target: string }>>({
+	const mut_friend_request_send = useMutation<
+		unknown,
+		Error,
+		RequestPayload<{ target: string }>
+	>({
 		mutationFn: async ({ token, target }) => {
-			if (!token)
-				throw new Error('Unauthorized');
+			if (!token) throw new Error('Unauthorized');
 			await remote_send_friend_request(token, target);
 		},
 		async onSuccess() {
@@ -102,12 +113,19 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 			});
 		},
 	});
-	const handleAddFriend = () => mut_friend_request_send.mutate({ token: loaderData.user?.token_access, target: params.username });
+	const handleAddFriend = () =>
+		mut_friend_request_send.mutate({
+			token: loaderData.user?.token_access,
+			target: params.username,
+		});
 
-	const mut_friend_request_cancel = useMutation<unknown, Error, RequestPayload<{ target: string }>>({
+	const mut_friend_request_cancel = useMutation<
+		unknown,
+		Error,
+		RequestPayload<{ target: string }>
+	>({
 		mutationFn: async ({ token, target }) => {
-			if (!token)
-				throw new Error('Unauthorized');
+			if (!token) throw new Error('Unauthorized');
 			await remote_cancel_friend_request(token, target);
 		},
 		async onSuccess() {
@@ -130,12 +148,19 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 			});
 		},
 	});
-	const handleCancelRequest = () => mut_friend_request_cancel.mutate({ token: loaderData.user?.token_access, target: params.username });
+	const handleCancelRequest = () =>
+		mut_friend_request_cancel.mutate({
+			token: loaderData.user?.token_access,
+			target: params.username,
+		});
 
-	const mut_friend_request_refuse = useMutation<unknown, Error, RequestPayload<{ target: string }>>({
+	const mut_friend_request_refuse = useMutation<
+		unknown,
+		Error,
+		RequestPayload<{ target: string }>
+	>({
 		mutationFn: async ({ token, target }) => {
-			if (!token)
-				throw new Error('Unauthorized');
+			if (!token) throw new Error('Unauthorized');
 			await remote_refuse_friend_request(token, target);
 		},
 		async onSuccess() {
@@ -157,11 +182,18 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 			});
 		},
 	});
-	const handleRejectRequest = () => mut_friend_request_refuse.mutate({ token: loaderData.user?.token_access, target: params.username });
+	const handleRejectRequest = () =>
+		mut_friend_request_refuse.mutate({
+			token: loaderData.user?.token_access,
+			target: params.username,
+		});
 
-	const show_friend_op = (loaderData.user && loaderData.user?.username !== params.username);
-	const friend_status: 'none' | 'received' | 'sent' | 'friends' = profileData?.friend_status ?? 'none';
-	return ( // TODO(xenobas): Fix the shifting layout issue
+	const show_friend_op =
+		loaderData.user && loaderData.user?.username !== params.username;
+	const friend_status: 'none' | 'received' | 'sent' | 'friends' =
+		profileData?.friend_status ?? 'none';
+	return (
+		// TODO(xenobas): Fix the shifting layout issue
 		<div className="h-full bg-background p-4">
 			<div className="max-w-4xl mx-auto space-y-6">
 				<div className="bg-white rounded-md border border-dark/10">
@@ -280,7 +312,10 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 						value={profileData?.events_participated ?? 0}
 						label="Events Participated In"
 					/>
-					<StatsCard value={profileData?.total_points ?? 0} label="Total Points" />
+					<StatsCard
+						value={profileData?.total_points ?? 0}
+						label="Total Points"
+					/>
 				</div>
 			</div>
 		</div>

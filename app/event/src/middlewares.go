@@ -121,7 +121,7 @@ func (h *Hub) PlayerAuthMiddleware(next http.Handler) http.Handler {
 			}
 			return
 		}
-		if event.Status != "published" {
+		if event.Status != "published" && event.Status != "active" {
 			JSONError(w, "Not allowed to access event", http.StatusForbidden)
 			return
 		}

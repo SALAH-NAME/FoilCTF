@@ -34,8 +34,7 @@ async function remote_fetch_users(
 	limit: number
 ) {
 	const headers = new Headers();
-	if (token)
-		headers.set('Authorization', `Bearer ${token}`);
+	if (token) headers.set('Authorization', `Bearer ${token}`);
 
 	const url = new URL('/api/users', import.meta.env.BROWSER_REST_USER_ORIGIN);
 	if (q) url.searchParams.set('q', q);
@@ -118,8 +117,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 	});
 	const mut_friend_request_send = useMutation<unknown, Error, string>({
 		mutationFn: async (target) => {
-			if (!token_access)
-				throw new Error('Unauthorized');
+			if (!token_access) throw new Error('Unauthorized');
 			await remote_send_friend_request(token_access, target);
 			await queryClient.invalidateQueries({ queryKey: ['users'] });
 		},

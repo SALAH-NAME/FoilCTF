@@ -83,7 +83,10 @@ const queryClient = new QueryClient({
 	},
 });
 export default function App() {
-	const ws_notifications = URL.parse("/api/notifications/ws", import.meta.env.BROWSER_SOCKET_NOTIFICATION);
+	const ws_notifications = URL.parse(
+		'/api/notifications/ws',
+		import.meta.env.BROWSER_SOCKET_NOTIFICATION
+	);
 	if (!ws_notifications)
 		throw new Error('Could not construct WebSocket url for notifications');
 	return (

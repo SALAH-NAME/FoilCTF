@@ -3,11 +3,13 @@ import { type ChangeEvent } from 'react';
 interface FormInputProps {
 	id?: string;
 	name: string;
-	type: 'text' | 'email' | 'password' | 'textarea';
+	type: 'text' | 'email' | 'password' | 'textarea' | 'datetime-local';
 	label: string;
 	value: string;
 	disabled?: boolean;
-	onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+	onChange:
+		| ((e: ChangeEvent<HTMLInputElement>) => void)
+		| ((e: ChangeEvent<HTMLTextAreaElement>) => void);
 	onBlur?: () => void;
 	error?: string;
 	touched?: boolean;
@@ -42,7 +44,7 @@ export default function FormInput({
 				htmlFor={inputId}
 				className="block text-sm font-semibold text-dark mb-2"
 			>
-				{label}
+				{label} {required && <span className="text-primary">*</span>}
 			</label>
 			{type === 'textarea' ? (
 				<textarea

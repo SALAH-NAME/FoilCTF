@@ -1,125 +1,266 @@
-import { useState } from 'react';
-import { Link } from 'react-router';
+import { useEffect, useState } from 'react';
+import { data, Link, useNavigate } from 'react-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
 import { useToast } from '~/contexts/ToastContext';
-import Button from '~/components/Button';
+import { request_session_user } from '~/session.server';
+
+import type { Route } from './+types/events.$id';
+
 import Icon from '~/components/Icon';
-import EventStatCard from '~/components/EventStatCard';
+import Modal from '~/components/Modal';
+import Button from '~/components/Button';
+import InfoText from '~/components/InfoText';
+import BackLink from '~/components/BackLink';
+import PageHeader from '~/components/PageHeader';
 import PageSection from '~/components/PageSection';
 import CountdownCard from '~/components/CountdownCard';
-import InfoText from '~/components/InfoText';
-import Modal from '~/components/Modal';
+import EventStatCard from '~/components/EventStatCard';
 import AdminEventModal from '~/components/AdminEventModal';
-import PageHeader from '~/components/PageHeader';
-import BackLink from '~/components/BackLink';
 
-interface RouteParams {
-	params: {
-		id: string;
-	};
-}
-
-export function meta({ params }: RouteParams) {
+export function meta({ params }: Route.MetaArgs) {
 	return [
 		{ title: `Event ${params.id} - FoilCTF` },
 		{ name: 'description', content: `Details for event ${params.id}` },
 	];
 }
+export async function loader({ request }: Route.LoaderArgs) {
+	const user = await request_session_user(request);
+	return data({ user });
+}
 
-export default function EventDetail({ params }: RouteParams) {
-	const [isRegistered, setIsRegistered] = useState(false);
-	const [showUnregisterModal, setShowUnregisterModal] = useState(false);
-	const [showEditModal, setShowEditModal] = useState(false);
+export async function remote_fetch_event(id: string, token?: string) {
+	const url = new URL(`/api/events/${id}`, import.meta.env.BROWSER_REST_EVENTS_ORIGIN);
+	const headers = new Headers();
+	if (token)
+		headers.set('Authorization', `Bearer ${token}`);
+	const res = await fetch(url, { headers });
 
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
+
+	type JSONData_Event = {
+		event: {
+			name: string;
+			description: string;
+			team_members_min: number;
+			team_members_max: number;
+			metadata: Record<string, any>;
+			start_time: string;
+			end_time: string;
+			status: 'draft' | 'published' | 'active' | 'ended';
+			participation_count: number;
+			challenge_count: number;
+			max_teams: number | null;
+		};
+		organizers: { username: string, avatar: string }[];
+		user_status: {
+			is_organizer: boolean;
+			is_guest: boolean;
+			is_joined: boolean;
+		};
+	};
+	return json as JSONData_Event;
+}
+export async function remote_fetch_team(token: string) {
+	const url = new URL(`/api/teams/me`, import.meta.env.BROWSER_REST_USER_ORIGIN);
+	const headers = new Headers({ 'Authorization': `Bearer ${token}`});
+	const res = await fetch(url, { headers });
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
+
+	type JSONData_Team = {
+		id: number;
+		name: string;
+		captain_name: string;
+		members_count: number;
+		description: string | null;
+		is_locked: boolean | null;
+		profile_id: number | null;
+	};
+	return json as JSONData_Team;
+}
+export async function remote_join_event(token: string, id: string | number) {
+	const url = new URL(`/api/events/${id}/join`, import.meta.env.BROWSER_REST_EVENTS_ORIGIN);
+	const headers = new Headers({ 'Authorization': `Bearer ${token}` });
+	const res = await fetch(url, { headers });
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
+
+	type JSONData_Join = {
+		ok: true,
+	};
+	return json as JSONData_Join;
+}
+export default function Page({ params, loaderData }: Route.ComponentProps) {
+	const { user } = loaderData;
+
+	const navigate = useNavigate();
 	const { addToast } = useToast();
 
-	// Mock event data
-	const event = {
-		id: params.id,
-		name: 'Winter Cyber Challenge 2026',
-		status: 'active' as 'upcoming' | 'active' | 'ended',
-		startDate: '2026-02-01T00:00:00Z',
-		// status: 'upcoming' as 'upcoming' | 'active' | 'ended',
-		// startDate: '2026-02-15T00:00:00Z',
-		endDate: '2026-02-25T23:59:59Z',
-		// status: 'ended' as 'upcoming' | 'active' | 'ended',
-		// startDate: '2026-02-01T00:00:00Z',
-		// endDate: '2026-02-05T23:59:59Z',
-		organizer: 'CyberSec Team',
-		teams: 145,
-		maxTeams: 200,
-		description:
-			"Welcome to the Winter Cyber Challenge 2026! This two-week competition features exciting challenges across various categories including web exploitation, reverse engineering, cryptography, and forensics. Whether you're a beginner or an experienced hacker, there's something for everyone. Join teams from around the world and test your skills against the best.",
-		registrationOpen: true,
-		chatEnabled: true,
-	};
+	const [show_modal_edit, setShowModalEdit] = useState(false);
+	const [show_modal_unregister, setShowModalUnregister] = useState(false);
 
-	const handleRegistrationToggle = () => {
-		if (isRegistered) {
-			setShowUnregisterModal(true);
-		} else {
-			setIsRegistered(true);
+	const queryClient = useQueryClient();
+
+	const query_event = useQuery({
+		queryKey: ['event', { event_id: params.id, username: user?.username, token: user?.token_access }],
+		initialData: null,
+		async queryFn() {
+			return await remote_fetch_event(params.id, user?.token_access);
+		}
+	});
+	const query_team = useQuery({
+		queryKey: ['team', { token: user?.token_access, username: user?.username }],
+		initialData: null,
+		async queryFn() {
+			const token = user?.token_access;
+			if (!token)
+				return null;
+			return await remote_fetch_team(token);
+		}
+	});
+
+	const data_team = query_team.data;
+	const data_event = query_event.data;
+
+	type MutationPayload<T> = {
+		token?: string | null;
+		role?: 'admin' | 'user';
+	} & T;
+	const mut_join = useMutation<unknown, Error, MutationPayload<{ event_id?: string | number; }>>({
+		async mutationFn({ token, event_id }) {
+			if (!token)
+				throw new Error('Unauthorized');
+			if (!event_id)
+				throw new Error('Event not found');
+			await remote_join_event(token, event_id);
+		},
+		async onSuccess() {
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: ['event'] }),
+			]);
 			addToast({
 				variant: 'success',
-				title: 'Registration confirmed',
-				message: `You are now registered for ${event.name}.`,
+				title: 'Team registered',
+				message: 'Your team has been registered succesfully',
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Event registration',
+				message: err.message,
 			});
 		}
-	};
+	});
 
+	const is_registered = Boolean(user && data_event && data_event.user_status.is_joined);
+	const can_show_play = Boolean(is_registered || data_event?.user_status.is_organizer);
+	const can_show_registration = Boolean(user && data_event && data_event?.event.status === 'published' && data_team?.captain_name === user.username);
+	const organizer = ((data_event?.organizers.map(x => x.username).filter(x => !!x).join(', ')) || 'FoilCTF');
+
+	const disabled = query_event.isPending || mut_join.isPending;
+
+	const handleCancelUnregister = () => setShowModalUnregister(false);
 	const handleConfirmUnregister = () => {
-		// TODO: unregister
-		setIsRegistered(false);
-		setShowUnregisterModal(false);
 		addToast({
 			variant: 'warning',
 			title: 'Unregistered',
-			message: `You have been removed from ${event.name}.`,
+			message: `You have been removed from ${data_event?.event.name ?? 'N/A'}.`,
 		});
+		setShowModalUnregister(false);
 	};
 
-	const handleCancelUnregister = () => {
-		setShowUnregisterModal(false);
+	const handleRegister = () => {
+		const token = user?.token_access;
+		const event_id = params.id;
+		mut_join.mutate({ token, event_id });
+	};
+	const handleUnregister = () => {
+		alert('Unimplemented');
 	};
 
-	const formatDate = (dateString: string) => {
-		return new Date(dateString).toLocaleDateString('en-US', {
+	const formatDate = (date_string?: string) => {
+		if (!date_string)
+			return 'N/A';
+		return new Date(date_string).toLocaleDateString('en-US', {
 			month: 'short',
 			day: 'numeric',
 			year: 'numeric',
 		});
 	};
-
-	const getStatusColor = (status: string) => {
+	const getStatusColor = (status?: string) => {
 		switch (status) {
 			case 'active':
 				return 'text-green-600';
-			case 'upcoming':
+			case 'published':
 				return 'text-primary';
+			case 'draft':
 			case 'ended':
 				return 'text-muted';
 			default:
 				return 'text-foreground';
 		}
 	};
+	const formatDuration = (start_time?: string, end_time?: string) => {
+		if (!start_time || !end_time)
+			return ('N/A');
+		const start_date = new Date(start_time);
+		const end_date = new Date(end_time);
 
+		const diff = end_date.getTime() - start_date.getTime();
+		return Math.ceil(diff / (1000 * 60 * 60 * 24));
+	}
+
+	useEffect(() => {
+		const { id } = params;
+		const number = Number(id);
+		if (!isFinite(number) || number < 0 || number.toFixed(0) !== id) {
+			addToast({
+				variant: 'error',
+
+				title: 'Events',
+				message: 'Invalid ID',
+			});
+			navigate('/events');
+		}
+	}, [params.id]);
 	return (
 		<div className="flex flex-col gap-4">
-			<BackLink to="/events">Back to Events</BackLink>
+			<BackLink to="/events">Events</BackLink>
 
 			<PageHeader
-				title={event.name}
+				title={data_event?.event.name ?? 'N/A'}
 				className="mb-4"
-				action={
+				action={ user?.role === "admin" && 
 					<Button
+						disabled={disabled}
 						variant="ghost"
 						size="sm"
-						onClick={() => setShowEditModal(true)}
+						onClick={() => setShowModalEdit(true)}
 						aria-label="Edit this event"
 					>
 						<Icon name="edit" className="size-4" aria-hidden={true} />
 						Edit Event
-					</Button>
-				}
+					</Button> }
 			/>
 
 			<section aria-labelledby="event-title ">
@@ -131,7 +272,7 @@ export default function EventDetail({ params }: RouteParams) {
 									id="event-title"
 									className="text-2xl md:text-3xl lg:text-4xl font-bold text-white"
 								>
-									{event.name}
+									{data_event?.event.name}
 								</h1>
 							</div>
 
@@ -141,15 +282,15 @@ export default function EventDetail({ params }: RouteParams) {
 									className="text-white font-bold"
 									iconClassName="w-5 h-5"
 								>
-									Organized by {event.organizer}
+									Organized by {organizer}
 								</InfoText>
 							</div>
 						</div>
 
-						{true == true && (
+						{can_show_play && (
 							<Link
 								to="play"
-								className="flex items-center no-underline text-xl text-dark bg-white hover:bg-white/80 rounded-md p-4 px-8 h-fit font-bold transition-colors w-fit"
+								className="flex items-center no-underline text-xl text-dark bg-white hover:bg-white/80 rounded-md p-2 px-16 h-fit font-bold transition-colors w-fit"
 							>
 								Play
 							</Link>
@@ -157,7 +298,7 @@ export default function EventDetail({ params }: RouteParams) {
 					</div>
 
 					<div className="p-6 md:p-8">
-						{event.registrationOpen && event.status !== 'ended' && (
+						{can_show_registration && (
 							<div
 								className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-md"
 								role="status"
@@ -169,21 +310,22 @@ export default function EventDetail({ params }: RouteParams) {
 											Registration Status
 										</h2>
 										<p className="text-muted text-sm">
-											{isRegistered
+											{is_registered
 												? 'You are registered for this event'
 												: 'Join the competition and compete with teams worldwide'}
 										</p>
 									</div>
 									<Button
-										variant={isRegistered ? 'danger' : 'primary'}
-										onClick={handleRegistrationToggle}
+										disabled={disabled}
+										variant={is_registered ? 'danger' : 'primary'}
+										onClick={is_registered ? handleUnregister : handleRegister}
 										aria-label={
-											isRegistered
+											is_registered
 												? 'Unregister from this event'
 												: 'Register for this event'
 										}
 									>
-										{isRegistered ? (
+										{is_registered ? (
 											<>
 												<Icon name="close" className="w-4 h-4" />
 												Unregister
@@ -199,22 +341,22 @@ export default function EventDetail({ params }: RouteParams) {
 							</div>
 						)}
 
-						{event.status === 'upcoming' && (
+						{data_event?.event.status === 'published' && (
 							<div className="mb-6">
 								<CountdownCard
 									variant="upcoming"
-									targetDate={event.startDate}
+									targetDate={data_event?.event.start_time}
 								/>
 							</div>
 						)}
 
-						{event.status === 'active' && (
+						{data_event?.event.status === 'active' && (
 							<div className="mb-6">
-								<CountdownCard variant="active" targetDate={event.endDate} />
+								<CountdownCard variant="active" targetDate={data_event?.event.end_time} />
 							</div>
 						)}
 
-						{event.status === 'ended' && (
+						{data_event?.event.status === 'ended' && (
 							<div className="mb-6">
 								<div
 									className={`col-span-full bg-linear-to-r from-gray-600/10 to-gray-600/5 border-neutral-300 border rounded-md p-4 md:p-6`}
@@ -236,31 +378,32 @@ export default function EventDetail({ params }: RouteParams) {
 							<EventStatCard
 								icon="calendar"
 								label="Start Date"
-								value={formatDate(event.startDate)}
+								value={formatDate(data_event?.event.start_time)}
 							/>
 
 							<EventStatCard
 								icon="calendar"
 								label="End Date"
-								value={formatDate(event.endDate)}
+								value={formatDate(data_event?.event.end_time)}
 							/>
 
 							<EventStatCard
 								icon="user"
 								label="Teams Registered"
-								value={`${event.teams} / ${event.maxTeams}`}
+								value={`${data_event?.event.participation_count ?? 0} / ${data_event?.event.max_teams ?? 0}`}
 							/>
 
 							<EventStatCard
 								icon="chart"
 								label="Registration"
-								value={event.registrationOpen ? 'Open' : 'Closed'}
+								value={data_event?.event.status === 'published' ? 'Open' : 'Closed'}
 							/>
 						</div>
 					</div>
 				</div>
 			</section>
 
+			{data_event?.event.description && 
 			<PageSection>
 				<div role="region" aria-labelledby="about-heading">
 					<h2
@@ -270,10 +413,10 @@ export default function EventDetail({ params }: RouteParams) {
 						About This Event
 					</h2>
 					<div className="prose prose-sm md:prose-base max-w-none">
-						<p className="text-muted leading-relaxed">{event.description}</p>
+						<p className="text-muted leading-relaxed">{data_event.event.description}</p>
 					</div>
 				</div>
-			</PageSection>
+			</PageSection> }
 
 			<PageSection>
 				<div role="region" aria-labelledby="details-heading">
@@ -287,39 +430,35 @@ export default function EventDetail({ params }: RouteParams) {
 						<div className="flex flex-col gap-2">
 							<dt className="text-sm font-medium text-muted">Status</dt>
 							<dd
-								className={`text-lg font-semibold ${getStatusColor(event.status)}`}
+								className={`text-lg font-semibold ${getStatusColor(data_event?.event.status)}`}
 							>
-								{event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+								{(data_event?.event.status.charAt(0).toUpperCase() ?? '') + (data_event?.event.status.slice(1) ?? '')}
 							</dd>
 						</div>
 						<div className="flex flex-col gap-2">
 							<dt className="text-sm font-medium text-muted">Duration</dt>
 							<dd className="text-lg font-semibold text-foreground">
-								{Math.ceil(
-									(new Date(event.endDate).getTime() -
-										new Date(event.startDate).getTime()) /
-										(1000 * 60 * 60 * 24)
-								)}{' '}
-								days
+								<span>{formatDuration(data_event?.event.start_time, data_event?.event.end_time)}</span>
+								<span> days</span>
 							</dd>
 						</div>
 						<div className="flex flex-col gap-2">
 							<dt className="text-sm font-medium text-muted">Team Capacity</dt>
 							<dd className="text-lg font-semibold text-foreground">
-								{event.maxTeams - event.teams} spots remaining
+								{(data_event?.event.max_teams ?? 0) - (data_event?.event.participation_count ?? 0)} spots remaining
 							</dd>
 						</div>
 						<div className="flex flex-col gap-2">
 							<dt className="text-sm font-medium text-muted">Organizer</dt>
 							<dd className="text-lg font-semibold text-foreground">
-								{event.organizer}
+								{organizer}
 							</dd>
 						</div>
 					</dl>
 				</div>
 			</PageSection>
 
-			{event.status !== 'upcoming' && (
+			{data_event?.event.status !== 'published' && (
 				<PageSection>
 					<div
 						className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
@@ -342,7 +481,7 @@ export default function EventDetail({ params }: RouteParams) {
 							className="focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md inline-block"
 							aria-label="View event leaderboard"
 						>
-							<Button variant="primary">
+							<Button disabled={disabled} variant="primary">
 								View Leaderboard
 								<Icon name="chevronRight" className="w-4 h-4" />
 							</Button>
@@ -352,13 +491,14 @@ export default function EventDetail({ params }: RouteParams) {
 			)}
 
 			<Modal
-				isOpen={showUnregisterModal}
+				isOpen={show_modal_unregister}
 				onClose={handleCancelUnregister}
 				title="Confirm Unregistration"
 				size="sm"
 				footer={
 					<div className="flex gap-3 justify-end">
 						<Button
+							disabled={disabled}
 							variant="secondary"
 							onClick={handleCancelUnregister}
 							type="button"
@@ -367,6 +507,7 @@ export default function EventDetail({ params }: RouteParams) {
 							Cancel
 						</Button>
 						<Button
+							disabled={disabled}
 							variant="danger"
 							onClick={handleConfirmUnregister}
 							type="button"
@@ -380,7 +521,7 @@ export default function EventDetail({ params }: RouteParams) {
 				<div className="space-y-4">
 					<p className="text-foreground">
 						Are you sure you want to unregister from{' '}
-						<strong className="font-semibold">{event.name}</strong>?
+						<strong className="font-semibold">{data_event?.event.name ?? 'N/A'}</strong>?
 					</p>
 					<div
 						className="bg-amber-50 border border-amber-200 rounded-md p-4"
@@ -405,18 +546,8 @@ export default function EventDetail({ params }: RouteParams) {
 			</Modal>
 
 			<AdminEventModal
-				isOpen={showEditModal}
-				onClose={() => setShowEditModal(false)}
-				eventId={params.id}
-				initialData={{
-					name: event.name,
-					description: event.description,
-					organizer: event.organizer,
-					startDate: event.startDate.slice(0, 16),
-					endDate: event.endDate.slice(0, 16),
-					registrationOpen: event.registrationOpen,
-					linkedChallenges: [],
-				}}
+				isOpen={show_modal_edit}
+				onClose={() => setShowModalEdit(false)}
 			/>
 		</div>
 	);

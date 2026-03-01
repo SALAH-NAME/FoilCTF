@@ -1,4 +1,4 @@
-import type { EventStatus } from "./EventCard";
+import type { EventStatus } from './EventCard';
 
 interface StatusBadgeProps {
 	status: EventStatus;
