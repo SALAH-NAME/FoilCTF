@@ -710,3 +710,28 @@ export const route_team_requests = async (req: Request, res: Response) => {
 		limit,
 	});
 };
+
+export const route_team_me = async (_req: Request, res: Response<any, { user: JWT_Payload }>) => {
+	const user = res.locals.user; 
+	const team = await db.transaction(async (tx) => {
+		const [member_user] = await tx.select({ team_name: table_users.team_name })
+			.from(table_users)
+			.where(eq(table_users.id, user.id));
+		if (!member_user || !member_user.team_name)
+			throw new FoilCTF_Error('User has no team', 404);
+
+		const [team] = await tx.select()
+			.from(table_teams)
+			.where(eq(table_teams.name, member_user.team_name));
+		if (!team) {
+			console.error("ERROR - Invariant broken, User team no longer exists, yet team_name column still contains \"%s\"", member_user.team_name);
+			throw new FoilCTF_Error('Internal Server Error', 500);
+		}
+
+		return team;
+	});
+	return res
+		.status(200)
+		.json(team)
+		.end();
+}
