@@ -11,6 +11,13 @@ export async function loader({ request }: Route.LoaderArgs) {
 	const admin = await request_session_user(request);
 	if (!admin) {
 		const uri_original = new URL(request.url);
+
+		const host = request.headers.get('X-Gateway-Host');
+		if (host) uri_original.host = host;
+
+		const protocol = request.headers.get('X-Gateway-Protocol');
+		if (protocol) uri_original.protocol = protocol + ':';
+
 		const uri_redirect = new URL(
 			'/signin',
 			uri_original.protocol + '//' + uri_original.host
