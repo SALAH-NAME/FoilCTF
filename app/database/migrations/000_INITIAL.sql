@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS ctfs (
 
   name				TEXT NOT NULL DEFAULT 'New Event',
   status			TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'active', 'ended')),
+  description       TEXT NULL,
 
   start_time		TIMESTAMP NOT NULL DEFAULT now(),
   end_time			TIMESTAMP NOT NULL DEFAULT now(),
@@ -75,22 +76,20 @@ CREATE TABLE IF NOT EXISTS ctf_organizers (
 );
 
 CREATE TABLE IF NOT EXISTS teams (
-  id              SERIAL PRIMARY KEY,
-  name            TEXT NOT NULL UNIQUE,
-
-  captain_name    TEXT NOT NULL,
-
-  members_count   INTEGER NOT NULL DEFAULT 1,
-
-  description     TEXT DEFAULT NULL,
-  is_locked       BOOLEAN DEFAULT FALSE,
-
-  CONSTRAINT constraint_captain_name FOREIGN KEY (captain_name) REFERENCES users(username) ON UPDATE CASCADE,
-
-  team_size		INTEGER NOT NULL DEFAULT 0,
-
-  profile_id	INTEGER,
-  CONSTRAINT constraint_profile FOREIGN KEY (profile_id) REFERENCES profiles
+	id				SERIAL PRIMARY KEY,
+	name			TEXT NOT NULL UNIQUE,
+	
+	captain_name	TEXT NOT NULL,
+	
+	members_count	INTEGER NOT NULL DEFAULT 1,
+	
+	description		TEXT DEFAULT NULL,
+	is_locked		BOOLEAN DEFAULT FALSE,
+	
+	profile_id		INTEGER,
+	
+	CONSTRAINT constraint_captain_name FOREIGN KEY (captain_name) REFERENCES users(username) ON UPDATE CASCADE,
+	CONSTRAINT constraint_profile FOREIGN KEY (profile_id) REFERENCES profiles
 );
 CREATE TABLE IF NOT EXISTS team_members (
   team_name    TEXT NOT NULL,
