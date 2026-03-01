@@ -21,9 +21,15 @@ export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Teams' }];
 }
 
-async function remote_fetch_teams(q: string, page: number, limit: number) {
+async function remote_fetch_teams(
+	q: string,
+	page: number,
+	limit: number,
+	status: string
+) {
 	const url = new URL('/api/teams', import.meta.env.BROWSER_REST_USER_ORIGIN);
 	if (q) url.searchParams.set('q', q);
+	if (status && status !== 'all') url.searchParams.set('status', status);
 	url.searchParams.set('page', page.toString());
 	url.searchParams.set('limit', limit.toString());
 
@@ -46,14 +52,23 @@ async function remote_fetch_teams(q: string, page: number, limit: number) {
 		}[];
 		limit: number;
 		page: number;
+		count: number;
+		counts: {
+			all: number;
+			open: number;
+			closed: number;
+		};
 	};
 	return json as JSONData_Teams;
 }
 async function remote_fetch_user_requests(token: string) {
-	const url = new URL('/api/users/me/requests', import.meta.env.BROWSER_REST_USER_ORIGIN);
+	const url = new URL(
+		'/api/users/me/requests',
+		import.meta.env.BROWSER_REST_USER_ORIGIN
+	);
 	const res = await fetch(url, {
 		headers: {
-			'Authorization': `Bearer ${token}`,
+			Authorization: `Bearer ${token}`,
 		},
 	});
 
@@ -63,8 +78,7 @@ async function remote_fetch_user_requests(token: string) {
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 
 	type JSONData_Teams = {
 		data: string[];
@@ -72,11 +86,14 @@ async function remote_fetch_user_requests(token: string) {
 	return (json as JSONData_Teams).data;
 }
 async function remote_request_team_join(token: string, team_name: string) {
-	const url = new URL(`/api/teams/${team_name}/requests`, import.meta.env.BROWSER_REST_USER_ORIGIN);
+	const url = new URL(
+		`/api/teams/${team_name}/requests`,
+		import.meta.env.BROWSER_REST_USER_ORIGIN
+	);
 	const res = await fetch(url, {
 		method: 'POST',
 		headers: {
-			'Authorization': `Bearer ${token}`,
+			Authorization: `Bearer ${token}`,
 		},
 	});
 
@@ -86,8 +103,7 @@ async function remote_request_team_join(token: string, team_name: string) {
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 
 	type JSONData_Teams = {
 		data: string[];
@@ -95,11 +111,14 @@ async function remote_request_team_join(token: string, team_name: string) {
 	return (json as JSONData_Teams).data;
 }
 async function remote_request_team_cancel(token: string, team_name: string) {
-	const url = new URL(`/api/teams/${team_name}/requests`, import.meta.env.BROWSER_REST_USER_ORIGIN);
+	const url = new URL(
+		`/api/teams/${team_name}/requests`,
+		import.meta.env.BROWSER_REST_USER_ORIGIN
+	);
 	const res = await fetch(url, {
 		method: 'DELETE',
 		headers: {
-			'Authorization': `Bearer ${token}`,
+			Authorization: `Bearer ${token}`,
 		},
 	});
 
@@ -109,8 +128,7 @@ async function remote_request_team_cancel(token: string, team_name: string) {
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -130,7 +148,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		| 'open'
 		| 'closed';
 	const currentPage = parseInt(searchParams.get('page') || '1', 10);
-	const itemsPerPage = parseInt(searchParams.get('perPage') || '6', 10);
+	const itemsPerPage = parseInt(searchParams.get('perPage') || '10', 10);
 	useEffect(() => {
 		const idDebounce = setTimeout(() => {
 			const newParams = new URLSearchParams(searchParams);
@@ -151,76 +169,83 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		queryKey: ['user-requests', { user: session_user?.username }, { token }],
 		initialData: [],
 		async queryFn() {
-			if (!session_user?.username)
-				return [];
-			if (!token)
-				return [];
+			if (!session_user?.username) return [];
+			if (!token) return [];
 
 			return await remote_fetch_user_requests(token);
 		},
 	});
 	const teams_requested = query_requests.data;
-	useEffect(() => {
-		console.log(teams_requested);
-	}, [teams_requested]);
 
-	function execFilterTeams<T extends { name: string, is_locked: boolean | null }>(teams: T[]) {
-		return teams.map(team => {
-			return {
-				...team,
-				has_requested: teams_requested.indexOf(team.name) !== -1,
-			};
-		}).filter(team => {
-			const matchesSearch = team.name
-				.toLowerCase()
-				.includes(searchQuery.toLowerCase());
-			const matchesStatus =
-				statusFilter === 'all' ||
-				(statusFilter === 'open' && !team.is_locked) ||
-				(statusFilter === 'closed' && team.is_locked);
-			return matchesSearch && matchesStatus;
-		});
+	function execFilterTeams<
+		T extends { name: string; is_locked: boolean | null },
+	>(teams: T[]) {
+		return teams.map((team) => ({
+			...team,
+			has_requested: teams_requested.indexOf(team.name) !== -1,
+		}));
 	}
 
 	const query_teams = useQuery({
-		queryKey: ['teams', { searchQuery, currentPage, itemsPerPage }],
-		initialData: [],
+		queryKey: [
+			'teams',
+			{ searchQuery, statusFilter, currentPage, itemsPerPage },
+		],
+		initialData: {
+			data: [],
+			limit: 10,
+			page: 1,
+			count: 0,
+			counts: { all: 0, open: 0, closed: 0 },
+		},
 		queryFn: async ({ queryKey }) => {
 			const [_queryKeyPrime, variables] = queryKey;
-			if (typeof variables === 'string') return [];
+			if (typeof variables === 'string')
+				return {
+					data: [],
+					limit: 10,
+					page: 1,
+					count: 0,
+					counts: { all: 0, open: 0, closed: 0 },
+				};
 
-			const { searchQuery, currentPage, itemsPerPage } = variables;
-			const { data: teams } = await remote_fetch_teams(
+			const { searchQuery, statusFilter, currentPage, itemsPerPage } =
+				variables;
+			return await remote_fetch_teams(
 				searchQuery,
 				currentPage,
-				itemsPerPage
+				itemsPerPage,
+				statusFilter
 			);
-			return teams;
 		},
 	});
-	const teams = execFilterTeams(query_teams.data);
+	const teams = execFilterTeams(query_teams.data.data);
 
-	const totalPages = Math.ceil(teams.length / itemsPerPage);
-	const startIndex = (currentPage - 1) * itemsPerPage;
-	const paginatedTeams = teams.slice(
-		startIndex,
-		startIndex + itemsPerPage
+	const totalPages = Math.max(
+		1,
+		Math.ceil(query_teams.data.count / itemsPerPage)
 	);
 
 	const queryClient = useQueryClient();
 	const { addToast } = useToast();
 
-	const mut_request_join = useMutation<unknown, Error, RequestPayload<{ team_name: string }>>({
+	const mut_request_join = useMutation<
+		unknown,
+		Error,
+		RequestPayload<{ team_name: string }>
+	>({
 		async mutationFn({ token, team_name }) {
-			if (!token)
-				throw new Error('Unauthorized');
-			if (!team_name)
-				throw new Error('Who is you even asking to join?');
+			if (!token) throw new Error('Unauthorized');
+			if (!team_name) throw new Error('Who is you even asking to join?');
 			await remote_request_team_join(token, team_name);
 		},
 		async onSuccess() {
-			const invalidate_user_requests = queryClient.invalidateQueries({ queryKey: ['user-requests'] });
-			const invalidate_teams = queryClient.invalidateQueries({ queryKey: ['teams'] });
+			const invalidate_user_requests = queryClient.invalidateQueries({
+				queryKey: ['user-requests'],
+			});
+			const invalidate_teams = queryClient.invalidateQueries({
+				queryKey: ['teams'],
+			});
 			await Promise.all([invalidate_user_requests, invalidate_teams]);
 			addToast({
 				variant: 'success',
@@ -234,21 +259,28 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 				title: 'Team join request failed',
 				message: err.message,
 			});
-		}
+		},
 	});
-	const handleRequestJoin = (team_name: string) => mut_request_join.mutate({ token, team_name });
+	const handleRequestJoin = (team_name: string) =>
+		mut_request_join.mutate({ token, team_name });
 
-	const mut_request_cancel = useMutation<unknown, Error, RequestPayload<{ team_name: string }>>({
+	const mut_request_cancel = useMutation<
+		unknown,
+		Error,
+		RequestPayload<{ team_name: string }>
+	>({
 		async mutationFn({ token, team_name }) {
-			if (!token)
-				throw new Error('Unauthorized');
-			if (!team_name)
-				throw new Error('Who is you even asking to cancel?');
+			if (!token) throw new Error('Unauthorized');
+			if (!team_name) throw new Error('Who is you even asking to cancel?');
 			await remote_request_team_cancel(token, team_name);
 		},
 		async onSuccess() {
-			const invalidate_user_requests = queryClient.invalidateQueries({ queryKey: ['user-requests'] });
-			const invalidate_teams = queryClient.invalidateQueries({ queryKey: ['teams'] });
+			const invalidate_user_requests = queryClient.invalidateQueries({
+				queryKey: ['user-requests'],
+			});
+			const invalidate_teams = queryClient.invalidateQueries({
+				queryKey: ['teams'],
+			});
 			await Promise.all([invalidate_user_requests, invalidate_teams]);
 			addToast({
 				variant: 'success',
@@ -262,9 +294,10 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 				title: 'Team join request cancellation failed',
 				message: err.message,
 			});
-		}
+		},
 	});
-	const handleCancelRequest = (team_name: string) => mut_request_cancel.mutate({ token, team_name });
+	const handleCancelRequest = (team_name: string) =>
+		mut_request_cancel.mutate({ token, team_name });
 	const handlePageChange = (page: number) => {
 		const newParams = new URLSearchParams(searchParams);
 		newParams.set('page', page.toString());
@@ -279,17 +312,9 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 	};
 
 	const statusTabs = [
-		{ value: 'all', label: 'All Teams', count: query_teams.data.length },
-		{
-			value: 'open',
-			label: 'Open',
-			count: query_teams.data.filter((t) => !t.is_locked).length,
-		},
-		{
-			value: 'closed',
-			label: 'Closed',
-			count: query_teams.data.filter((t) => t.is_locked).length,
-		},
+		{ value: 'all', label: 'All Teams', count: query_teams.data.counts.all },
+		{ value: 'open', label: 'Open', count: query_teams.data.counts.open },
+		{ value: 'closed', label: 'Closed', count: query_teams.data.counts.closed },
 	];
 
 	const query_user = useQuery({
@@ -300,8 +325,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		],
 		initialData: null,
 		queryFn: async () => {
-			if (!session_user)
-				return null;
+			if (!session_user) return null;
 			return await fetch_user(session_user.token_access);
 		},
 	});
@@ -310,19 +334,21 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 	const [showCreateTeamModal, setShowCreateTeamModal] = useState(false);
 	const PageHeaderAction = () => (
 		<>
-			{ !user?.team_name && session_user?.username &&
-			<Button variant="primary" onClick={() => setShowCreateTeamModal(true)} disabled={showCreateTeamModal}>
-				<Icon name="add" />
-				<span>Start a Team</span>
-			</Button> }
+			{!user?.team_name && session_user?.username && (
+				<Button
+					variant="primary"
+					onClick={() => setShowCreateTeamModal(true)}
+					disabled={showCreateTeamModal}
+				>
+					<Icon name="add" />
+					<span>Start a Team</span>
+				</Button>
+			)}
 		</>
 	);
 	return (
 		<>
-			<PageHeader
-				title="Teams"
-				action={<PageHeaderAction />}
-			/>
+			<PageHeader title="Teams" action={<PageHeaderAction />} />
 
 			<main
 				id="main-content"
@@ -348,7 +374,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 					}}
 				/>
 
-				{teams.length === 0 ? (
+				{query_teams.data.count === 0 ? (
 					<div
 						className="text-center py-12 mt-6"
 						role="status"
@@ -368,11 +394,13 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 							role="list"
 							aria-label="List of teams"
 						>
-							{paginatedTeams.map((team) => (
+							{teams.map((team) => (
 								<div key={team.id} role="listitem">
 									<TeamCard
 										{...team}
-										can_request={!Boolean(user?.team_name) && user?.team_name !== team.name}
+										can_request={
+											!Boolean(user?.team_name) && user?.team_name !== team.name
+										}
 										onRequestJoin={() => handleRequestJoin(team.name)}
 										onCancelRequest={() => handleCancelRequest(team.name)}
 									/>
@@ -382,8 +410,8 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 
 						<Pagination
 							currentPage={currentPage}
-							totalPages={Math.max(1, totalPages)}
-							totalItems={teams.length}
+							totalPages={totalPages}
+							totalItems={query_teams.data.count}
 							itemsPerPage={itemsPerPage}
 							onPageChange={handlePageChange}
 							onItemsPerPageChange={handleItemsPerPageChange}
@@ -393,7 +421,11 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 				)}
 			</main>
 
-			<ModalCreateTeam isOpen={showCreateTeamModal} closeModal={() => setShowCreateTeamModal(false)} token={token} />
+			<ModalCreateTeam
+				isOpen={showCreateTeamModal}
+				closeModal={() => setShowCreateTeamModal(false)}
+				token={token}
+			/>
 		</>
 	);
 }
@@ -418,8 +450,7 @@ export async function remote_create_team(token: string, name: string) {
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
 
 type ModalCreateTeamProps = {
@@ -427,35 +458,42 @@ type ModalCreateTeamProps = {
 	closeModal: () => void;
 
 	token?: string | null;
-}
-const ModalCreateTeam = ({ isOpen, closeModal, token }: ModalCreateTeamProps) => {
+};
+const ModalCreateTeam = ({
+	isOpen,
+	closeModal,
+	token,
+}: ModalCreateTeamProps) => {
 	const [teamName, setTeamName] = useState<string>('');
 	const [errorTeamName, setErrorTeamName] = useState<string | undefined>();
 	useEffect(() => {
-		if (!teamName)
-			return ;
+		if (!teamName) return;
 
 		if (teamName.length < 4)
 			setErrorTeamName('Team name must be 4 characters minimum');
 		else if (teamName.length > 15)
 			setErrorTeamName('Team name must be 15 characters maximum');
 		else if (!/^[A-Za-z0-9_]+$/.test(teamName))
-			setErrorTeamName('Team name only allows underscores, alphabetical, and numerical characters')
-		else
-			setErrorTeamName(undefined);
+			setErrorTeamName(
+				'Team name only allows underscores, alphabetical, and numerical characters'
+			);
+		else setErrorTeamName(undefined);
 	}, [teamName]);
 
 	const queryClient = useQueryClient();
 	const { addToast } = useToast();
 
-	const mut_submit = useMutation<unknown, Error, RequestPayload<{ name: string }>>({
+	const mut_submit = useMutation<
+		unknown,
+		Error,
+		RequestPayload<{ name: string }>
+	>({
 		async mutationFn({ token, name }) {
-			if (!token)
-				throw new Error('Unauthorized');
+			if (!token) throw new Error('Unauthorized');
 			await remote_create_team(token, name);
 		},
 		async onSuccess() {
-			const invalidate_teams = queryClient.invalidateQueries({ });
+			const invalidate_teams = queryClient.invalidateQueries({});
 			await Promise.all([invalidate_teams]);
 			addToast({
 				variant: 'success',
@@ -471,7 +509,7 @@ const ModalCreateTeam = ({ isOpen, closeModal, token }: ModalCreateTeamProps) =>
 				title: 'Team creation failed',
 				message: err.message,
 			});
-		}
+		},
 	});
 
 	const resetModal = () => {
@@ -481,12 +519,12 @@ const ModalCreateTeam = ({ isOpen, closeModal, token }: ModalCreateTeamProps) =>
 	const submitModal = (ev: SubmitEvent<HTMLFormElement>) => {
 		ev.preventDefault();
 		if (!teamName) {
-			setErrorTeamName('Must not be empty')
-			return ;
+			setErrorTeamName('Must not be empty');
+			return;
 		}
 		if (errorTeamName) {
 			console.log(errorTeamName);
-			return ;
+			return;
 		}
 		mut_submit.mutate({ token, name: teamName });
 		resetModal();
@@ -498,11 +536,7 @@ const ModalCreateTeam = ({ isOpen, closeModal, token }: ModalCreateTeamProps) =>
 			title="Create a team"
 			footer={
 				<div className="flex gap-3 justify-end">
-					<Button
-						variant="secondary"
-						onClick={resetModal}
-						type="button"
-					>
+					<Button variant="secondary" onClick={resetModal} type="button">
 						Cancel
 					</Button>
 					<Button type="submit" form="form-team-create">
@@ -511,18 +545,14 @@ const ModalCreateTeam = ({ isOpen, closeModal, token }: ModalCreateTeamProps) =>
 				</div>
 			}
 		>
-			<Form
-				id="form-team-create"
-				onSubmit={submitModal}
-				className="space-y-4"
-			>
+			<Form id="form-team-create" onSubmit={submitModal} className="space-y-4">
 				<FormInput
 					id="input-team-name"
 					name="name"
 					type="text"
 					label="Name"
 					value={teamName}
-					onChange={ev => setTeamName(ev.target.value)}
+					onChange={(ev) => setTeamName(ev.target.value)}
 					error={errorTeamName}
 					placeholder="hackers_1995"
 					required
