@@ -126,21 +126,6 @@ func (h *Hub) PlayerAuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// var count int64
-		// err = h.Db.Table("ctfs_challenges").
-		// 	Where("ctf_id = ?", event.ID).
-		// 	Count(&count).Error
-		// if err != nil {
-		// 	log.Printf("ERROR - Auth - Could not query event challenges count: %v", err)
-		// 	JSONError(w, "Internal Server Error", http.StatusInternalServerError)
-		// 	return
-		// }
-		// if count == 0 {
-		// 	log.Printf("ERROR - Auth - User %v can't access an active event without challenges", *userID)
-		// 	JSONError(w, "Cannot join event witout challenges", http.StatusConflict)
-		// 	return
-		// }
-
 		teamID, err := h.GetTeamIDByUserID(*userID)
 		if err != nil {
 			log.Printf("ERROR - Auth - Could not get team id by user id: %v", err)

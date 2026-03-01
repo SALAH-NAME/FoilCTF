@@ -133,9 +133,9 @@ type WsEvent struct {
 }
 
 type ChatRoom struct {
-	ID        int    `gorm:"primaryKey"`
-	CtfID     int    `gorm:"column:ctf_id"`
-	TeamID    *int   `gorm:"column:team_id"`
+	ID       int    `gorm:"primaryKey"`
+	CtfID    int    `gorm:"column:ctf_id"`
+	TeamID   *int   `gorm:"column:team_id"`
 	RoomType string `gorm:"column:room_type"`
 }
 

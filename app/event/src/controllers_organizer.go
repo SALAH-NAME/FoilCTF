@@ -75,7 +75,7 @@ func (h *Hub) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		}
 
 		newChatRoom := ChatRoom{
-			CtfID: newCtf.ID,
+			CtfID:    newCtf.ID,
 			RoomType: "global",
 		}
 		if err := tx.Table("chat_rooms").Create(&newChatRoom).Error; err != nil {
@@ -307,7 +307,7 @@ func (h *Hub) StartEvent(w http.ResponseWriter, r *http.Request) {
 		}
 
 		roomInstance = ChatRoom{
-			CtfID:     event.ID,
+			CtfID:    event.ID,
 			RoomType: "global",
 		}
 		return tx.Table("chat_rooms").Create(&roomInstance).Error

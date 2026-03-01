@@ -11,6 +11,7 @@ import (
 func (h *Hub) RegisterRoutes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
+		AllowedMethods: []string{http.MethodHead, http.MethodGet, http.MethodPost, http.MethodDelete},
 		AllowedHeaders: []string{"*"},
 	}))
 	r.Use(middleware.Logger)
@@ -33,7 +34,8 @@ func (h *Hub) RegisterRoutes() http.Handler {
 				r.Get("/scoreboard", h.GetScoreboard)
 				r.Group(func(r chi.Router) {
 					r.Use(h.PlayerAuthMiddleware)
-					r.Get("/join", h.JoinEvent)
+					r.Post("/join", h.JoinEvent)
+					r.Delete("/leave", h.LeaveEvent)
 					r.Group(func(r chi.Router) {
 						r.Use(h.EnsureEventAccess)
 						r.Get("/challenges", h.ListCtfsChallenges)
@@ -49,7 +51,6 @@ func (h *Hub) RegisterRoutes() http.Handler {
 
 			r.Route("/{id}", func(r chi.Router) {
 				r.Use(h.EnsureEventOwnership)
-				// r.Get("/")
 				r.Put("/", h.UpdateEvent)
 				r.Delete("/", h.DeleteEvent)
 				r.Post("/start", h.StartEvent)

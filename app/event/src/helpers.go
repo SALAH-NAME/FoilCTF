@@ -74,11 +74,31 @@ func HandleJoinError(w http.ResponseWriter, err error) {
 	JSONError(w, "Internal Server error", http.StatusInternalServerError)
 }
 
+func HandleLeaveError(w http.ResponseWriter, err error) {
+	log.Printf("ERROR - Leave - An error has occurred %v", err)
+
+	errorMap := map[string]int{
+		"team has no active participation in the event": http.StatusConflict,
+		"user not found":          http.StatusNotFound,
+		"user is not captain":     http.StatusUnauthorized,
+		"event not found":         http.StatusNotFound,
+		"team not found":          http.StatusNotFound,
+		"event is full":           http.StatusForbidden,
+		"team is too small":       http.StatusPreconditionFailed,
+		"team is too large":       http.StatusPreconditionFailed,
+		"already registered":      http.StatusConflict,
+		"ctf chat room not found": http.StatusNotFound,
+	}
+	if code, exists := errorMap[err.Error()]; exists {
+		JSONError(w, err.Error(), code)
+		return
+	}
+
+	JSONError(w, "Internal Server error", http.StatusInternalServerError)
+}
+
 func (h *Hub) GetTeamIDByUserID(userID int) (int, error) {
 	var teamID int
-	// result := h.Db.Table("team_members").
-	// 	Where("member_id = ?", userID).
-	// 	Pluck("team_id", &teamID)
 	result := h.Db.
 		Table("users").
 		Joins("LEFT JOIN team_members ON team_members.member_name = users.username").

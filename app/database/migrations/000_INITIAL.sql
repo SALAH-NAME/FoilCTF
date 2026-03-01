@@ -184,19 +184,19 @@ CREATE TABLE IF NOT EXISTS hints (
 
 -- Participations (Instance of the Team in the Challenge)
 CREATE TABLE IF NOT EXISTS participations (
-  id				SERIAL PRIMARY KEY,
-  score				INTEGER NOT NULL DEFAULT 0,
-  solves			INTEGER NOT NULL DEFAULT 0,
-
-  team_id			INTEGER NOT NULL,
-  ctf_id			INTEGER NOT NULL,
-
-  last_attempt_at	TIMESTAMP NULL,
-
-  CONSTRAINT unique_participation UNIQUE (team_id, ctf_id),
-
-  CONSTRAINT constraint_team FOREIGN KEY (team_id) REFERENCES teams,
-  CONSTRAINT constraint_ctfs FOREIGN KEY (ctf_id) REFERENCES ctfs
+	id				SERIAL PRIMARY KEY,
+	score			INTEGER NOT NULL DEFAULT 0,
+	solves			INTEGER NOT NULL DEFAULT 0,
+	
+	team_id			INTEGER NOT NULL,
+	ctf_id			INTEGER NOT NULL,
+	
+	last_attempt_at	TIMESTAMP NULL,
+	
+	CONSTRAINT unique_participation UNIQUE (team_id, ctf_id),
+	
+	CONSTRAINT constraint_team FOREIGN KEY (team_id) REFERENCES teams,
+	CONSTRAINT constraint_ctfs FOREIGN KEY (ctf_id) REFERENCES ctfs
 );
 
 -- CTF instantiation of the Challenges
