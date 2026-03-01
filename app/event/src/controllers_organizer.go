@@ -164,12 +164,27 @@ func (h *Hub) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.Db.Delete(&event).Error; err != nil {
+	err := h.Db.Transaction(func (tx *gorm.DB) (err error) {
+		if err = h.Db.Table("participations").Where("ctf_id = ?", event.ID).Delete(&Participation{}).Error; err != nil {
+			return err
+		}
+		if err = h.Db.Table("ctf_organizers").Where("ctf_id = ?", event.ID).Delete(&CtfOrganizers{}).Error; err != nil {
+			return err
+		}
+		if err = h.Db.Table("chat_rooms").Where("ctf_id = ?", event.ID).Delete(&ChatRoom{}).Error; err != nil {
+			return err
+		}
+		if err = h.Db.Table("ctfs").Where("id = ?", event.ID).Delete(&Ctf{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		log.Printf("ERROR - DATABASE - Could not delete event %d due to: %v", event.ID, err)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	JSONResponse(w, nil, http.StatusNoContent)
+	JSONResponse(w, map[string]any{ "ok": true }, http.StatusOK)
 }
 
 func (h *Hub) LinkChallenge(w http.ResponseWriter, r *http.Request) {

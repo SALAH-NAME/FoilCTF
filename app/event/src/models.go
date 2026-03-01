@@ -3,8 +3,6 @@ package main
 import (
 	"encoding/json"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 type EventRequest struct {
@@ -41,7 +39,6 @@ type Ctf struct {
 	MetaData       map[string]any `json:"metadata" gorm:"column:metadata;serializer:json"`
 	StartTime      time.Time      `json:"start_time" gorm:"column:start_time"`
 	EndTime        time.Time      `json:"end_time" gorm:"column:end_time"`
-	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index"`
 	Status         string         `json:"status" gorm:"column:status"`
 	Description    string         `json:"description" gorm:"column:description"`
 	MaxTeams       *int           `json:"max_teams" gorm:"column:max_teams"`

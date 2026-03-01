@@ -1,6 +1,7 @@
 import { ZodError } from 'zod';
 import { MulterError } from 'multer';
 import type { Request, Response, NextFunction } from 'express';
+import { FoilCTF_Error } from './utils/types';
 
 export class UploadError extends Error {
 	status_code: number;
@@ -40,6 +41,9 @@ export function middleware_error(
 	}
 	if (err instanceof UploadError) {
 		return res.status(err.status_code).json({ error: err.message });
+	}
+	if (err instanceof FoilCTF_Error) {
+		return res.status(err.statusCode).json({ error: err.message });
 	}
 
 	console.error(err);

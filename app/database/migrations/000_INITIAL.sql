@@ -56,7 +56,6 @@ CREATE TABLE IF NOT EXISTS ctfs (
 
   start_time		TIMESTAMP NOT NULL DEFAULT now(),
   end_time			TIMESTAMP NOT NULL DEFAULT now(),
-  deleted_at		TIMESTAMP DEFAULT NULL,
 
   team_members_min  INTEGER DEFAULT 1 NOT NULL,
   team_members_max  INTEGER NULL,
