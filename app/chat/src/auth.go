@@ -36,12 +36,16 @@ func (hub *Hub) VerifySigningMethod(token *jwt.Token) (interface{}, error) {
 func (hub *Hub) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			log.Printf("DEBUG: SERVER: Authorization header required")
-			JSONError(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenString == "" {
+			query := r.URL.Query()
+			tokenString = query.Get("token")
+			if tokenString == "" {
+				log.Printf("Authorization header required")
+				JSONError(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+		}
 
 		claims := &MyClaims{}
 		token, err := jwt.ParseWithClaims(tokenString, claims, hub.VerifySigningMethod)

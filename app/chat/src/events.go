@@ -75,7 +75,7 @@ func HandleMessageEvent(h *Hub, eventMessage *Message) {
 		eventMessage.WriterID = &id
 	}
 
-	err := h.Db.Create(eventMessage).Error
+	err := h.Db.Create(&eventMessage).Error
 	if err != nil {
 		log.Printf("ERROR: DATABASE: Failed to save message: %v", err)
 		SendError(eventMessage.SenderID, h, Message{
@@ -86,6 +86,82 @@ func HandleMessageEvent(h *Hub, eventMessage *Message) {
 	}
 
 	Broadcast(h, eventMessage, "")
+}
+
+func HandleJoinEvent(h *Hub, client *Client) {
+	h.Mutex.Lock()
+	if _, ok := h.Clients[client.ID]; !ok {
+		h.Clients[client.ID] = make(map[*Client]bool)
+	}
+	h.Clients[client.ID][client] = true
+	h.Mutex.Unlock()
+	log.Printf("INFO: EVENTS: user { Name: %q, ID: %q } has joined the chat", client.Name, client.ID)
+
+	eventMessage := Message{
+		Event:      "join",
+		Name:       client.Name,
+		ChatRoomID: client.RoomID,
+		Content:    fmt.Sprintf("%s has joined the chat", client.Name),
+		SentTime:   time.Now(),
+	}
+
+	err := h.Db.Create(&eventMessage).Error
+	if err != nil {
+		log.Printf("ERROR: DATABASE: Failed to save message: %v", err)
+		SendError(eventMessage.SenderID, h, Message{
+			Event:   "error",
+			Content: "Could not save join message.",
+		})
+		return
+	}
+
+	Broadcast(h, &eventMessage, "")
+}
+
+func HandleLeaveEvent(h *Hub, client *Client) {
+	if !RemoveClient(h, client) {
+		return
+	}
+	eventMessage := Message{
+		Event:      "leave",
+		Name:       client.Name,
+		ChatRoomID: client.RoomID,
+		Content:    fmt.Sprintf("%s has left the chat", client.Name),
+		SentTime:   time.Now(),
+	}
+
+	err := h.Db.Create(&eventMessage).Error
+	if err != nil {
+		log.Printf("ERROR: DATABASE: Failed to save message: %v", err)
+		SendError(eventMessage.SenderID, h, Message{
+			Event:   "error",
+			Content: "Could not save join message.",
+		})
+		return
+	}
+	Broadcast(h, &eventMessage, "")
+}
+
+func HandleDeleteEvent(h *Hub, eventMessage *Message) {
+	now := time.Now()
+	writerID, _ := strconv.ParseInt(eventMessage.SenderID, 10, 64)
+	result := h.Db.Model(&Message{}).Where("id = ? AND writer_id = ? AND deleted_at IS NULL",
+		eventMessage.Id, writerID).
+		Updates(map[string]any{
+			"deleted_at": &now,
+		})
+	if result.Error == nil && result.RowsAffected > 0 {
+		eventMessage.Event = "delete"
+		Broadcast(h, eventMessage, "")
+	} else {
+		log.Printf("ERROR: DATABASE: Delete failed for messageID %d: %v:", eventMessage.Id, result.Error)
+		SendError(eventMessage.SenderID, h, Message{
+			Event:   "error",
+			Content: "Could not process delete action.",
+		})
+		return
+
+	}
 }
 
 func HandleEditEvent(h *Hub, eventMessage *Message) {
@@ -120,76 +196,24 @@ func HandleEditEvent(h *Hub, eventMessage *Message) {
 	Broadcast(h, eventMessage, "")
 }
 
-func HandleDeleteEvent(h *Hub, eventMessage *Message) {
-	now := time.Now()
-	writerID, _ := strconv.ParseInt(eventMessage.SenderID, 10, 64)
-	result := h.Db.Model(&Message{}).Where("id = ? AND writer_id = ? AND deleted_at IS NULL",
-		eventMessage.Id, writerID).
-		Updates(map[string]any{
-			"deleted_at": &now,
-		})
-	if result.Error == nil && result.RowsAffected > 0 {
-		eventMessage.Event = "delete"
-		Broadcast(h, eventMessage, "")
-	} else {
-		log.Printf("ERROR: DATABASE: Delete failed for messageID %d: %v:", eventMessage.Id, result.Error)
-		SendError(eventMessage.SenderID, h, Message{
-			Event:   "error",
-			Content: "Could not process delete action.",
-		})
-		return
-
-	}
-}
-
 func HandleTypingEvent(h *Hub, eventMessage *Message) {
 	Broadcast(h, eventMessage, eventMessage.SenderID)
 }
 
-func HandleJoinEvent(h *Hub, client *Client) {
-	h.Mutex.Lock()
-	if _, ok := h.Clients[client.ID]; !ok {
-		h.Clients[client.ID] = make(map[*Client]bool)
-	}
-	h.Clients[client.ID][client] = true
-	h.Mutex.Unlock()
-	log.Printf("INFO: EVENTS: user { Name: %q, ID: %q } has joined the chat", client.Name, client.ID)
-
-	joinMssg := Message{
-		Event:      "join",
-		Name:       client.Name,
-		ChatRoomID: client.RoomID,
-		Content:    fmt.Sprintf("%s has joined the chat", client.Name),
-		SentTime:   time.Now(),
-	}
-	Broadcast(h, &joinMssg, "")
-}
-
-func RemoveClient(h *Hub, client *Client) {
+func RemoveClient(h *Hub, client *Client) bool {
 	h.Mutex.Lock()
 	defer h.Mutex.Unlock()
 	connections, ok := h.Clients[client.ID]
 	if !ok {
-		return
+		return false
 	}
 	if _, exits := connections[client]; !exits {
-		return
+		return false
 	}
 	delete(connections, client)
 	if len(connections) == 0 {
 		delete(h.Clients, client.ID)
 	}
 	client.SafeClose()
-}
-
-func HandleLeaveEvent(h *Hub, client *Client) {
-	RemoveClient(h, client)
-	leaveMssg := Message{
-		Event:      "leave",
-		Name:       client.Name,
-		ChatRoomID: client.RoomID,
-		Content:    fmt.Sprintf("%s has left the chat", client.Name),
-		SentTime:   time.Now(),
-	}
-	Broadcast(h, &leaveMssg, "")
+	return true
 }

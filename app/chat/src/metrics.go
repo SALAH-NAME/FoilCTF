@@ -47,16 +47,6 @@ var (
 	)
 )
 
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
-}
-
 func metricsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/metrics" || r.URL.Path == "/health" {
@@ -65,12 +55,12 @@ func metricsMiddleware(next http.Handler) http.Handler {
 		}
 
 		start := time.Now()
-		rw := &responseWriter{w, http.StatusOK}
+		rw := &responseWriterStatusful{w, http.StatusOK, false}
 
 		next.ServeHTTP(rw, r)
 
 		duration := time.Since(start).Seconds()
-		status := strconv.Itoa(rw.statusCode)
+		status := strconv.Itoa(rw.Status)
 
 		httpRequestsTotal.WithLabelValues(r.Method, status).Inc()
 		httpRequestDuration.WithLabelValues(r.Method, status).Observe(duration)

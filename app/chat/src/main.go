@@ -4,22 +4,32 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 func (hub *Hub) RegisterRoutes() http.Handler {
-	r := mux.NewRouter()
-	r.HandleFunc("/health", hub.ServeHealth).Methods(http.MethodGet)
-	r.Handle("/metrics", metricsHandler()).Methods(http.MethodGet)
+	r := chi.NewRouter()
+	r.Use(cors.Handler(cors.Options{
+		AllowedMethods: []string{http.MethodHead, http.MethodGet, http.MethodPost, http.MethodDelete},
+		AllowedHeaders: []string{"*"},
+	}))
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.RealIP)
 
-	r.Use(metricsMiddleware)
+	r.Get("/health", hub.ServeHealth)
+	r.Get("/metrics", metricsHandler().(http.HandlerFunc))
 
-	rAuthProtected := r.NewRoute().Subrouter()
-	rAuthProtected.Use(hub.AuthMiddleware)
-	rAuthProtected.HandleFunc("/api/chat", hub.ServeChat).Methods(http.MethodGet)
-	rAuthProtected.HandleFunc("/api/chat/users", hub.ServeGetUsers).Methods(http.MethodGet)
-	rAuthProtected.HandleFunc("/api/chat/list", hub.ServeChatHistory).Methods(http.MethodGet)
+	r.Route("/api/chat", func (r chi.Router) {
+		r.Use(metricsMiddleware)
+		r.Use(hub.AuthMiddleware)
 
+		r.Get("/", hub.ServeChat)
+		r.Get("/users", hub.ServeGetUsers)
+		r.Get("/list", hub.ServeChatHistory)
+	})
 	return r
 }
 
