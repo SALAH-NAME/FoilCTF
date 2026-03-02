@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 ALTER TABLE profiles 
-  ADD CONSTRAINT fk_username FOREIGN KEY (username) REFERENCES users (username) ON UPDATE CASCADE; -- update username on user's username update
+  ADD CONSTRAINT fk_username FOREIGN KEY (username) REFERENCES users (username) ON UPDATE CASCADE ON DELETE CASCADE; -- update username on user's username update
 
 CREATE TABLE IF NOT EXISTS sessions (
   id				SERIAL PRIMARY KEY,
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS ctf_organizers (
   organizer_id  INTEGER NOT NULL,
 
   CONSTRAINT constraint_ctf FOREIGN KEY (ctf_id) REFERENCES ctfs,
-  CONSTRAINT constraint_organizer FOREIGN KEY (organizer_id) REFERENCES users
+  CONSTRAINT constraint_organizer FOREIGN KEY (organizer_id) REFERENCES users ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS teams (
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS teams (
 	
 	profile_id		INTEGER,
 	
-	CONSTRAINT constraint_captain_name FOREIGN KEY (captain_name) REFERENCES users(username) ON UPDATE CASCADE,
+	CONSTRAINT constraint_captain_name FOREIGN KEY (captain_name) REFERENCES users(username) ON UPDATE CASCADE ON DELETE CASCADE,
 	CONSTRAINT constraint_profile FOREIGN KEY (profile_id) REFERENCES profiles
 );
 CREATE TABLE IF NOT EXISTS team_members (
@@ -97,14 +97,14 @@ CREATE TABLE IF NOT EXISTS team_members (
   PRIMARY KEY  (team_name, member_name),
 
   CONSTRAINT constraint_team FOREIGN KEY (team_name) REFERENCES teams(name) ON DELETE CASCADE,
-  CONSTRAINT constraint_member FOREIGN KEY (member_name) REFERENCES users(username) ON UPDATE CASCADE
+  CONSTRAINT constraint_member FOREIGN KEY (member_name) REFERENCES users(username) ON DELETE CASCADE ON UPDATE CASCADE
 );
 CREATE TABLE IF NOT EXISTS team_join_requests (
   team_name    TEXT NOT NULL,
   username     TEXT NOT NULL,
 
-  CONSTRAINT constraint_team FOREIGN KEY (team_name) REFERENCES teams(name) ON UPDATE CASCADE,
-  CONSTRAINT constraint_member FOREIGN KEY (username) REFERENCES users(username) ON UPDATE CASCADE
+  CONSTRAINT constraint_team FOREIGN KEY (team_name) REFERENCES teams(name) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT constraint_member FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE ON UPDATE CASCADE
 );
 -- SECTION: friends
 CREATE TABLE IF NOT EXISTS friends (
@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS challenges (
 
   CONSTRAINT constraint_reward CHECK (reward >= reward_min),
   CONSTRAINT constraint_reward_min CHECK (reward_min >= 0),
-  CONSTRAINT constraint_author FOREIGN KEY (author_id) REFERENCES users
+  CONSTRAINT constraint_author FOREIGN KEY (author_id) REFERENCES users ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS challenges_attachments (
@@ -194,8 +194,8 @@ CREATE TABLE IF NOT EXISTS participations (
 	
 	CONSTRAINT unique_participation UNIQUE (team_id, ctf_id),
 	
-	CONSTRAINT constraint_team FOREIGN KEY (team_id) REFERENCES teams,
-	CONSTRAINT constraint_ctfs FOREIGN KEY (ctf_id) REFERENCES ctfs
+	CONSTRAINT constraint_team FOREIGN KEY (team_id) REFERENCES teams ON DELETE CASCADE,
+	CONSTRAINT constraint_ctfs FOREIGN KEY (ctf_id) REFERENCES ctfs ON DELETE CASCADE
 );
 
 -- CTF instantiation of the Challenges
@@ -240,9 +240,9 @@ CREATE TABLE IF NOT EXISTS solves (
   created_at	TIMESTAMP DEFAULT now() NOT NULL,
   
   CONSTRAINT unique_team_solve UNIQUE(ctf_id, team_id, chall_id),
-  CONSTRAINT fk_solves_ctf FOREIGN KEY (ctf_id) REFERENCES ctfs(id),
-  CONSTRAINT fk_solves_challenge FOREIGN KEY (chall_id) REFERENCES challenges(id),
-  CONSTRAINT fk_solves_team FOREIGN KEY (team_id) REFERENCES teams(id)
+  CONSTRAINT fk_solves_ctf FOREIGN KEY (ctf_id) REFERENCES ctfs(id) ON DELETE CASCADE,
+  CONSTRAINT fk_solves_challenge FOREIGN KEY (chall_id) REFERENCES challenges(id) ON DELETE CASCADE,
+  CONSTRAINT fk_solves_team FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
 );
 
 -- Containers (Actual instances of the Challenges)
@@ -252,8 +252,8 @@ CREATE TABLE IF NOT EXISTS containers (
   ctf_id            INTEGER NOT NULL,
   challenge_id      INTEGER NOT NULL,
 
-  CONSTRAINT constraint_participation FOREIGN KEY (participation_id) REFERENCES participations,
-  CONSTRAINT constraint_ctf_challenge FOREIGN KEY (ctf_id, challenge_id) REFERENCES ctfs_challenges (ctf_id, challenge_id)
+  CONSTRAINT constraint_participation FOREIGN KEY (participation_id) REFERENCES participations ON DELETE CASCADE,
+  CONSTRAINT constraint_ctf_challenge FOREIGN KEY (ctf_id, challenge_id) REFERENCES ctfs_challenges (ctf_id, challenge_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS notifications (
@@ -298,7 +298,7 @@ CREATE TABLE IF NOT EXISTS chat_rooms (
   team_id	INTEGER NULL,
   room_type	VARCHAR(20) DEFAULT 'team' CHECK (room_type IN ('global', 'team', 'admin')),
   
-  CONSTRAINT fk_chat_room_ctf FOREIGN KEY (ctf_id) REFERENCES ctfs(id)
+  CONSTRAINT fk_chat_room_ctf FOREIGN KEY (ctf_id) REFERENCES ctfs(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -313,8 +313,8 @@ CREATE TABLE IF NOT EXISTS messages (
 
   writer_id    INTEGER, -- NOTE: NULL means System message
 
-  CONSTRAINT constraint_writer FOREIGN KEY (writer_id) REFERENCES users,
-  CONSTRAINT constraint_room Foreign Key (chatroom_id) REFERENCES chat_rooms(id)
+  CONSTRAINT constraint_writer FOREIGN KEY (writer_id) REFERENCES users ON DELETE CASCADE,
+  CONSTRAINT constraint_room Foreign Key (chatroom_id) REFERENCES chat_rooms(id) ON DELETE CASCADE
 );
 
 -- NOTE: Bugs, Feature Requests
@@ -325,7 +325,7 @@ CREATE TABLE IF NOT EXISTS reports (
   issued_at  TIMESTAMP DEFAULT now() NOT NULL,
   issuer_id  INTEGER DEFAULT NULL,
 
-  CONSTRAINT constraint_issuer FOREIGN KEY (issuer_id) REFERENCES users
+  CONSTRAINT constraint_issuer FOREIGN KEY (issuer_id) REFERENCES users ON DELETE CASCADE
 );
 
 -- TODO: Files (Attachments, Containerfiles...)

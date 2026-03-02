@@ -1,4 +1,5 @@
 import ms from 'ms';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { and, eq, or } from 'drizzle-orm';
 import multer, { FileFilterCallback } from 'multer';
@@ -12,7 +13,7 @@ import {
 	friend_requests as table_friend_requests,
 	friends as table_friends,
 } from './db/schema';
-import { AuthRequest, User } from './utils/types';
+import { AuthRequest, FoilCTF_Error, User } from './utils/types';
 import { AccessTokenSecret } from './utils/env';
 import { JWT_Payload, JWT_verify } from './jwt';
 import { AvatarsDir, MaxFileSize, RefreshTokenExpiry } from './utils/env';
@@ -175,7 +176,13 @@ const storage = multer.diskStorage({
 		file: Express.Multer.File,
 		cb: (error: Error | null, destination: string) => void
 	) => {
-		cb(null, req.user?.username + path.extname(file.originalname)); // username.png/jpeg
+		if (!req.user) throw new FoilCTF_Error('Internal Server Error', 500);
+		const { username } = req.user;
+		const fileext =
+			path.extname(file.originalname) ||
+			(file.mimetype === 'image/png' ? '.png' : '.jpeg');
+		const filename = [username, new Date().getTime()].join('.') + fileext;
+		cb(null, filename); // username.12312312.png/jpeg
 	},
 });
 
@@ -225,10 +232,25 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 		return res.status(401).json({ error: 'Unauthorized' }).end();
 
 	const avatar = `/api/profiles/${user.username}/avatar/` + file.filename;
-	await db
-		.update(table_profiles)
-		.set({ avatar })
-		.where(eq(table_profiles.username, user.username));
+	let oldAvatar: string | null = null;
+	await db.transaction(async (tx) => {
+		const [profile] = await tx
+			.select({ avatar: table_profiles.avatar })
+			.from(table_profiles)
+			.where(eq(table_profiles.username, user.username));
+		if (!profile) throw new FoilCTF_Error('User has no profile', 403);
+		oldAvatar = profile.avatar;
+
+		await tx
+			.update(table_profiles)
+			.set({ avatar })
+			.where(eq(table_profiles.username, user.username));
+	});
+	if (oldAvatar) {
+		const filename = path.basename(oldAvatar);
+		const filepath = path.resolve(AvatarsDir, filename);
+		await fs.rm(filepath, { force: true });
+	}
 	return res.status(201).json({ ok: true }).end();
 };
 
@@ -279,5 +301,29 @@ export const updateProfile = async (
 				.json({ error: 'User profile was not found' })
 				.end();
 	}
+	return res.status(200).json({ ok: true }).end();
+};
+
+export const route_profile_avatar_delete = async (
+	_req: Request,
+	res: Response<any, { user: JWT_Payload }>
+) => {
+	const { user } = res.locals;
+	const [profile] = await db
+		.select({ avatar: table_profiles.avatar })
+		.from(table_profiles)
+		.where(eq(table_profiles.username, user.username));
+	if (!profile || !profile.avatar)
+		throw new FoilCTF_Error('User has no avatar', 400);
+
+	await db
+		.update(table_profiles)
+		.set({ avatar: null })
+		.where(eq(table_profiles.username, user.username));
+
+	const filename = path.basename(profile.avatar);
+	const filepath = path.resolve(AvatarsDir, filename);
+	await fs.rm(filepath, { force: true });
+
 	return res.status(200).json({ ok: true }).end();
 };

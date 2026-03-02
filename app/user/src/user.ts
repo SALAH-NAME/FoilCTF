@@ -3,7 +3,7 @@ import { and, eq, or, ilike, count as sql_count } from 'drizzle-orm';
 import type { Request, Response, NextFunction } from 'express';
 
 import { db } from './utils/db';
-import { User } from './utils/types';
+import { FoilCTF_Error, User } from './utils/types';
 import { JWT_Payload } from './jwt';
 import { SALT_ROUNDS } from './auth';
 import {
@@ -18,6 +18,7 @@ import {
 	friend_requests as table_friend_requests,
 	team_join_requests as table_team_requests,
 } from './db/schema';
+import zod from 'zod';
 
 // TODO(xenobas): Continue the work on Request to Join matching the database status
 export async function route_user_me(
@@ -277,4 +278,21 @@ export async function route_user_me_requests(
 		.status(200)
 		.json({ data: requests.map((x) => x.team_name) })
 		.end();
+}
+
+export async function route_user_delete(
+	req: Request,
+	res: Response<any, { user: JWT_Payload }>
+) {
+	const { user } = res.locals;
+
+	const schema = zod.object({ password: zod.string() });
+	const { password } = schema.parse(req.body);
+
+	const credentials_ok = await password_validate(password, user.username);
+	if (!credentials_ok)
+		throw new FoilCTF_Error('Unauthorized', 401);
+
+	await db.delete(table_users).where(eq(table_users.id, user.id));
+	return res.status(200).json({ ok: true }).end();
 }

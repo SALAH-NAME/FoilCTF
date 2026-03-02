@@ -1,11 +1,11 @@
-import { data, Form } from 'react-router';
+import { data, Form, useFetcher, useNavigate } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useContext, useEffect, useState, type SubmitEvent } from 'react';
 
 import type { Route } from './+types/profile';
 
 import { useToast } from '~/contexts/ToastContext';
-import { UserProvider } from '~/contexts/UserContext';
+import { UserProvider, useUserAuth } from '~/contexts/UserContext';
 import { validationRules } from '~/utils/validation';
 import { useFormValidation } from '~/hooks/useFormValidation';
 import { commitSession, request_session } from '~/session.server';
@@ -114,6 +114,33 @@ async function update_profile_information(
 		if (content_type !== 'application/json')
 			throw new Error('Unexpected response content type');
 
+		const json = await res.json();
+		throw new Error(json.error ?? 'Internal server error');
+	}
+}
+async function delete_user(
+	token: string,
+	username: string,
+	password: string,
+) {
+	const uri = new URL(
+		`/api/users/${username}`,
+		import.meta.env.BROWSER_REST_USER_ORIGIN
+	);
+	const res = await fetch(uri, {
+		method: 'DELETE',
+		headers: new Headers({
+			'Content-Type': 'application/json',
+			'Authorization': `Bearer ${token}`,
+		}),
+		body: JSON.stringify({ password }),
+	});
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response content type');
+	if (!res.ok) {
 		const json = await res.json();
 		throw new Error(json.error ?? 'Internal server error');
 	}
@@ -474,12 +501,13 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 		isPrivateProfile: false,
 	});
 
+	const [avatar, setAvatar] = useState<string | null>(null);
+
 	const queryProfile = useQuery({
 		queryKey: ['profile', { username }, { token_access }],
 		initialData: null,
 		async queryFn() {
-			const profile = await fetch_profile(token_access, username);
-			return profile;
+			return await fetch_profile(token_access, username);
 		},
 	});
 	const queryUser = useQuery({
@@ -509,6 +537,31 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 		password: '',
 	});
 
+	const mutDelete = useMutation<unknown, Error, { token: string, username: string, password: string }>({
+		async mutationFn({ token, username, password }) {
+			await delete_user(token, username, password);
+		},
+		async onSuccess() {
+			logoutUserState();
+
+			setShowDeleteModal(false);
+			setDeleteForm({ confirmation: '', password: '' });
+
+			addToast({
+				variant: 'success',
+				title: 'Account deleted',
+				message: 'User account has been deleted successfully',
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Account deletion',
+				message: err.message,
+			});
+		}
+	});
+
 	const { logoutUserState, refreshUserState } = useContext(UserProvider)!;
 
 	// NOTE(xenobas): ProfileData syncing
@@ -531,6 +584,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 		const profile = queryProfile.data;
 		if (!queryProfile.isSuccess || !profile) return;
 
+		setAvatar(profile.avatar);
 		setProfileData((oldProfileData) => {
 			const newProfileData = {
 				...oldProfileData,
@@ -663,10 +717,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 		);
 
 		if (!confirmationError) {
-			// TODO: Handle account deletion
-			console.log('Account deleted');
-			setShowDeleteModal(false);
-			setDeleteForm({ confirmation: '', password: '' });
+			mutDelete.mutate({ token: token_access, password: deleteForm.password, username });
 		}
 	};
 
@@ -707,10 +758,10 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 					<div className="md:block flex h-32 md:h-40 px-6 justify-center bg-linear-to-r from-primary to-secondary rounded-t-sm">
 						<div className="absolute ring-4 ring-white rounded-full translate-y-1/2">
 							<AvatarUpload
-								avatar={profileData.avatar ?? null}
+								avatar={avatar}
+								setAvatar={setAvatar}
 								token={token_access}
 								username={profileData.username}
-								currentAvatar={profileData.avatar ?? undefined}
 								onAvatarChange={handleAvatarChange}
 							/>
 						</div>
