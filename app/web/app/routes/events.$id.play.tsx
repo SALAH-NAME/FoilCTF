@@ -1,14 +1,20 @@
-import { useState, useEffect } from 'react';
-import BackLink from '~/components/BackLink';
-import PageSection from '~/components/PageSection';
-import Countdown from '~/components/Countdown';
-import PlayStatusCard from '~/components/PlayStatusCard';
-import ChallengeCard from '~/components/ChallengeCard';
-import ChallengeModal from '~/components/ChallengeModal';
-import ChatSidebar from '~/components/ChatSidebar';
-import FloatingChatButton from '~/components/FloatingChatButton';
-import FullScreenChat from '~/components/FullScreenChat';
+import { data } from 'react-router';
+import { useState, useEffect, useRef, useCallback } from 'react';
+
 import mockData from '~/data/eventPlayMockData.json';
+import type { Route } from './+types/events.$id.play';
+import { request_session_user } from '~/session.server';
+
+import BackLink from '~/components/BackLink';
+import Countdown from '~/components/Countdown';
+import ChatSidebar from '~/components/ChatSidebar';
+import PageSection from '~/components/PageSection';
+import ChallengeCard from '~/components/ChallengeCard';
+import PlayStatusCard from '~/components/PlayStatusCard';
+import ChallengeModal from '~/components/ChallengeModal';
+import FullScreenChat from '~/components/FullScreenChat';
+import FloatingChatButton from '~/components/FloatingChatButton';
+import { useToast } from '~/contexts/ToastContext';
 
 interface RouteParams {
 	params: {
@@ -54,7 +60,7 @@ interface InstanceStatusData {
 type InstanceStatus = Record<number, InstanceStatusData>;
 
 interface ChatMessage {
-	id: number;
+	id: string;
 	username: string;
 	message: string;
 	timestamp: string;
@@ -77,18 +83,23 @@ export function meta({ params }: RouteParams) {
 		{ name: 'description', content: `Play CTF event ${params.id}` },
 	];
 }
+export async function loader({ request }: Route.LoaderArgs) {
+	const user = await request_session_user(request);
+	return data({ user });
+}
 
-export default function EventPlay({ params }: RouteParams) {
+export default function EventPlay({ loaderData, params }: Route.ComponentProps) {
 	const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(
 		null
 	);
 	const [instanceStatus, setInstanceStatus] = useState<InstanceStatus>({});
 	const [timeRemaining, setTimeRemaining] = useState<number>(0);
-	const [isConnected] = useState(true);
+	const [isConnected, setIsConnected] = useState(true);
 	const [isChatOpen, setIsChatOpen] = useState(false);
 
 	// Load mock data JSON
-	const chatMessages = mockData.chatMessages;
+	// const chatMessages = mockData.chatMessages;
+	const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 	const challenges = mockData.challenges as Challenge[];
 	const eventStatus = mockData.eventData.status;
 	const eventEndTime = '2026-02-21T00:00:00Z';
@@ -203,6 +214,88 @@ export default function EventPlay({ params }: RouteParams) {
 		? instanceStatus[selectedChallenge.id] || { isRunning: false }
 		: { isRunning: false };
 
+	const { addToast } = useToast();
+	const session_user = loaderData.user;
+
+	const ref_socket = useRef<WebSocket>(null);
+	const sendMessage = useCallback((message: string) => {
+		try {
+			if (!ref_socket.current || !isConnected || !session_user)
+				throw new Error('Cannot send message while disconnected');
+
+			const { current: socket } = ref_socket;
+			socket.send(JSON.stringify({
+				event: 'message',
+				content: message,
+				sender_id: session_user.id.toString(),
+				writer_id: session_user.id,
+				name: session_user.username,
+				sent_time: new Date().toISOString(),
+			}))
+		} catch (error: any) {
+			addToast({
+				variant: 'error',
+				title: 'Message failed',
+				message: error.message ?? 'Internal Server Error',
+			});
+		}
+	}, [ref_socket.current, isConnected, session_user?.token_refresh])
+
+	useEffect(() => {
+		if (ref_socket.current || !session_user) return;
+
+		const url = new URL('/api/chat', import.meta.env.BROWSER_SOCKET_CHAT);
+		url.searchParams.set('token', session_user?.token_access);
+		url.searchParams.set('room', '1'); // TODO(xenobas): Make this dynamic
+
+		ref_socket.current = new WebSocket(url.toString());
+		ref_socket.current.onopen = () => {
+			setIsConnected(true);
+		};
+		ref_socket.current.onclose = () => {
+			setIsConnected(false);
+			ref_socket.current = null;
+		};
+		ref_socket.current.onerror = () => {
+			addToast({
+				variant: 'error',
+				title: 'Chatroom',
+				message: 'Network failure during connection',
+			});
+		};
+		ref_socket.current.onmessage = (ev: MessageEvent<string>) => {
+			const { data } = ev;
+			type ChatMessageInc = {
+				"id": number;
+				"chatroom_id": number;
+				"sent_time": string;
+				"content": string;
+				"event": string;
+				"name": string;
+				"is_edited": boolean;
+			};
+			const messageInc: ChatMessageInc = JSON.parse(data);
+			if (messageInc.event === 'edit')
+				return ;
+
+			const messageOut: ChatMessage = {
+				id: `${messageInc.id}`,
+				isSystem: messageInc.event !== 'message',
+				message: messageInc.content,
+				timestamp: messageInc.sent_time,
+				username: messageInc.name,
+				isAnnouncement: false,
+			};
+			setChatMessages((old) => [...old, messageOut]);
+		};
+
+		return (() => {
+			if (ref_socket.current?.readyState === WebSocket.OPEN)
+				ref_socket.current?.close();
+			ref_socket.current = null;
+		});
+	}, []);
+
 	return (
 		<div className="flex flex-col lg:flex-row lg:gap-4 min-h-screen">
 			<div className="flex flex-col pb-6 gap-4 w-full lg:mr-82">
@@ -293,7 +386,7 @@ export default function EventPlay({ params }: RouteParams) {
 				<ChatSidebar
 					messages={chatMessages}
 					isConnected={isConnected}
-					onSendMessage={handleSendMessage}
+					onSendMessage={sendMessage}
 					className="mt-2"
 				/>
 			</aside>

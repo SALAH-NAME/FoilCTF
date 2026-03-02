@@ -116,11 +116,6 @@ export function NotificationSocketProvider({
 			ref_socket.current.onclose = () => {
 				ref_socket.current = null;
 				setIsOpen(false);
-				addToast({
-					variant: 'warning',
-					title: 'Notifications',
-					message: 'Channel is closed',
-				});
 			};
 			ref_socket.current.onerror = (event) => {
 				console.error('WebSocket error:', event);

@@ -4,7 +4,7 @@ import Button from './Button';
 import ChatMessage from './ChatMessage';
 
 interface ChatMessageData {
-	id: number;
+	id: string;
 	username: string;
 	message: string;
 	timestamp: string;

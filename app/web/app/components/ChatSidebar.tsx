@@ -5,7 +5,7 @@ import ChatMessage from './ChatMessage';
 import PageSection from './PageSection';
 
 interface ChatMessageData {
-	id: number;
+	id: string;
 	username: string;
 	message: string;
 	timestamp: string;
