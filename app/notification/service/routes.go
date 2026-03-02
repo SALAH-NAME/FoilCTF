@@ -23,7 +23,7 @@ func (hub *Hub) RegisterRoutes() http.Handler {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	r.Route("/api/notifications", func (r chi.Router) {
+	r.Route("/api/notifications", func(r chi.Router) {
 		r.Use(hub.AuthMiddleware)
 
 		r.Get("/", hub.HandleListNotifications)
@@ -31,6 +31,7 @@ func (hub *Hub) RegisterRoutes() http.Handler {
 		r.Delete("/", hub.HandleDeleteAll)
 
 		r.Get("/ws", hub.ServeWs)
+		r.Get("/online", hub.HandleOnlineUsers)
 		r.Patch("/{id:[0-9]+}", hub.HandleReadSingle)
 		r.Delete("/{id:[0-9]+}", hub.HandleDeleteSingle)
 	})

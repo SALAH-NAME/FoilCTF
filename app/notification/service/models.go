@@ -13,10 +13,10 @@ type NotificationResponse struct {
 }
 
 type UserNotification struct {
-	NotificationID int  `json:"notification_id" gorm:"column:notification_id;primaryKey"`
-	NotifiedID     int  `json:"user_id" gorm:"column:user_id;primaryKey"`
-	IsDismissed    bool `json:"is_dismissed" gorm:"column:is_dismissed"`
-	IsRead         bool `json:"is_read" gorm:"column:is_read"`
+	NotificationID int        `json:"notification_id" gorm:"column:notification_id;primaryKey"`
+	NotifiedID     int        `json:"user_id" gorm:"column:user_id;primaryKey"`
+	IsDismissed    bool       `json:"is_dismissed" gorm:"column:is_dismissed"`
+	IsRead         bool       `json:"is_read" gorm:"column:is_read"`
 	ReadAt         *time.Time `json:"read_at" gorm:"column:read_at"`
 }
 

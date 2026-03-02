@@ -8,15 +8,17 @@ import (
 
 type Client struct {
 	ID         int
+	UserName   string
 	Role       string
 	Connection *websocket.Conn
 	Send       chan WsEvent
 	Hub        *Hub
 }
 
-func NewClient(id int, role string, conn *websocket.Conn, hub *Hub) *Client {
+func NewClient(id int, username, role string, conn *websocket.Conn, hub *Hub) *Client {
 	return &Client{
 		ID:         id,
+		UserName:   username,
 		Role:       role,
 		Connection: conn,
 		Send:       make(chan WsEvent, hub.Conf.ClientBuffer),
