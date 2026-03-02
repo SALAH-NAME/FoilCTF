@@ -144,6 +144,7 @@ func HandleSubmitError(w http.ResponseWriter, err error) {
 
 func (h *Hub) Notify(title, message string, eventID int) error {
 	content := map[string]string{
+		"type": "event",
 		"title":   title,
 		"message": message,
 	}
