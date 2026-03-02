@@ -194,8 +194,10 @@ export async function sendFriendRequest(
 
 		res.locals.userNameToNotify = target;
 		res.locals.contents = {
+			type: 'friend',
 			title: 'New Friend Request',
-			message: `${decodedUser.username} has sent a request to you`,
+			message: `${decodedUser.username} sent you a friend request`,
+			link: `/users/${decodedUser.username}`,
 		};
 	});
 	next();
@@ -300,7 +302,7 @@ export async function acceptFriendRequest(
 	}
 }
 
-export async function rejectFriendRequest(req: Request, res: Response) {
+export async function rejectFriendRequest(req: Request, res: Response, next: NextFunction) {
 	const target = req.params.username as string;
 	const decodedUser = res.locals.user;
 
@@ -314,7 +316,14 @@ export async function rejectFriendRequest(req: Request, res: Response) {
 				)
 			);
 
-		return res.status(200).json(new FoilCTF_Success('No Content', 200));
+		res.locals.userNameToNotify = target;
+		res.locals.contents = {
+			type: 'friend',
+			title: 'Friend Request Declined',
+			message: `${decodedUser.username} declined your friend request`,
+			link: `/users/${decodedUser.username}`,
+		};
+		return next();
 	} catch (err) {
 		console.error(err);
 		return res

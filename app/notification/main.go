@@ -86,6 +86,7 @@ func main() {
 					Type    *string `json:"type"`
 					Title   *string `json:"title"`
 					Message *string `json:"message"`
+					Link    *string `json:"link"`
 				}
 				if err := json.Unmarshal(notificationSentinel.Contents, &notificationContents); err != nil {
 					continue
@@ -102,7 +103,7 @@ func main() {
 				}
 
 				go func() {
-					notificationType, notificationTitle, notificationMessage := "system", "Missing Title", ""
+					notificationType, notificationTitle, notificationMessage, notificationLink := "system", "Missing Title", "", ""
 					if notificationContents.Type != nil {
 						notificationType = *notificationContents.Type
 					}
@@ -111,6 +112,9 @@ func main() {
 					}
 					if notificationContents.Message != nil {
 						notificationMessage = *notificationContents.Message
+					}
+					if notificationContents.Link != nil {
+						notificationLink = *notificationContents.Link
 					}
 
 					log.Printf("DEBUG: NOTIFIER: Notification#%03d is being broadcast", notificationSentinel.Id)
@@ -122,7 +126,7 @@ func main() {
 							"type":       notificationType,
 							"title":      notificationTitle,
 							"message":    notificationMessage,
-							"link":       "",
+						"link":       notificationLink,
 							"is_read":    false,
 							"created_at": notificationSentinel.CreatedAt,
 						},

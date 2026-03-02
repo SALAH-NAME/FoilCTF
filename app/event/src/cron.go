@@ -1,11 +1,11 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
-	"context"
-	"encoding/json"
 
 	"gorm.io/gorm"
 )
@@ -92,6 +92,23 @@ func (h *Hub) SyncCtfStatus() {
 			tx.CreateInBatches(notificationUsers, 50)
 		}
 
+		var rowsEnding []struct {
+			UserID  int    `gorm:"column:user_id"`
+			CtfID   int    `gorm:"column:ctf_id"`
+			CtfName string `gorm:"column:ctf_name"`
+		}
+		res = tx.
+			Table("ctfs").
+			Select("u.id as user_id, ctfs.id as ctf_id, ctfs.name as ctf_name").
+			Joins("LEFT JOIN participations p ON p.ctf_id = ctfs.id").
+			Joins("LEFT JOIN teams t ON p.team_id = t.id").
+			Joins("LEFT JOIN users u ON u.team_name = t.name").
+			Where("ctfs.status = 'active' AND ctfs.end_time < ?", now).
+			Scan(&rowsEnding)
+		if res.Error != nil {
+			return res.Error
+		}
+
 		res = tx.
 			Table("ctfs").
 			Where("status = 'active' AND ? > end_time", now).
@@ -100,6 +117,48 @@ func (h *Hub) SyncCtfStatus() {
 			return res.Error
 		}
 		rowsAffectedEnded := res.RowsAffected
+
+		if len(rowsEnding) > 0 {
+			ctfIDToEndNotifID := make(map[int]int)
+			endNotifUsers := make([]NotificationUsers, len(rowsEnding))
+
+			for index := range rowsEnding {
+				row := rowsEnding[index]
+				notifID, exists := ctfIDToEndNotifID[row.CtfID]
+				if !exists {
+					contentsMap := map[string]string{
+						"type":    "event",
+						"title":   "Event Ended",
+						"message": fmt.Sprintf("%s has ended. Check the final scoreboard!", row.CtfName),
+						"link":    fmt.Sprintf("/events/%d", row.CtfID),
+					}
+					contentsJSON, err := json.Marshal(contentsMap)
+					if err != nil {
+						return err
+					}
+					notif := Notification{Contents: contentsJSON}
+					res = h.Db.Table("notifications").Create(&notif)
+					if res.Error != nil {
+						return res.Error
+					}
+					ctfIDToEndNotifID[row.CtfID] = notif.ID
+					notifID = notif.ID
+				}
+				endNotifUsers[index].UserID = row.UserID
+				endNotifUsers[index].NotificationID = notifID
+			}
+
+			for _, notifID := range ctfIDToEndNotifID {
+				res = tx.
+					Table("notifications").
+					Where("id = ?", notifID).
+					Updates(Notification{IsPublished: true})
+				if res.Error != nil {
+					return res.Error
+				}
+			}
+			tx.CreateInBatches(endNotifUsers, 50)
+		}
 
 		if rowsAffectedActive + rowsAffectedEnded > 0 {
 			log.Printf("DEBUG - SyncCtfStatus - %d rows set as 'active', and %d set as 'ended'", rowsAffectedActive, rowsAffectedEnded)

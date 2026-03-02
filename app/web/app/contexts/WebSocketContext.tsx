@@ -72,6 +72,7 @@ async function remote_fetch_notifications(token: string) {
 			type?: NotificationType;
 			title: string;
 			message: string;
+			link?: string;
 		};
 	};
 	type JSONData_Notifications = {
@@ -173,7 +174,7 @@ export function NotificationSocketProvider({
 						created_at: n.created_at,
 						id: n.notification_id,
 						is_read: n.is_read,
-						link: '',
+						link: n.contents.link ?? '',
 						message: n.contents.message,
 						title: n.contents.title,
 						type: n.contents.type ?? 'system',

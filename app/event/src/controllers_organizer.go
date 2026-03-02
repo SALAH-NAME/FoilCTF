@@ -339,7 +339,7 @@ func (h *Hub) StartEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	msg := fmt.Sprintf("Event %s has officially started! Good luck", event.Name)
-	errNotif := h.Notify("Event Started", msg, event.ID)
+	errNotif := h.Notify("Event Started", msg, fmt.Sprintf("/events/%d", event.ID), event.ID)
 	if errNotif != nil {
 		log.Printf("Failed to send start notification")
 	}
@@ -379,4 +379,9 @@ func (h *Hub) StopEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	JSONResponse(w, nil, http.StatusOK)
+
+	msg := fmt.Sprintf("Event %s has ended. Check the final scoreboard!", event.Name)
+	if err := h.Notify("Event Ended", msg, fmt.Sprintf("/events/%d", event.ID), event.ID); err != nil {
+		log.Printf("ERROR - Stop Event - Could not send end notification: %v", err)
+	}
 }

@@ -154,8 +154,10 @@ export const leaveTeam = async (
 
 			res.locals.team_name = team.name;
 			res.locals.contents = {
+				type: 'team',
 				title: 'Member Left Team',
 				message: `${decodedUser.username} has left the team`,
+				link: '/teams',
 			};
 			res.locals.exception = decodedUser.username;
 		});
@@ -223,10 +225,39 @@ export const deleteMember = async (
 			.set({ team_name: null })
 			.where(eq(table_users.username, target_username));
 
+		const [kickeeUser] = await tx
+			.select({ id: table_users.id })
+			.from(table_users)
+			.where(eq(table_users.username, target_username));
+		if (kickeeUser) {
+			const [kickeeNotif] = await tx
+				.insert(table_notifications)
+				.values({
+					contents: {
+						type: 'team',
+						title: 'Removed From Team',
+						message: `You have been removed from ${target_team_name}`,
+						link: '/teams',
+					},
+				})
+				.returning();
+			if (kickeeNotif) {
+				await tx
+					.insert(table_notification_users)
+					.values({ notification_id: kickeeNotif.id, user_id: kickeeUser.id });
+				await tx
+					.update(table_notifications)
+					.set({ is_published: true })
+					.where(eq(table_notifications.id, kickeeNotif.id));
+			}
+		}
+
 		res.locals.team_name = team.name;
 		res.locals.contents = {
-			title: 'Member Has Been Deleted',
-			message: `${target_username} has been deleted`,
+			type: 'team',
+			title: 'Member Kicked',
+			message: `${target_username} has been removed from the team`,
+			link: '/teams',
 		};
 		res.locals.exception = captain_user.username;
 	});
@@ -269,8 +300,10 @@ export const handOverLeadership = async (
 		res.locals.captain_name = member.member_name; // new captain
 		res.locals.team_name = team.name;
 		res.locals.contents = {
+			type: 'team',
 			title: 'New Captain',
 			message: `${captain_user.username} made you the captain of the team`,
+			link: '/teams',
 		};
 	});
 	next();
@@ -321,8 +354,10 @@ export const sendJoinRequest = async (
 		res.locals.captain_name = request_team.captain_name;
 		res.locals.team_name = request_team.name;
 		res.locals.contents = {
+			type: 'team',
 			title: 'New Join Request',
-			message: `${jwt_user.username} sent a join request`,
+			message: `${jwt_user.username} wants to join your team`,
+			link: `/teams/${request_team.name}/requests`,
 		};
 	});
 	next();
@@ -406,12 +441,37 @@ export const acceptJoinRequest = async (
 			.set({ team_name: team.name })
 			.where(eq(table_users.username, target_username));
 
+		if (dbUser) {
+			const [joinerNotif] = await tx
+				.insert(table_notifications)
+				.values({
+					contents: {
+						type: 'team',
+						title: 'Join Request Accepted',
+						message: `Your request to join ${target_team_name} has been accepted! Welcome to the team.`,
+						link: '/teams',
+					},
+				})
+				.returning();
+			if (joinerNotif) {
+				await tx
+					.insert(table_notification_users)
+					.values({ notification_id: joinerNotif.id, user_id: dbUser.id });
+				await tx
+					.update(table_notifications)
+					.set({ is_published: true })
+					.where(eq(table_notifications.id, joinerNotif.id));
+			}
+		}
+
 		res.locals.team_name = team.name;
 		res.locals.contents = {
-			title: 'new member!',
+			type: 'team',
+			title: 'New Team Member',
 			message: `${teamJoinRequest.username} joined the team`,
+			link: '/teams',
 		};
-		res.locals.exception = captain_user.username;
+		res.locals.exception = target_username;
 	});
 	next();
 };
@@ -441,6 +501,33 @@ export const declineJoinRequest = async (
 					eq(table_team_join_requests.username, target_username)
 				)
 			);
+
+		const [declinedUser] = await tx
+			.select({ id: table_users.id })
+			.from(table_users)
+			.where(eq(table_users.username, target_username));
+		if (declinedUser) {
+			const [declinedNotif] = await tx
+				.insert(table_notifications)
+				.values({
+					contents: {
+						type: 'team',
+						title: 'Join Request Declined',
+						message: `Your request to join ${target_team_name} was declined`,
+						link: '/teams',
+					},
+				})
+				.returning();
+			if (declinedNotif) {
+				await tx
+					.insert(table_notification_users)
+					.values({ notification_id: declinedNotif.id, user_id: declinedUser.id });
+				await tx
+					.update(table_notifications)
+					.set({ is_published: true })
+					.where(eq(table_notifications.id, declinedNotif.id));
+			}
+		}
 	});
 	return res.status(200).json({ ok: true }).end();
 };
@@ -700,7 +787,12 @@ export const route_team_delete = async (
 		const [notification] = await tx
 			.insert(table_notifications)
 			.values({
-				contents: `Team ${team.name} has been deleted`,
+				contents: {
+					type: 'team',
+					title: 'Team Dissolved',
+					message: `Team ${team.name} has been dissolved by the captain`,
+					link: '/teams',
+				},
 			})
 			.returning();
 		if (!notification) throw new FoilCTF_Error('Internal Server Error', 500);

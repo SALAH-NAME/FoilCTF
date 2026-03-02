@@ -171,8 +171,8 @@ func (h *Hub) SubmitFlag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if isFirstBlood {
-		msg := fmt.Sprintf("Team %d solved chalenge %d!", teamID, challengeID)
-		if err := h.Notify("🩸 First Blood!", msg, eventID); err != nil {
+		msg := fmt.Sprintf("Team %d solved challenge %d!", teamID, challengeID)
+		if err := h.Notify("First Blood!", msg, fmt.Sprintf("/events/%d", eventID), eventID); err != nil {
 			log.Printf("ERROR - Flag Submission - Could not send first blood notification: %v", err)
 		}
 	}
