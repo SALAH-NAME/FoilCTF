@@ -53,16 +53,19 @@ interface EventCreate {
 
 	status?: 'published' | 'draft';
 	max_teams?: number;
-	description?: string; 
+	description?: string;
 	team_members_min?: number;
 	team_members_max?: number;
 }
 
 export async function remote_create_event(token: string, event: EventCreate) {
-	const url = new URL('/api/admin/events', import.meta.env.BROWSER_REST_EVENTS_ORIGIN);
+	const url = new URL(
+		'/api/admin/events',
+		import.meta.env.BROWSER_REST_EVENTS_ORIGIN
+	);
 
 	const method = 'POST';
-	const headers = new Headers({ 'Authorization': `Bearer ${token}` });
+	const headers = new Headers({ Authorization: `Bearer ${token}` });
 	const body = JSON.stringify(event);
 	const res = await fetch(url, { method, headers, body });
 
@@ -117,21 +120,24 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 		token?: string | null;
 		role?: 'admin' | 'user';
 	} & T;
-	type MutationPayloadCreate = MutationPayload<EventCreate>
-	const mut_event = useMutation<Awaited<ReturnType<typeof remote_create_event>>, Error, MutationPayloadCreate>({
+	type MutationPayloadCreate = MutationPayload<EventCreate>;
+	const mut_event = useMutation<
+		Awaited<ReturnType<typeof remote_create_event>>,
+		Error,
+		MutationPayloadCreate
+	>({
 		async mutationFn({ token, role, ...event }) {
-			if (!token || role !== 'admin')
-				throw new Error('Unauthorized');
+			if (!token || role !== 'admin') throw new Error('Unauthorized');
 			return await remote_create_event(token, event);
 		},
 		async onSuccess({ id }) {
 			addToast({
 				variant: 'success',
 				title: 'Event Creation',
-				message: 'Event has been created successfully'
+				message: 'Event has been created successfully',
 			});
 			await navigate(`/events/${id}`);
-		}
+		},
 	});
 
 	const handleLinkChallenge = (challenge: ChallengeOption) => {
@@ -205,8 +211,8 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 			description: input_description,
 			is_open: input_open,
 
-			end_time: (new Date(input_time_end)).toISOString(),
-			start_time: (new Date(input_time_start)).toISOString(),
+			end_time: new Date(input_time_end).toISOString(),
+			start_time: new Date(input_time_start).toISOString(),
 
 			max_teams: parseInt(input_max_teams),
 			team_members_max: parseInt(input_team_members_max),
@@ -219,7 +225,9 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 		});
 	};
 
-	const changeTeamMembersMin = (e: ChangeEvent<HTMLInputElement>) => {
+	const changeTeamMembersMin = (
+		e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+	) => {
 		const { value } = e.target;
 		const number = parseInt(value);
 		const upper_boundary = parseInt(input_team_members_min) || +Infinity;
@@ -228,7 +236,9 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 			setInputTeamMembersMin(number.toFixed(0));
 		else setInputTeamMembersMin('');
 	};
-	const changeTeamMembersMax = (e: ChangeEvent<HTMLInputElement>) => {
+	const changeTeamMembersMax = (
+		e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+	) => {
 		const { value } = e.target;
 		const number = parseInt(value);
 		const lower_boundary = parseInt(input_team_members_min) || 0;
@@ -237,13 +247,17 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 			setInputTeamMembersMax(number.toFixed(0));
 		else setInputTeamMembersMax('');
 	};
-	const changeInputMaxTeams = (e: ChangeEvent<HTMLInputElement>) => {
+	const changeInputMaxTeams = (
+		e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+	) => {
 		const { value } = e.target;
 		const number = parseInt(value);
 		setInputMaxTeams(isFinite(number) && number > 0 ? number.toFixed(0) : '');
 	};
 
-	const changeInputTimeStart = (e: ChangeEvent<HTMLInputElement>) => {
+	const changeInputTimeStart = (
+		e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+	) => {
 		const { value } = e.target;
 
 		const now = new Date();
@@ -252,7 +266,9 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 		else setInputTimeStart(value);
 		setInputTimeEnd('');
 	};
-	const changeInputTimeEnd = (e: ChangeEvent<HTMLInputElement>) => {
+	const changeInputTimeEnd = (
+		e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+	) => {
 		const { value } = e.target;
 
 		const start = new Date(input_time_start);
@@ -278,9 +294,7 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 							type="text"
 							label="Event Name"
 							value={input_name}
-							onChange={(e: ChangeEvent<HTMLInputElement>) =>
-								setInputName(e.target.value)
-							}
+							onChange={(e) => setInputName(e.target.value)}
 							placeholder="e.g. Winter Cyber Challenge 2026"
 							required
 						/>
@@ -290,9 +304,7 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 							type="textarea"
 							label="Description"
 							value={input_description}
-							onChange={(e: ChangeEvent<HTMLInputElement>) =>
-								setInputDescription(e.target.value)
-							}
+							onChange={(e) => setInputDescription(e.target.value)}
 							placeholder="Describe the event, rules, and objectives..."
 							rows={5}
 						/>
@@ -381,7 +393,8 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 								htmlFor="max-teams"
 								className="block text-sm font-semibold text-dark mb-2"
 							>
-								Maximum teams in the event <span className="text-primary">*</span>
+								Maximum teams in the event{' '}
+								<span className="text-primary">*</span>
 							</label>
 							<input
 								type="number"
@@ -579,12 +592,13 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 									</li>
 								))}
 							</ul>
-						) : 
-							search_challenges && 
-							<p className="text-sm text-muted py-2">
+						) : (
+							search_challenges && (
+								<p className="text-sm text-muted py-2">
 									No matching challenges found
-							</p>
-						}
+								</p>
+							)
+						)}
 					</div>
 				</fieldset>
 			</div>

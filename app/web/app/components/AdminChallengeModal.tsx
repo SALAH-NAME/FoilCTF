@@ -37,7 +37,7 @@ interface ChallengeAttachmentEntry extends AttachmentEntry {
 }
 
 interface AdminChallengeModalProps {
-	user?: SessionUser,
+	user?: SessionUser;
 	isOpen: boolean;
 	onClose: () => void;
 	challenge?: Challenge | null;
@@ -45,7 +45,10 @@ interface AdminChallengeModalProps {
 }
 
 export async function remote_create_challenge(token: string, data: unknown) {
-	const uri = new URL('/api/challenges', import.meta.env.BROWSER_REST_CHALLENGES_ORIGIN);
+	const uri = new URL(
+		'/api/challenges',
+		import.meta.env.BROWSER_REST_CHALLENGES_ORIGIN
+	);
 	const res = await fetch(uri, {
 		method: 'POST',
 		headers: {
@@ -63,8 +66,15 @@ export async function remote_create_challenge(token: string, data: unknown) {
 	const json = await res.json();
 	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
-export async function remote_update_challenge(token: string, id: number, data: unknown) {
-	const uri = new URL(`/api/challenges/${id}`, import.meta.env.BROWSER_REST_CHALLENGES_ORIGIN);
+export async function remote_update_challenge(
+	token: string,
+	id: number,
+	data: unknown
+) {
+	const uri = new URL(
+		`/api/challenges/${id}`,
+		import.meta.env.BROWSER_REST_CHALLENGES_ORIGIN
+	);
 	const res = await fetch(uri, {
 		method: 'PUT',
 		headers: {
@@ -161,11 +171,9 @@ export default function AdminChallengeModal({
 		}
 	}, [serverAttachments, isEditMode]);
 
-
 	const mut_create = useMutation({
 		mutationFn: async () => {
-			if (!user)
-				throw new Error('Unauthorized');
+			if (!user) throw new Error('Unauthorized');
 
 			const payload = {
 				name,
@@ -207,10 +215,8 @@ export default function AdminChallengeModal({
 	});
 	const mut_update = useMutation({
 		mutationFn: async () => {
-			if (!user)
-				throw new Error('Unauthorized');
-			if (!challenge)
-				throw new Error('Try again later');
+			if (!user) throw new Error('Unauthorized');
+			if (!challenge) throw new Error('Try again later');
 
 			const payload = {
 				name,
@@ -223,13 +229,12 @@ export default function AdminChallengeModal({
 				reward_decrements: rewardDecrements,
 			};
 
-			let diff: Partial<typeof challenge> = { };
+			let diff: Partial<typeof challenge> = {};
 			let diff_key: keyof typeof payload & keyof typeof challenge;
 			for (diff_key in payload) {
 				const a = payload[diff_key];
 				const b = challenge[diff_key];
-				if (a === b || (diff_key === "flag" && !a))
-					continue ;
+				if (a === b || (diff_key === 'flag' && !a)) continue;
 				diff = { ...diff, [diff_key]: a };
 			}
 			await remote_update_challenge(user.token_access, challenge.id, diff);
@@ -250,7 +255,7 @@ export default function AdminChallengeModal({
 				message: 'Challenge has been updated succesfully',
 			});
 		},
-		onError: (error: Error) => {
+		onError: (error: Error & { errors?: { message: string }[] }) => {
 			setFormError(
 				error?.errors?.[0]?.message ||
 					error?.message ||
@@ -398,7 +403,7 @@ export default function AdminChallengeModal({
 							type="text"
 							label="Name"
 							value={name}
-							onChange={(e:any) => setName(e.target.value)}
+							onChange={(e: any) => setName(e.target.value)}
 							placeholder="Enter challenge name..."
 							required={!isEditMode}
 						/>
@@ -408,7 +413,7 @@ export default function AdminChallengeModal({
 							type="textarea"
 							label="Description"
 							value={description}
-							onChange={(e:any) => setDescription(e.target.value)}
+							onChange={(e: any) => setDescription(e.target.value)}
 							placeholder="Describe the challenge objectives, hints, and context..."
 							rows={4}
 							required={!isEditMode}
@@ -554,17 +559,18 @@ export default function AdminChallengeModal({
 					</div>
 				</fieldset>
 
-				{ false && 
-				<fieldset className="border-t border-dark/10 pt-4">
-					<legend className="text-lg font-semibold text-dark mb-3">
-						Instance Configuration
-					</legend>
-					<InstanceLinker
-						selectedImage={instanceImage}
-						onSelectImage={setInstanceImage}
-						disabled={isPending}
-					/>
-				</fieldset> }
+				{false && (
+					<fieldset className="border-t border-dark/10 pt-4">
+						<legend className="text-lg font-semibold text-dark mb-3">
+							Instance Configuration
+						</legend>
+						<InstanceLinker
+							selectedImage={instanceImage}
+							onSelectImage={setInstanceImage}
+							disabled={isPending}
+						/>
+					</fieldset>
+				)}
 
 				<fieldset className="border-t border-dark/10 pt-4">
 					<legend className="text-lg font-semibold text-dark mb-3">

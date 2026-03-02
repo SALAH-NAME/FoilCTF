@@ -1,4 +1,4 @@
-import { type ChangeEvent } from 'react';
+import React, { type ChangeEvent } from 'react';
 
 interface FormInputProps {
 	id?: string;
@@ -7,9 +7,7 @@ interface FormInputProps {
 	label: string;
 	value: string;
 	disabled?: boolean;
-	onChange:
-		| ((e: ChangeEvent<HTMLInputElement>) => void)
-		| ((e: ChangeEvent<HTMLTextAreaElement>) => void);
+	onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
 	onBlur?: () => void;
 	error?: string;
 	touched?: boolean;
@@ -51,7 +49,7 @@ export default function FormInput({
 					id={inputId}
 					name={name}
 					value={value}
-					onChange={onChange}
+					onChange={onChange as React.ChangeEventHandler<HTMLTextAreaElement>}
 					onBlur={onBlur}
 					placeholder={placeholder}
 					required={required}
@@ -71,7 +69,7 @@ export default function FormInput({
 					id={inputId}
 					name={name}
 					value={value}
-					onChange={onChange}
+					onChange={onChange as React.ChangeEventHandler<HTMLInputElement>}
 					onBlur={onBlur}
 					placeholder={placeholder}
 					autoComplete={autoComplete}
