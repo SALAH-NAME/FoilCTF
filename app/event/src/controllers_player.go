@@ -13,6 +13,13 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// ((b - a) * (1 - t)) + a
+
+// progress E [0, 1]
+// rewNew = ((rew - rewMin) * 1) + rewMin
+// rewNew - rewMin = (rew - rewMin) * progress
+// (rewNew - rewMin) / progress + rewMin = rew
+
 func (h *Hub) CalculateNewReward(link *CtfsChallenge) int {
 	if !link.RewardDecrements {
 		return link.Reward
@@ -20,17 +27,27 @@ func (h *Hub) CalculateNewReward(link *CtfsChallenge) int {
 	if link.Solves >= link.Decay {
 		return link.RewardMin
 	}
-	fInitial := float64(link.InitialReward)
-	fDecay := float64(link.Decay)
-	fMin := float64(link.RewardMin)
-	fSolves := float64(link.Solves)
-	value := ((fMin-fInitial)/math.Pow(fDecay, 2))*
-		math.Pow(fSolves, 2) + fInitial
-	nextReward := int(math.Ceil(value))
-	if nextReward < link.RewardMin {
-		return link.RewardMin
+
+	reward := float64(link.Reward)
+	rewardMin := float64(link.RewardMin)
+
+	rewardProgressPrev := 1.0 - float64(link.Solves) / float64(link.Decay)
+	if rewardProgressPrev < 0.0 {
+		rewardProgressPrev = 0.0
 	}
-	return nextReward
+
+	rewardProgressNext := 1.0 - float64(link.Solves + 1) / float64(link.Decay)
+	if rewardProgressNext < 0.0 {
+		rewardProgressNext = 0.0
+	}
+
+	rewardOld := reward
+	if rewardProgressPrev != 0 {
+		rewardOld = (reward - rewardMin) / rewardProgressPrev + rewardMin
+	}
+
+	rewardNext := math.Round((rewardOld - rewardMin) * rewardProgressNext + rewardMin)
+	return int(rewardNext)
 }
 
 func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag string) (bool, int, error) {
@@ -510,6 +527,42 @@ func (h *Hub) ListCtfsChallenges(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		challenge.PlayerChallengeView.IsSolved = solvedMap[challenge.PlayerChallengeView.ID]
+		category := challenge.PlayerChallengeView.Category
+		if category == "" {
+			category = "General"
+		}
+		grouped[category] = append(grouped[category], challenge.PlayerChallengeView)
+
+	}
+
+	JSONResponse(w, grouped, http.StatusOK)
+}
+
+func (h *Hub) ListCtfsChallengesAdmin(w http.ResponseWriter, r *http.Request) {
+	event, ok := r.Context().Value(eventKey).(Ctf)
+	if !ok {
+		log.Printf("DEBUG - List Ctfs - Could not get event from the request context")
+		JSONError(w, "event not found", http.StatusNotFound)
+		return
+	}
+
+	// get required challenge data
+	unfilteredChallenges := []UnfilteredCtfChallenges{}
+	err := h.Db.Table("ctfs_challenges").
+		Select("ctfs_challenges.challenge_id AS id, challenges.name, challenges.description, "+
+			"challenges.category, ctfs_challenges.reward, ctfs_challenges.solves, "+
+			"ctfs_challenges.is_hidden, ctfs_challenges.released_at, ctfs_challenges.requires_challenge_id").
+		Joins("INNER JOIN challenges on ctfs_challenges.challenge_id = challenges.id").
+		Where("ctfs_challenges.ctf_id = ?", event.ID).
+		Scan(&unfilteredChallenges).Error
+	if err != nil {
+		log.Printf("ERROR - List Ctfs - Could not query challenge data: %v", err)
+		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	grouped := make(map[string][]PlayerChallengeView)
+	for _, challenge := range unfilteredChallenges {
 		category := challenge.PlayerChallengeView.Category
 		if category == "" {
 			category = "General"

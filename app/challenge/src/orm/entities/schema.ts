@@ -270,17 +270,17 @@ export const ctfs_challenges = pgTable("ctfs_challenges", {
 			columns: [table.ctf_id],
 			foreignColumns: [ctfs.id],
 			name: "constraint_ctf"
-		}),
+		}).onDelete("cascade"),
 	foreignKey({
 			columns: [table.challenge_id],
 			foreignColumns: [challenges.id],
 			name: "constraint_challenge"
-		}),
+		}).onDelete("cascade"),
 	foreignKey({
 			columns: [table.first_blood_id],
 			foreignColumns: [teams.id],
 			name: "constraint_first_blood"
-		}),
+		}).onDelete("set null"),
 	check("constraint_decay_positive", sql`decay > 0`),
 ]);
 
@@ -322,7 +322,7 @@ export const containers = pgTable("containers", {
 		}).onDelete("cascade"),
 	foreignKey({
 			columns: [table.ctf_id, table.challenge_id],
-			foreignColumns: [ctfs_challenges.ctf_id, ctfs_challenges.challenge_id],
+			foreignColumns: [ctfs_challenges.challenge_id, ctfs_challenges.ctf_id],
 			name: "constraint_ctf_challenge"
 		}).onDelete("cascade"),
 ]);

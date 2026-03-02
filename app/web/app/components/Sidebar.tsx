@@ -117,25 +117,12 @@ export default function Sidebar({ session_user }: SidebarProps) {
 							<NavLink item={{ to: '/', label: 'Home', icon: 'home' }} />
 							{user?.role === 'admin' && (
 								<NavLink
-									item={{ to: '/dashboard', label: 'Dashboard', icon: 'chart' }}
-								>
-									<NavLink
-										item={{
-											to: '/challenges',
-											label: 'Challenges',
-											icon: 'challenge',
-										}}
-										isNested
-									/>
-									<NavLink
-										item={{
-											to: '/instances',
-											label: 'Instances',
-											icon: 'instance',
-										}}
-										isNested
-									/>
-								</NavLink>
+									item={{
+										to: '/challenges',
+										label: 'Challenges',
+										icon: 'challenge',
+									}}
+								/>
 							)}
 							<NavLink
 								item={{ to: '/events', label: 'Events', icon: 'calendar' }}

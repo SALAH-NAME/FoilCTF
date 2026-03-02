@@ -225,9 +225,9 @@ CREATE TABLE IF NOT EXISTS ctfs_challenges (
   reward_decrements		BOOLEAN DEFAULT TRUE NOT NULL,
   initial_reward		INTEGER DEFAULT 500  NOT NULL,
 
-  CONSTRAINT constraint_ctf FOREIGN KEY (ctf_id) REFERENCES ctfs,
-  CONSTRAINT constraint_challenge FOREIGN KEY (challenge_id) REFERENCES challenges,
-  CONSTRAINT constraint_first_blood FOREIGN KEY (first_blood_id) REFERENCES teams,
+  CONSTRAINT constraint_ctf FOREIGN KEY (ctf_id) REFERENCES ctfs ON DELETE CASCADE,
+  CONSTRAINT constraint_challenge FOREIGN KEY (challenge_id) REFERENCES challenges ON DELETE CASCADE,
+  CONSTRAINT constraint_first_blood FOREIGN KEY (first_blood_id) REFERENCES teams ON DELETE SET NULL (first_blood_id),
   CONSTRAINT constraint_decay_positive CHECK (decay > 0)
 );
 

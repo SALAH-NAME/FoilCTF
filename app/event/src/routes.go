@@ -56,6 +56,7 @@ func (h *Hub) RegisterRoutes() http.Handler {
 				r.Delete("/", h.DeleteEvent)
 				r.Post("/start", h.StartEvent)
 				r.Post("/stop", h.StopEvent)
+				r.Get("/challenges", h.ListCtfsChallengesAdmin)
 				r.Post("/challenges", h.LinkChallenge)
 				r.Delete("/challenges/{chall_id}", h.UnlinkChallenge)
 			})

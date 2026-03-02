@@ -9,12 +9,13 @@ import InstanceLinker from './InstanceLinker';
 import AttachmentManager, { type AttachmentEntry } from './AttachmentManager';
 import Spinner from './Spinner';
 import {
-	api_challenge_create,
 	api_challenge_update,
 	api_attachment_list,
 	api_attachment_upload,
 	api_attachment_remove,
 } from '../api';
+import type { SessionUser } from '~/session.server';
+import { useToast } from '~/contexts/ToastContext';
 
 export interface Challenge {
 	id: number;
@@ -37,13 +38,53 @@ interface ChallengeAttachmentEntry extends AttachmentEntry {
 }
 
 interface AdminChallengeModalProps {
+	user?: SessionUser,
 	isOpen: boolean;
 	onClose: () => void;
 	challenge?: Challenge | null;
 	onSuccess?: () => void;
 }
 
+export async function remote_create_challenge(token: string, data: unknown) {
+	const uri = new URL('/api/challenges', import.meta.env.BROWSER_REST_CHALLENGES_ORIGIN);
+	const res = await fetch(uri, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'Authorization': `Bearer ${token}`,
+		},
+		body: JSON.stringify(data),
+	});
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
+}
+export async function remote_update_challenge(token: string, id: number, data: unknown) {
+	const uri = new URL(`/api/challenges/${id}`, import.meta.env.BROWSER_REST_CHALLENGES_ORIGIN);
+	const res = await fetch(uri, {
+		method: 'PUT',
+		headers: {
+			'Content-Type': 'application/json',
+			'Authorization': `Bearer ${token}`,
+		},
+		body: JSON.stringify(data),
+	});
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
+}
 export default function AdminChallengeModal({
+	user,
 	isOpen,
 	onClose,
 	challenge,
@@ -61,6 +102,7 @@ export default function AdminChallengeModal({
 	const [rewardFirstBlood, setRewardFirstBlood] = useState('100');
 	const [rewardDecrements, setRewardDecrements] = useState(true);
 	const [flag, setFlag] = useState('');
+	const [category, setCategory] = useState('');
 	const [instanceImage, setInstanceImage] = useState('');
 	const [attachments, setAttachments] = useState<ChallengeAttachmentEntry[]>(
 		[]
@@ -120,33 +162,26 @@ export default function AdminChallengeModal({
 		}
 	}, [serverAttachments, isEditMode]);
 
-	const mutCreate = useMutation({
+	const { addToast } = useToast();
+
+	const mut_create = useMutation({
 		mutationFn: async () => {
+			if (!user)
+				throw new Error('Unauthorized');
+
 			const payload = {
 				name,
 				description,
+				category,
 				flag,
 				is_published: isPublished,
 				reward: Number(reward),
 				reward_min: Number(rewardMin),
 				reward_first_blood: Number(rewardFirstBlood),
 				reward_decrements: rewardDecrements,
-				author_id: 1, // TODO: Replace with authenticated user ID
+				author_id: user.id, // TODO: Replace with authenticated user ID
 			};
-
-			const result = await api_challenge_create(payload as any);
-
-			// Create attachments for the new challenge
-			if (attachments.length > 0 && result.challenge?.id) {
-				for (const att of attachments) {
-					await api_attachment_upload(result.challenge.id, {
-						name: att.name,
-						contents: {},
-					});
-				}
-			}
-
-			return result;
+			await remote_create_challenge(user.token_access, payload);
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['challenges'] });
@@ -157,19 +192,27 @@ export default function AdminChallengeModal({
 			});
 			onSuccess?.();
 			onClose();
+
+			addToast({
+				variant: 'success',
+				title: 'Challenge created',
+				message: 'Challenge has been created succesfully',
+			});
 		},
-		onError: (error: any) => {
-			setFormError(
-				error?.errors?.[0]?.message ||
-					error?.message ||
-					'Failed to create challenge'
-			);
+		onError: (error: Error) => {
+			addToast({
+				variant: 'success',
+				title: 'Challenge creation',
+				message: error?.message,
+			});
 		},
 	});
-
-	const mutUpdate = useMutation({
+	const mut_update = useMutation({
 		mutationFn: async () => {
-			if (!challenge) return;
+			if (!user)
+				throw new Error('Unauthorized');
+			if (!challenge)
+				throw new Error('Try again later');
 
 			const payload = {
 				name,
@@ -182,7 +225,16 @@ export default function AdminChallengeModal({
 				reward_decrements: rewardDecrements,
 			};
 
-			return await api_challenge_update(challenge.id, payload);
+			let diff: Partial<typeof challenge> = { };
+			let diff_key: keyof typeof payload & keyof typeof challenge;
+			for (diff_key in payload) {
+				const a = payload[diff_key];
+				const b = challenge[diff_key];
+				if (a === b || (diff_key === "flag" && !a))
+					continue ;
+				diff = { ...diff, [diff_key]: a };
+			}
+			await remote_update_challenge(user.token_access, challenge.id, diff);
 		},
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ['challenges'] });
@@ -193,13 +245,25 @@ export default function AdminChallengeModal({
 			});
 			onSuccess?.();
 			onClose();
+
+			addToast({
+				variant: 'success',
+				title: 'Challenge updated',
+				message: 'Challenge has been updated succesfully',
+			});
 		},
-		onError: (error: any) => {
+		onError: (error: Error) => {
 			setFormError(
 				error?.errors?.[0]?.message ||
 					error?.message ||
 					'Failed to update challenge'
 			);
+
+			addToast({
+				variant: 'error',
+				title: 'Challenge update',
+				message: error.message,
+			});
 		},
 	});
 
@@ -237,14 +301,14 @@ export default function AdminChallengeModal({
 
 		setFormError('');
 		if (isEditMode) {
-			mutUpdate.mutate();
+			mut_update.mutate();
 		} else {
-			mutCreate.mutate();
+			mut_create.mutate();
 		}
 	};
 
 	const isPending =
-		mutCreate.status === 'pending' || mutUpdate.status === 'pending';
+		mut_create.status === 'pending' || mut_update.status === 'pending';
 
 	const handleAddFiles = (files: File[]) => {
 		const entries: ChallengeAttachmentEntry[] = files.map((f) => ({
@@ -338,7 +402,7 @@ export default function AdminChallengeModal({
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							placeholder="Enter challenge name..."
-							required
+							required={!isEditMode}
 						/>
 
 						<FormInput
@@ -349,32 +413,58 @@ export default function AdminChallengeModal({
 							onChange={(e) => setDescription(e.target.value)}
 							placeholder="Describe the challenge objectives, hints, and context..."
 							rows={4}
+							required={!isEditMode}
 						/>
-						<div>
-							<label
-								htmlFor="challenge-flag"
-								className="block text-sm font-semibold text-dark mb-2"
-							>
-								Flag
-							</label>
-							<input
-								type="text"
-								id="challenge-flag"
-								value={flag}
-								onChange={(e) => setFlag(e.target.value)}
-								placeholder="flag{...}"
-								disabled={isPending}
-								className="w-full px-4 py-2.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors font-mono"
-								aria-describedby="flag-help"
-							/>
-							<p id="flag-help" className="mt-1 text-xs text-muted">
-								The exact flag string participants must submit
-							</p>
+						<div className="flex flex-row gap-4">
+							<div className="flex-1">
+								<label
+									htmlFor="challenge-flag"
+									className="block text-sm font-semibold text-dark mb-2"
+								>
+									Flag
+								</label>
+								<input
+									type="text"
+									id="challenge-flag"
+									value={flag}
+									onChange={(e) => setFlag(e.target.value)}
+									placeholder="flag{...}"
+									disabled={isPending}
+									className="w-full px-4 py-2.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors font-mono"
+									aria-describedby="flag-help"
+									required={!isEditMode}
+								/>
+								<p id="flag-help" className="mt-1 text-xs text-muted">
+									The exact flag string participants must submit
+								</p>
+							</div>
+							<div className="flex-1">
+								<label
+									htmlFor="challenge-category"
+									className="block text-sm font-semibold text-dark mb-2"
+								>
+									Category
+								</label>
+								<input
+									type="text"
+									id="challenge-flag"
+									value={category}
+									onChange={(e) => setCategory(e.target.value)}
+									placeholder="pwn"
+									disabled={isPending}
+									className="w-full px-4 py-2.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors font-mono"
+									aria-describedby="category-help"
+									required={!isEditMode}
+								/>
+								<p id="flag-help" className="mt-1 text-xs text-muted">
+									The exact category this challenge will belong to
+								</p>
+							</div>
 						</div>
 						<FormToggle
 							name="is_published"
 							label="Published"
-							description="Make this challenge visible to participants"
+							description="Make this challenge visible in events"
 							checked={isPublished}
 							onChange={setIsPublished}
 							disabled={isPending}
@@ -466,6 +556,7 @@ export default function AdminChallengeModal({
 					</div>
 				</fieldset>
 
+				{ false && 
 				<fieldset className="border-t border-dark/10 pt-4">
 					<legend className="text-lg font-semibold text-dark mb-3">
 						Instance Configuration
@@ -475,7 +566,7 @@ export default function AdminChallengeModal({
 						onSelectImage={setInstanceImage}
 						disabled={isPending}
 					/>
-				</fieldset>
+				</fieldset> }
 
 				<fieldset className="border-t border-dark/10 pt-4">
 					<legend className="text-lg font-semibold text-dark mb-3">
