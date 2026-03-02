@@ -15,6 +15,7 @@ type SessionData = {
 };
 export type SessionFlash = {
 	error?: string;
+	success?: string;
 	oauth?: {
 		login: string;
 		token: string;

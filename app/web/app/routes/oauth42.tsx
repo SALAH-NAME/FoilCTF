@@ -89,11 +89,18 @@ export async function loader({ request }: Route.LoaderArgs) {
 		const error = url.searchParams.get('error');
 		const error_desc = url.searchParams.get('error_description');
 
-		session.flash(
-			'error',
-			(error_desc || error) ?? 'An internal server has occurred'
-		);
-		redirect_fallback = '/signin';
+		if (error) {
+			session.flash(
+				'error',
+				(error_desc || error) ?? 'An internal server has occurred'
+			);
+			redirect_fallback = '/signin';
+		} else {
+			session.flash(
+				'success',
+				'Your account has been linked to 42Network'
+			);
+		}
 	}
 
 	const query_redirect_uri =
