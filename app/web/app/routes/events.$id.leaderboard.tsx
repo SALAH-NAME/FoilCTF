@@ -1,131 +1,124 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useSearchParams, data } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import PageHeader from '~/components/PageHeader';
 import SearchInput from '~/components/SearchInput';
 import Pagination from '~/components/Pagination';
 import Icon from '~/components/Icon';
 import type { Route } from './+types/events.$id.leaderboard';
-
-interface LeaderboardEntry {
-	rank: number;
-	team: string;
-	score: number;
-	solves: number;
-	lastSolve: string;
-}
+import { request_session_user } from '~/session.server';
 
 export function meta({ params }: Route.ComponentProps) {
 	return [
 		{ title: `Leaderboard - Event ${params.id} - FoilCTF` },
-		{ name: 'description', content: `Event leaderboard for ${params.id}` },
+		{ name: 'description', content: `Live leaderboard for event ${params.id}` },
 	];
 }
 
-export default function EventLeaderboard({ params }: Route.ComponentProps) {
-	const [searchParams, setSearchParams] = useSearchParams();
-	const [searchQuery, setSearchQuery] = useState('');
+export async function loader({ request }: Route.LoaderArgs) {
+	const user = await request_session_user(request);
+	return data({ user });
+}
 
-	const currentPage = parseInt(searchParams.get('page') || '1', 10);
-	const itemsPerPage = parseInt(searchParams.get('perPage') || '10', 10);
+export type LeaderboardEntry = {
+	rank: number;
+	team_name: string;
+	score: number;
+	solves: number;
+	last_attempt_at: string | null;
+};
 
-	// Mock leaderboard data
-	const allLeaderboard: LeaderboardEntry[] = [
-		{
-			rank: 1,
-			team: 'Elite Hackers',
-			score: 2500,
-			solves: 25,
-			lastSolve: '15 mins ago',
-		},
-		{
-			rank: 2,
-			team: 'Cyber Warriors',
-			score: 2100,
-			solves: 21,
-			lastSolve: '1 hour ago',
-		},
-		{
-			rank: 3,
-			team: 'Binary Ninjas',
-			score: 1950,
-			solves: 20,
-			lastSolve: '3 hours ago',
-		},
-		{
-			rank: 4,
-			team: 'Code Breakers',
-			score: 1800,
-			solves: 18,
-			lastSolve: '8 hours ago',
-		},
-		{
-			rank: 5,
-			team: 'Security Squad',
-			score: 1650,
-			solves: 17,
-			lastSolve: '1 day ago',
-		},
-		{
-			rank: 6,
-			team: 'Pwn Masters',
-			score: 1500,
-			solves: 15,
-			lastSolve: '2 days ago',
-		},
-		{
-			rank: 7,
-			team: 'Hash Crackers',
-			score: 1350,
-			solves: 14,
-			lastSolve: '3 days ago',
-		},
-		{
-			rank: 8,
-			team: 'Root Access',
-			score: 1200,
-			solves: 12,
-			lastSolve: '4 days ago',
-		},
-		{
-			rank: 9,
-			team: 'Exploit Experts',
-			score: 1050,
-			solves: 11,
-			lastSolve: '5 days ago',
-		},
-		{
-			rank: 10,
-			team: 'Crypto Kings',
-			score: 900,
-			solves: 9,
-			lastSolve: '6 days ago',
-		},
-	];
-
-	const filteredLeaderboard = searchQuery
-		? allLeaderboard.filter((entry) =>
-				entry.team.toLowerCase().includes(searchQuery.toLowerCase())
-			)
-		: allLeaderboard;
-
-	const totalPages = Math.ceil(filteredLeaderboard.length / itemsPerPage);
-	const startIndex = (currentPage - 1) * itemsPerPage;
-	const paginatedLeaderboard = filteredLeaderboard.slice(
-		startIndex,
-		startIndex + itemsPerPage
+export async function remote_fetch_leaderboard(
+	id: string,
+	page: number,
+	limit: number,
+	q: string,
+	token?: string
+) {
+	const url = new URL(
+		`/api/events/${id}/leaderboard`,
+		import.meta.env.BROWSER_REST_EVENTS_ORIGIN
 	);
+	url.searchParams.set('page', page.toString());
+	url.searchParams.set('limit', limit.toString());
+	if (q) url.searchParams.set('q', q);
+
+	const headers = new Headers();
+	if (token) headers.set('Authorization', `Bearer ${token}`);
+	const res = await fetch(url, { headers });
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
+
+	type JSONData_Leaderboard = {
+		leaderboard: LeaderboardEntry[];
+		count: number;
+	};
+	return json as JSONData_Leaderboard;
+}
+
+export default function EventLeaderboard({
+	params,
+	loaderData,
+}: Route.ComponentProps) {
+	const { user } = loaderData;
+	const [searchParams, setSearchParams] = useSearchParams();
+	const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+
+	const currentPage = Math.max(parseInt(searchParams.get('page') || '1'), 1);
+	const itemsPerPage = Math.max(
+		parseInt(searchParams.get('perPage') || '10'),
+		1
+	);
+
+	const query_leaderboard = useQuery({
+		queryKey: [
+			'leaderboard',
+			params.id,
+			{
+				page: currentPage,
+				limit: itemsPerPage,
+				q: searchParams.get('q') || '',
+				token: user?.token_access,
+			},
+		],
+		queryFn: () =>
+			remote_fetch_leaderboard(
+				params.id,
+				currentPage,
+				itemsPerPage,
+				searchParams.get('q') || '',
+				user?.token_access
+			),
+		initialData: { leaderboard: [], count: 0 },
+		refetchInterval: 5000,
+	});
+
+	const { leaderboard, count } = query_leaderboard.data;
+	const totalPages = Math.max(1, Math.ceil(count / itemsPerPage));
 
 	const handleSearch = (query: string) => {
 		setSearchQuery(query);
-		const newParams = new URLSearchParams(searchParams);
-		if (query) {
-			newParams.set('q', query);
-		} else {
-			newParams.delete('q');
-		}
-		newParams.delete('page');
-		setSearchParams(newParams);
 	};
+
+	useEffect(() => {
+		const idDebounce = setTimeout(() => {
+			const newParams = new URLSearchParams(searchParams);
+			if (searchQuery) {
+				newParams.set('q', searchQuery);
+			} else {
+				newParams.delete('q');
+			}
+			newParams.delete('page');
+			setSearchParams(newParams);
+		}, 200);
+		return () => clearTimeout(idDebounce);
+	}, [searchQuery]);
 
 	const handlePageChange = (page: number) => {
 		const newParams = new URLSearchParams(searchParams);
@@ -166,6 +159,18 @@ export default function EventLeaderboard({ params }: Route.ComponentProps) {
 		);
 	};
 
+	const formatLastSolve = (ts: string | null): string => {
+		if (!ts) return '—';
+		const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+		if (diff < 60) return `${diff}s ago`;
+		if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+		if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+		return `${Math.floor(diff / 86400)}d ago`;
+	};
+
+	const isLoading = query_leaderboard.isFetching && leaderboard.length === 0;
+	const isError = query_leaderboard.isError;
+
 	return (
 		<>
 			<PageHeader title={`Event ${params.id} Leaderboard`} />
@@ -183,14 +188,35 @@ export default function EventLeaderboard({ params }: Route.ComponentProps) {
 					/>
 				</div>
 
-				{filteredLeaderboard.length === 0 ? (
+				{isError ? (
+					<div
+						className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
+						role="alert"
+					>
+						<p className="text-dark/60">
+							{query_leaderboard.error instanceof Error
+								? query_leaderboard.error.message
+								: 'Could not load leaderboard'}
+						</p>
+					</div>
+				) : isLoading ? (
+					<div
+						className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
+						role="status"
+						aria-live="polite"
+					>
+						<p className="text-dark/60">Loading leaderboard…</p>
+					</div>
+				) : leaderboard.length === 0 ? (
 					<div
 						className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
 						role="status"
 						aria-live="polite"
 					>
 						<p className="text-dark/60">
-							No teams found matching "{searchQuery}"
+							{searchQuery
+								? `No teams found matching "${searchQuery}"`
+								: 'No participants yet'}
 						</p>
 					</div>
 				) : (
@@ -200,7 +226,7 @@ export default function EventLeaderboard({ params }: Route.ComponentProps) {
 							role="list"
 							aria-label="Leaderboard entries"
 						>
-							{paginatedLeaderboard.map((entry) => (
+							{leaderboard.map((entry) => (
 								<div
 									key={entry.rank}
 									role="listitem"
@@ -213,7 +239,7 @@ export default function EventLeaderboard({ params }: Route.ComponentProps) {
 											</div>
 											<div>
 												<h3 className="font-semibold text-dark text-lg">
-													{entry.team}
+													{entry.team_name}
 												</h3>
 												<p className="text-sm text-dark/60">
 													Rank #{entry.rank}
@@ -235,7 +261,7 @@ export default function EventLeaderboard({ params }: Route.ComponentProps) {
 										<div className="text-center">
 											<p className="text-xs text-dark/60 mb-1">Last Solve</p>
 											<p className="font-medium text-dark text-xs">
-												{entry.lastSolve}
+												{formatLastSolve(entry.last_attempt_at)}
 											</p>
 										</div>
 									</div>
@@ -285,7 +311,7 @@ export default function EventLeaderboard({ params }: Route.ComponentProps) {
 										</tr>
 									</thead>
 									<tbody>
-										{paginatedLeaderboard.map((entry) => (
+										{leaderboard.map((entry) => (
 											<tr
 												key={entry.rank}
 												className="border-b border-dark/10 last:border-0 hover:bg-dark/5 transition-colors"
@@ -297,7 +323,7 @@ export default function EventLeaderboard({ params }: Route.ComponentProps) {
 												</td>
 												<td className="py-4 px-6">
 													<span className="font-semibold text-dark">
-														{entry.team}
+														{entry.team_name}
 													</span>
 												</td>
 												<td className="py-4 px-6 text-center">
@@ -312,7 +338,7 @@ export default function EventLeaderboard({ params }: Route.ComponentProps) {
 												</td>
 												<td className="py-4 px-6 text-center">
 													<span className="text-sm text-dark/60">
-														{entry.lastSolve}
+														{formatLastSolve(entry.last_attempt_at)}
 													</span>
 												</td>
 											</tr>
@@ -324,7 +350,7 @@ export default function EventLeaderboard({ params }: Route.ComponentProps) {
 
 						<Pagination
 							currentPage={currentPage}
-							totalPages={Math.max(1, totalPages)}
+							totalPages={totalPages}
 							onPageChange={handlePageChange}
 							itemsPerPage={itemsPerPage}
 							onItemsPerPageChange={(items) => {
@@ -364,7 +390,7 @@ export default function EventLeaderboard({ params }: Route.ComponentProps) {
 						</li>
 						<li className="flex items-start gap-2">
 							<span className="text-primary font-bold">•</span>
-							<span>Rankings update in real-time as challenges are solved</span>
+							<span>Rankings update every 5 seconds automatically</span>
 						</li>
 					</ul>
 				</div>
@@ -377,8 +403,7 @@ export default function EventLeaderboard({ params }: Route.ComponentProps) {
 				>
 					{searchQuery && (
 						<>
-							{filteredLeaderboard.length} team
-							{filteredLeaderboard.length !== 1 ? 's' : ''} found
+							{count} team{count !== 1 ? 's' : ''} found
 						</>
 					)}
 				</div>

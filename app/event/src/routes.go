@@ -34,6 +34,7 @@ func (h *Hub) RegisterRoutes() http.Handler {
 
 				r.Get("/", h.GetEvent)
 				r.Get("/scoreboard", h.GetScoreboard)
+				r.Get("/leaderboard", h.GetLeaderboard)
 
 				r.Group(func(r chi.Router) {
 					r.Use(h.PlayerAuthMiddleware)
