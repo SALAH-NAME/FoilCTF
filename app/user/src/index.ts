@@ -191,7 +191,8 @@ app.patch(
 app.delete(
 	'/api/friends/requests/pending/:username',
 	middleware_auth,
-	rejectFriendRequest
+	rejectFriendRequest,
+	notifyUser
 );
 app.delete('/api/friends/:username', middleware_auth, removeFriend);
 
