@@ -74,6 +74,7 @@ func GetNotifications(hub *Hub, w http.ResponseWriter, userID int, notifications
 		Table("notification_users").
 		Joins("LEFT JOIN notifications ON notifications.id = notification_users.notification_id").
 		Where("notification_users.user_id = ?", userID).
+		Where("notification_users.is_dismissed IS NULL OR notification_users.is_dismissed = ?", false).
 		Select("notifications.*, COALESCE(notification_users.is_read, false) AS is_read").
 		Order("notifications.created_at DESC").
 		Scan(notifications).

@@ -140,11 +140,12 @@ func HandleSubmitError(w http.ResponseWriter, err error) {
 	}
 }
 
-func (h *Hub) Notify(title, message string, eventID int) error {
+func (h *Hub) Notify(title, message, link string, eventID int) error {
 	content := map[string]string{
-		"type": "event",
+		"type":    "event",
 		"title":   title,
 		"message": message,
+		"link":    link,
 	}
 	contentJSON, err := json.Marshal(content)
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -113,8 +113,7 @@ func (hub *Hub) HandleDeleteSingle(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetID(w http.ResponseWriter, r *http.Request) (int, error) {
-	vars := mux.Vars(r)
-	idStr := vars["id"]
+	idStr := chi.URLParam(r, "id")
 	notifID, err := strconv.Atoi(idStr)
 	if err != nil {
 		return notifID, err
