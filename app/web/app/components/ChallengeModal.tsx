@@ -52,7 +52,7 @@ interface ChallengeModalProps {
 	onLaunchInstance: () => void;
 	onStopInstance: () => void;
 	onBuyHint: (hintId: number) => void;
-	onSubmitFlag: (flag: string) => void;
+	onSubmitFlag: (challenge_id: number, flag: string) => void;
 }
 
 export default function ChallengeModal({
@@ -179,7 +179,7 @@ export default function ChallengeModal({
 					</div>
 				)}
 
-				<FlagSubmitForm onSubmit={onSubmitFlag} disabled={challenge.solved} />
+				<FlagSubmitForm onSubmit={(flag) => onSubmitFlag(challenge.id, flag)} disabled={challenge.solved} />
 
 				{challenge.hasInstance && (
 					<div className="border-t border-neutral-300 pt-6">

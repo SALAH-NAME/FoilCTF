@@ -35,12 +35,11 @@ export default function Countdown({
 	};
 
 	const [invalidateQuery, setInvalidateQuery] = useState(false);
-	const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(
-		calculateTimeLeft()
-	);
+	const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(null);
 
 	const queryClient = useQueryClient();
 	useEffect(() => {
+		setTimeLeft(calculateTimeLeft())
 		const timer = setInterval(() => {
 			const time_left = calculateTimeLeft();
 			if (time_left === null)
@@ -61,7 +60,7 @@ export default function Countdown({
 
 	if (!timeLeft) {
 		return (
-			<p className="text-dark/60 font-medium" role="status" aria-live="polite">
+			<p className="text-dark/60 font-medium sr-only" role="status" aria-live="polite">
 				Event {status === 'published' ? 'has started' : 'is done'}!
 			</p>
 		);

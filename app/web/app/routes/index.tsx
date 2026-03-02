@@ -1,11 +1,17 @@
-import { Link } from 'react-router';
+import { data, Link } from 'react-router';
 import type { Route } from './+types/index';
+import { request_session_user } from '~/session.server';
 
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Home' }];
 }
 
-export default function Page() {
+export async function loader({ request }: Route.LoaderArgs) {
+	const user = await request_session_user(request);
+	return data({ user });
+}
+
+export default function Page({ loaderData }: Route.ComponentProps) {
 	return (
 		<>
 			<main
@@ -24,10 +30,10 @@ export default function Page() {
 					</p>
 
 					<Link
-						to="/register"
+						to={ Boolean(loaderData.user) ? "/events" : "/register" }
 						className="inline-block px-8 py-3 border-2 border-dark text-lg font-semibold rounded hover:bg-primary hover:text-white transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
 					>
-						Join us
+						{ Boolean(loaderData.user) ? 'Jump in' : 'Join us' }
 					</Link>
 				</div>
 			</main>

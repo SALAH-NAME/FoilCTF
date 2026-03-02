@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import Button from './Button';
+import { useState, type SubmitEvent } from 'react';
+
+import Button from '~/components/Button';
 
 interface FlagSubmitFormProps {
 	onSubmit: (flag: string) => void;
@@ -12,7 +13,7 @@ export default function FlagSubmitForm({
 }: FlagSubmitFormProps) {
 	const [flagValue, setFlagValue] = useState('');
 
-	const handleSubmit = (e: React.FormEvent) => {
+	const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		if (flagValue.trim()) {
 			onSubmit(flagValue);

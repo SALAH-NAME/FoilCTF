@@ -109,12 +109,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 				elements_new.push(notification);
 			}
 
-			const elements_count = messages.length - last_index;
-			if (elements_count > 0) {
-				const audio_ding = new Audio('/notification.wav');
-				audio_ding.play().catch(() => ({}));
-				// TODO(xenobas): Fix repeating plays
-			}
 			return {
 				elements: [...elements, ...elements_new],
 				last_index: messages.length,

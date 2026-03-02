@@ -142,7 +142,7 @@ export default function Sidebar({ session_user }: SidebarProps) {
 							>
 								<NavLink
 									item={{
-										to: '/events?filter=published',
+										to: '/events?filter=active',
 										label: 'Active',
 										icon: 'calendar',
 									}}
@@ -150,7 +150,7 @@ export default function Sidebar({ session_user }: SidebarProps) {
 								/>
 								<NavLink
 									item={{
-										to: '/events?filter=active',
+										to: '/events?filter=published',
 										label: 'Upcoming',
 										icon: 'calendar',
 									}}
@@ -213,7 +213,7 @@ export default function Sidebar({ session_user }: SidebarProps) {
 									<div
 										className={`w-8 h-8 my-1  rounded-full flex items-center justify-center shrink-0 ${is_profile_active ? 'bg-white' : 'bg-secondary'}`}
 									>
-										<ProfileAvatar avatar={profile?.avatar} className="object-cover rounded-full outline" />
+										<ProfileAvatar avatar={profile?.avatar ?? null} className="object-cover rounded-full outline" />
 									</div>
 									{showText && (
 										<div
