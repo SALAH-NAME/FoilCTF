@@ -35,6 +35,12 @@ var ServiceRegistry = []ServiceConfig{
 				StripPrefix: false,
 			},
 			{
+				Prefix:      "/api/oauth",
+				Protected:   false,
+				WebSocket:   false,
+				StripPrefix: false,
+			},
+			{
 				Prefix:      "/api/profiles",
 				Protected:   false,
 				WebSocket:   false,
@@ -123,9 +129,15 @@ var ServiceRegistry = []ServiceConfig{
 		BaseURL: getEnv("GATEWAY_EVENT_URL", "http://event:3005"),
 		Routes: []RouteConfig{
 			{
-				Prefix:      "/api/event",
+				Prefix:      "/api/events",
 				Protected:   false,
 				WebSocket:   true,
+				StripPrefix: false,
+			},
+			{
+				Prefix:      "/api/admin",
+				Protected:   false,
+				WebSocket:   false,
 				StripPrefix: false,
 			},
 		},

@@ -1,4 +1,4 @@
-import { eq, and, sql, ne, ilike } from 'drizzle-orm';
+import { eq, and, sql, ne, ilike, count as sql_count } from 'drizzle-orm';
 import { NextFunction, Request, Response } from 'express';
 
 import { db } from './utils/db';
@@ -587,12 +587,44 @@ export const updateTeam = async (
 export const getTeams = async (req: Request, res: Response) => {
 	const limit = Number(req.query.limit) || 10;
 	const page = Number(req.query.page) || 1;
-	const search = req.query.q as string; // filter just as other gets?
+	const search = req.query.q as string;
+	const status = req.query.status as string;
+
+	const search_where = search
+		? ilike(table_teams.name, `%${search}%`)
+		: undefined;
+	const filter_where =
+		status === 'open'
+			? eq(table_teams.is_locked, false)
+			: status === 'closed'
+				? eq(table_teams.is_locked, true)
+				: undefined;
+
+	const where_clause = and(search_where, filter_where);
+
+	const [count_result] = await db
+		.select({ count: sql_count() })
+		.from(table_teams)
+		.where(where_clause);
+	const total = count_result?.count ?? 0;
+
+	const [c_all] = await db
+		.select({ count: sql_count() })
+		.from(table_teams)
+		.where(search_where);
+	const [c_open] = await db
+		.select({ count: sql_count() })
+		.from(table_teams)
+		.where(and(search_where, eq(table_teams.is_locked, false)));
+	const [c_closed] = await db
+		.select({ count: sql_count() })
+		.from(table_teams)
+		.where(and(search_where, eq(table_teams.is_locked, true)));
 
 	const dbTeams = await db
 		.select()
 		.from(table_teams)
-		.where(search ? ilike(table_teams.name, `%${search}%`) : undefined)
+		.where(where_clause)
 		.limit(limit)
 		.offset(limit * (page - 1));
 
@@ -609,6 +641,12 @@ export const getTeams = async (req: Request, res: Response) => {
 		data: dbTeamsPublicData,
 		page,
 		limit,
+		count: total,
+		counts: {
+			all: c_all?.count ?? 0,
+			open: c_open?.count ?? 0,
+			closed: c_closed?.count ?? 0,
+		},
 	});
 };
 
@@ -650,6 +688,10 @@ export const route_team_delete = async (
 		await tx // NOTE(xenobas): Delete all members in the team
 			.delete(table_team_members)
 			.where(eq(table_team_members.team_name, team.name));
+		await tx // NOTE: Clear team_name from all members' user records
+			.update(table_users)
+			.set({ team_name: null })
+			.where(eq(table_users.team_name, team.name));
 		await tx // NOTE(xenobas): Delete the team itself
 			.delete(table_teams)
 			.where(eq(table_teams.name, team.name));

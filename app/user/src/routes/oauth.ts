@@ -13,10 +13,14 @@ import { generateAccessToken, generateRefreshToken } from '../utils/utils';
 import ms from 'ms';
 
 export function route_oauth_42_connect(req: Request, res: Response) {
+	console.log(req.headers);
+
 	const uri_redirect_client = zod.url().parse(req.query.redirect_uri);
 
-	const uri_service_protocol = req.protocol;
-	const uri_service_origin = zod.string().parse(req.get('Host'));
+	const uri_service_protocol = req.get('X-Gateway-Protocol') ?? req.protocol;
+	const uri_service_origin = zod
+		.string()
+		.parse(req.get('X-Gateway-Host') ?? req.get('Host'));
 
 	const uri_redirect = new URL(
 		'/api/oauth/42/connect/verify',
@@ -51,8 +55,10 @@ export async function route_oauth_42_link(
 
 	const uri_redirect_client = zod.url().parse(req.query.redirect_uri);
 
-	const uri_service_protocol = req.protocol;
-	const uri_service_origin = zod.string().parse(req.get('Host'));
+	const uri_service_protocol = req.get('X-Gateway-Protocol') ?? req.protocol;
+	const uri_service_origin = zod
+		.string()
+		.parse(req.get('X-Gateway-Host') ?? req.get('Host'));
 
 	const uri_redirect = new URL(
 		'/api/oauth/42/link/verify',
@@ -76,8 +82,10 @@ async function fetch_42_token(
 	code: string,
 	user_id?: number
 ): Promise<string | null> {
-	const uri_service_protocol = req.protocol;
-	const uri_service_origin = zod.string().parse(req.get('Host'));
+	const uri_service_protocol = req.get('X-Gateway-Protocol') ?? req.protocol;
+	const uri_service_origin = zod
+		.string()
+		.parse(req.get('X-Gateway-Host') ?? req.get('Host'));
 
 	const uri_redirect = new URL(
 		`/api/oauth/42/${route_origin}/verify`,

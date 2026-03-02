@@ -7,6 +7,7 @@ import {
 	remote_cancel_friend_request,
 	remote_refuse_friend_request,
 	remote_send_friend_request,
+	remote_accept_friend_request,
 } from '~/routes/friends';
 
 import Icon from '~/components/Icon';
@@ -188,6 +189,46 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 			target: params.username,
 		});
 
+	const mut_friend_request_accept = useMutation<
+		unknown,
+		Error,
+		RequestPayload<{ target: string }>
+	>({
+		mutationFn: async ({ token, target }) => {
+			if (!token) throw new Error('Unauthorized');
+			await remote_accept_friend_request(token, target);
+		},
+		async onSuccess() {
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: ['users'] }),
+				queryClient.invalidateQueries({ queryKey: ['profile'] }),
+			]);
+			addToast({
+				variant: 'success',
+				title: 'Friend request accepted',
+				message: '',
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Friend request accept failed',
+				message: err.message,
+			});
+		},
+	});
+	const handleAcceptRequest = () =>
+		mut_friend_request_accept.mutate({
+			token: loaderData.user?.token_access,
+			target: params.username,
+		});
+
+	const action_pending =
+		mut_friend_request_send.isPending ||
+		mut_friend_request_cancel.isPending ||
+		mut_friend_request_refuse.isPending ||
+		mut_friend_request_accept.isPending;
+
 	const show_friend_op =
 		loaderData.user && loaderData.user?.username !== params.username;
 	const friend_status: 'none' | 'received' | 'sent' | 'friends' =
@@ -265,6 +306,7 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 							{show_friend_op && friend_status === 'none' && (
 								<Button
 									variant="primary"
+									disabled={action_pending}
 									onClick={handleAddFriend}
 									aria-label={`Send friend request to ${profileData?.username}`}
 								>
@@ -272,17 +314,29 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 								</Button>
 							)}
 							{show_friend_op && friend_status === 'received' && (
-								<Button
-									variant="secondary"
-									onClick={handleRejectRequest}
-									aria-label={`Reject friend request from ${profileData?.username}`}
-								>
-									Reject Request
-								</Button>
+								<>
+									<Button
+										variant="primary"
+										disabled={action_pending}
+										onClick={handleAcceptRequest}
+										aria-label={`Accept friend request from ${profileData?.username}`}
+									>
+										Accept
+									</Button>
+									<Button
+										variant="secondary"
+										disabled={action_pending}
+										onClick={handleRejectRequest}
+										aria-label={`Reject friend request from ${profileData?.username}`}
+									>
+										Reject
+									</Button>
+								</>
 							)}
 							{show_friend_op && friend_status === 'sent' && (
 								<Button
 									variant="secondary"
+									disabled={action_pending}
 									onClick={handleCancelRequest}
 									aria-label={`Cancel friend request to ${profileData?.username}`}
 								>

@@ -841,7 +841,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 						name="description"
 						type="textarea"
 						value={editSettings.description}
-						onChange={(e) => setEditSettingsDescription(e.target.value)}
+						onChange={(e:any) => setEditSettingsDescription(e.target.value)}
 						placeholder="Describe your team..."
 						rows={4}
 					/>

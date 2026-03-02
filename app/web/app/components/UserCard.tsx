@@ -19,6 +19,9 @@ interface UserCardProps {
 	disabled?: boolean;
 	userState?: SessionUser;
 	onAddFriend?: () => void;
+	onCancelRequest?: () => void;
+	onAcceptRequest?: () => void;
+	onRejectRequest?: () => void;
 }
 
 export default function UserCard({
@@ -31,55 +34,13 @@ export default function UserCard({
 	disabled = false,
 	userState,
 	onAddFriend,
+	onCancelRequest,
+	onAcceptRequest,
+	onRejectRequest,
 }: UserCardProps) {
-	const getButtonContent = (friendStatus: FriendStatus) => {
-		switch (friendStatus) {
-			case 'friends':
-				return (
-					<span className="flex items-center gap-2">
-						<Icon name="check" className="size-4" aria-hidden={true} />
-						<span>Friends</span>
-					</span>
-				);
-			case 'sent':
-			case 'received':
-				return (
-					<span className="flex items-center gap-2">
-						<Icon className="size-4" name="edit" aria-hidden={true} />
-						<span>Pending</span>
-					</span>
-				);
-			default:
-				return 'Add Friend';
-		}
-	};
-	const getButtonProps = (friendStatus: FriendStatus) => {
-		if (friendStatus === 'friends') {
-			return {
-				'variant': 'ghost' as const,
-				'disabled': true,
-				'aria-label': `Already friends with ${username}`,
-			};
-		}
-		if (friendStatus === 'sent' || friendStatus === 'received') {
-			// TODO(xenobas): Do not collapse this to 'pending'
-			return {
-				'variant': 'ghost' as const,
-				'disabled': true,
-				'aria-label': `You have a pending friend request with ${username}`,
-			};
-		}
-		return {
-			'disabled': disabled,
-			'variant': 'primary' as const,
-			'onClick': onAddFriend,
-			'aria-label': `Send friend request to ${username}`,
-		};
-	};
-
 	return (
-		<article className="bg-white/70 rounded-md p-6 border border-dark/10 hover:border-primary transition-all duration-200 hover:shadow-lg h-full">
-			<div className="flex h-full gap-4">
+		<article className="bg-white/70 w-full h-full rounded-md p-6 border border-dark/10 hover:border-primary transition-all duration-200 hover:shadow-lg">
+			<div className="flex flex-wrap w-full h-full items-start gap-4">
 				<Link
 					to={`/users/${username}`}
 					className="shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus:rounded"
@@ -93,7 +54,7 @@ export default function UserCard({
 					</div>
 				</Link>
 
-				<div className="flex-1 h-full min-w-0">
+				<div className="flex-1 w-fit">
 					<Link
 						to={`/users/${username}`}
 						className="text-lg font-bold text-dark hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus:rounded no-underline block mb-1"
@@ -118,10 +79,65 @@ export default function UserCard({
 					</div>
 				</div>
 
-				{userState && userState.username !== username && true && (
-					<Button size="sm" className="h-fit" {...getButtonProps(friendStatus)}>
-						{getButtonContent(friendStatus)}
-					</Button>
+				{userState && userState.username !== username && (
+					<div className="flex items-center gap-2 shrink-0">
+						{friendStatus === 'none' && (
+							<Button
+								size="sm"
+								variant="primary"
+								disabled={disabled}
+								onClick={onAddFriend}
+								aria-label={`Send friend request to ${username}`}
+							>
+								Add Friend
+							</Button>
+						)}
+						{friendStatus === 'sent' && (
+							<Button
+								size="sm"
+								variant="secondary"
+								disabled={disabled}
+								onClick={onCancelRequest}
+								aria-label={`Cancel friend request to ${username}`}
+							>
+								<span className="flex items-center gap-2">
+									<Icon className="size-4" name="close" aria-hidden={true} />
+									<span>Cancel</span>
+								</span>
+							</Button>
+						)}
+						{friendStatus === 'received' && (
+							<>
+								<Button
+									size="sm"
+									variant="primary"
+									disabled={disabled}
+									onClick={onAcceptRequest}
+									aria-label={`Accept friend request from ${username}`}
+								>
+									Accept
+								</Button>
+								<Button
+									size="sm"
+									variant="ghost"
+									disabled={disabled}
+									onClick={onRejectRequest}
+									aria-label={`Reject friend request from ${username}`}
+								>
+									Reject
+								</Button>
+							</>
+						)}
+						{friendStatus === 'friends' && (
+							<span
+								className="flex items-center gap-2 text-primary text-sm font-semibold"
+								aria-label={`Already friends with ${username}`}
+							>
+								<Icon name="check" className="size-4" aria-hidden={true} />
+								<span>Friends</span>
+							</span>
+						)}
+					</div>
 				)}
 			</div>
 		</article>

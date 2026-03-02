@@ -25,6 +25,13 @@ func createReverseProxy(targetURL, serviceName string) (*httputil.ReverseProxy, 
 	originalDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
 		originalDirector(req)
+		
+		protocol := "http"
+		if req.TLS != nil {
+			protocol = "https"
+		}
+		req.Header.Add("X-Gateway-Protocol", protocol)
+		req.Header.Add("X-Gateway-Host", req.Host)
 		req.Host = target.Host
 		log.Printf("[PROXY:%s] %s %s -> %s", serviceName, req.Method, req.URL.Path, target.Host)
 	}

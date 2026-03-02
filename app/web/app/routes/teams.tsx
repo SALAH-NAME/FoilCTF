@@ -21,9 +21,15 @@ export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Teams' }];
 }
 
-async function remote_fetch_teams(q: string, page: number, limit: number) {
+async function remote_fetch_teams(
+	q: string,
+	page: number,
+	limit: number,
+	status: string
+) {
 	const url = new URL('/api/teams', import.meta.env.BROWSER_REST_USER_ORIGIN);
 	if (q) url.searchParams.set('q', q);
+	if (status && status !== 'all') url.searchParams.set('status', status);
 	url.searchParams.set('page', page.toString());
 	url.searchParams.set('limit', limit.toString());
 
@@ -46,6 +52,12 @@ async function remote_fetch_teams(q: string, page: number, limit: number) {
 		}[];
 		limit: number;
 		page: number;
+		count: number;
+		counts: {
+			all: number;
+			open: number;
+			closed: number;
+		};
 	};
 	return json as JSONData_Teams;
 }
@@ -136,7 +148,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		| 'open'
 		| 'closed';
 	const currentPage = parseInt(searchParams.get('page') || '1', 10);
-	const itemsPerPage = parseInt(searchParams.get('perPage') || '6', 10);
+	const itemsPerPage = parseInt(searchParams.get('perPage') || '10', 10);
 	useEffect(() => {
 		const idDebounce = setTimeout(() => {
 			const newParams = new URLSearchParams(searchParams);
@@ -164,53 +176,55 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		},
 	});
 	const teams_requested = query_requests.data;
-	useEffect(() => {
-		console.log(teams_requested);
-	}, [teams_requested]);
 
 	function execFilterTeams<
 		T extends { name: string; is_locked: boolean | null },
 	>(teams: T[]) {
-		return teams
-			.map((team) => {
-				return {
-					...team,
-					has_requested: teams_requested.indexOf(team.name) !== -1,
-				};
-			})
-			.filter((team) => {
-				const matchesSearch = team.name
-					.toLowerCase()
-					.includes(searchQuery.toLowerCase());
-				const matchesStatus =
-					statusFilter === 'all' ||
-					(statusFilter === 'open' && !team.is_locked) ||
-					(statusFilter === 'closed' && team.is_locked);
-				return matchesSearch && matchesStatus;
-			});
+		return teams.map((team) => ({
+			...team,
+			has_requested: teams_requested.indexOf(team.name) !== -1,
+		}));
 	}
 
 	const query_teams = useQuery({
-		queryKey: ['teams', { searchQuery, currentPage, itemsPerPage }],
-		initialData: [],
+		queryKey: [
+			'teams',
+			{ searchQuery, statusFilter, currentPage, itemsPerPage },
+		],
+		initialData: {
+			data: [],
+			limit: 10,
+			page: 1,
+			count: 0,
+			counts: { all: 0, open: 0, closed: 0 },
+		},
 		queryFn: async ({ queryKey }) => {
 			const [_queryKeyPrime, variables] = queryKey;
-			if (typeof variables === 'string') return [];
+			if (typeof variables === 'string')
+				return {
+					data: [],
+					limit: 10,
+					page: 1,
+					count: 0,
+					counts: { all: 0, open: 0, closed: 0 },
+				};
 
-			const { searchQuery, currentPage, itemsPerPage } = variables;
-			const { data: teams } = await remote_fetch_teams(
+			const { searchQuery, statusFilter, currentPage, itemsPerPage } =
+				variables;
+			return await remote_fetch_teams(
 				searchQuery,
 				currentPage,
-				itemsPerPage
+				itemsPerPage,
+				statusFilter
 			);
-			return teams;
 		},
 	});
-	const teams = execFilterTeams(query_teams.data);
+	const teams = execFilterTeams(query_teams.data.data);
 
-	const totalPages = Math.ceil(teams.length / itemsPerPage);
-	const startIndex = (currentPage - 1) * itemsPerPage;
-	const paginatedTeams = teams.slice(startIndex, startIndex + itemsPerPage);
+	const totalPages = Math.max(
+		1,
+		Math.ceil(query_teams.data.count / itemsPerPage)
+	);
 
 	const queryClient = useQueryClient();
 	const { addToast } = useToast();
@@ -298,17 +312,9 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 	};
 
 	const statusTabs = [
-		{ value: 'all', label: 'All Teams', count: query_teams.data.length },
-		{
-			value: 'open',
-			label: 'Open',
-			count: query_teams.data.filter((t) => !t.is_locked).length,
-		},
-		{
-			value: 'closed',
-			label: 'Closed',
-			count: query_teams.data.filter((t) => t.is_locked).length,
-		},
+		{ value: 'all', label: 'All Teams', count: query_teams.data.counts.all },
+		{ value: 'open', label: 'Open', count: query_teams.data.counts.open },
+		{ value: 'closed', label: 'Closed', count: query_teams.data.counts.closed },
 	];
 
 	const query_user = useQuery({
@@ -368,7 +374,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 					}}
 				/>
 
-				{teams.length === 0 ? (
+				{query_teams.data.count === 0 ? (
 					<div
 						className="text-center py-12 mt-6"
 						role="status"
@@ -388,7 +394,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 							role="list"
 							aria-label="List of teams"
 						>
-							{paginatedTeams.map((team) => (
+							{teams.map((team) => (
 								<div key={team.id} role="listitem">
 									<TeamCard
 										{...team}
@@ -404,8 +410,8 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 
 						<Pagination
 							currentPage={currentPage}
-							totalPages={Math.max(1, totalPages)}
-							totalItems={teams.length}
+							totalPages={totalPages}
+							totalItems={query_teams.data.count}
 							itemsPerPage={itemsPerPage}
 							onPageChange={handlePageChange}
 							onItemsPerPageChange={handleItemsPerPageChange}

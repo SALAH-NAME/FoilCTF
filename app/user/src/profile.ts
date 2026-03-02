@@ -90,8 +90,14 @@ export const getPublicProfile = async (
 			)
 		);
 		const on_friend_requests = or(
-			eq(table_friend_requests.sender_name, table_profiles.username),
-			eq(table_friend_requests.receiver_name, table_profiles.username)
+			and(
+				eq(table_friend_requests.sender_name, user.username),
+				eq(table_friend_requests.receiver_name, table_profiles.username)
+			),
+			and(
+				eq(table_friend_requests.sender_name, table_profiles.username),
+				eq(table_friend_requests.receiver_name, user.username)
+			)
 		);
 
 		const [row] = await db

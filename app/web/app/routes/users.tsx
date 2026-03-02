@@ -7,7 +7,12 @@ import Pagination from '~/components/Pagination';
 import type { Route } from './+types/users';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '~/contexts/ToastContext';
-import { remote_send_friend_request } from './friends';
+import {
+	remote_send_friend_request,
+	remote_cancel_friend_request,
+	remote_accept_friend_request,
+	remote_refuse_friend_request,
+} from './friends';
 import { request_session } from '~/session.server';
 
 export function meta({}: Route.MetaArgs) {
@@ -63,6 +68,7 @@ async function remote_fetch_users(
 		data: JSONData_User[];
 		limit: number;
 		page: number;
+		count: number;
 	};
 	return json as JSONData_Users;
 }
@@ -91,7 +97,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 
 	const searchQuery = searchParams.get('q') || '';
 	const currentPage = parseInt(searchParams.get('page') || '1', 10);
-	const itemsPerPage = parseInt(searchParams.get('perPage') || '6', 10);
+	const itemsPerPage = parseInt(searchParams.get('perPage') || '10', 10);
 
 	const queryClient = useQueryClient();
 
@@ -100,28 +106,28 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			'users',
 			{ token_access, searchQuery, currentPage, itemsPerPage },
 		],
-		initialData: [],
+		initialData: { data: [], limit: 10, page: 1, count: 0 },
 		queryFn: async ({ queryKey }) => {
 			const [_queryKeyPrime, variables] = queryKey;
-			if (typeof variables === 'string') return [];
+			if (typeof variables === 'string')
+				return { data: [], limit: 10, page: 1, count: 0 };
 
 			const { searchQuery, currentPage, itemsPerPage } = variables;
-			const { data: users } = await remote_fetch_users(
+			return await remote_fetch_users(
 				token_access,
 				searchQuery,
 				currentPage,
 				itemsPerPage
 			);
-			return users;
 		},
 	});
 	const mut_friend_request_send = useMutation<unknown, Error, string>({
 		mutationFn: async (target) => {
 			if (!token_access) throw new Error('Unauthorized');
 			await remote_send_friend_request(token_access, target);
-			await queryClient.invalidateQueries({ queryKey: ['users'] });
 		},
-		onSuccess() {
+		async onSuccess() {
+			await queryClient.invalidateQueries({ queryKey: ['users'] });
 			addToast({
 				variant: 'success',
 				title: 'Friend request sent',
@@ -137,6 +143,72 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		},
 	});
 
+	const mut_friend_request_cancel = useMutation<unknown, Error, string>({
+		mutationFn: async (target) => {
+			if (!token_access) throw new Error('Unauthorized');
+			await remote_cancel_friend_request(token_access, target);
+		},
+		async onSuccess() {
+			await queryClient.invalidateQueries({ queryKey: ['users'] });
+			addToast({
+				variant: 'success',
+				title: 'Friend request cancelled',
+				message: '',
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Failed to cancel friend request',
+				message: err.message,
+			});
+		},
+	});
+
+	const mut_friend_request_accept = useMutation<unknown, Error, string>({
+		mutationFn: async (target) => {
+			if (!token_access) throw new Error('Unauthorized');
+			await remote_accept_friend_request(token_access, target);
+		},
+		async onSuccess() {
+			await queryClient.invalidateQueries({ queryKey: ['users'] });
+			addToast({
+				variant: 'success',
+				title: 'Friend request accepted',
+				message: '',
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Failed to accept friend request',
+				message: err.message,
+			});
+		},
+	});
+
+	const mut_friend_request_reject = useMutation<unknown, Error, string>({
+		mutationFn: async (target) => {
+			if (!token_access) throw new Error('Unauthorized');
+			await remote_refuse_friend_request(token_access, target);
+		},
+		async onSuccess() {
+			await queryClient.invalidateQueries({ queryKey: ['users'] });
+			addToast({
+				variant: 'success',
+				title: 'Friend request rejected',
+				message: '',
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Failed to reject friend request',
+				message: err.message,
+			});
+		},
+	});
+
 	useEffect(() => {
 		if (!query_users.error) return;
 		addToast({
@@ -146,7 +218,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		});
 	}, [query_users.errorUpdateCount, query_users.errorUpdatedAt]);
 
-	const filtered_users = query_users.data.map((user) => ({
+	const filtered_users = query_users.data.data.map((user) => ({
 		username: user.username,
 		teamName: user.team_name || '',
 
@@ -157,12 +229,9 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		friendStatus: user.friend_status,
 	})) satisfies User[];
 
-	// Pagination
-	const totalPages = Math.ceil(filtered_users.length / itemsPerPage);
-	const startIndex = (currentPage - 1) * itemsPerPage;
-	const paginatedUsers = filtered_users.slice(
-		startIndex,
-		startIndex + itemsPerPage
+	const totalPages = Math.max(
+		1,
+		Math.ceil(query_users.data.count / itemsPerPage)
 	);
 
 	const handlePageChange = (page: number) => {
@@ -171,9 +240,20 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		setSearchParams(newParams);
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	};
-	const handleAddFriend = (target: string) => {
+	const action_pending =
+		mut_friend_request_send.isPending ||
+		mut_friend_request_cancel.isPending ||
+		mut_friend_request_accept.isPending ||
+		mut_friend_request_reject.isPending;
+
+	const handleAddFriend = (target: string) =>
 		mut_friend_request_send.mutate(target);
-	};
+	const handleCancelRequest = (target: string) =>
+		mut_friend_request_cancel.mutate(target);
+	const handleAcceptRequest = (target: string) =>
+		mut_friend_request_accept.mutate(target);
+	const handleRejectRequest = (target: string) =>
+		mut_friend_request_reject.mutate(target);
 	return (
 		<>
 			<PageHeader title="Find Users" />
@@ -218,13 +298,16 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 							role="list"
 							aria-label="Search results"
 						>
-							{paginatedUsers.map((user) => (
+							{filtered_users.map((user) => (
 								<div key={user.username} role="listitem">
 									<UserCard
 										{...user}
 										userState={userState}
-										disabled={mut_friend_request_send.isPending}
+										disabled={action_pending}
 										onAddFriend={() => handleAddFriend(user.username)}
+										onCancelRequest={() => handleCancelRequest(user.username)}
+										onAcceptRequest={() => handleAcceptRequest(user.username)}
+										onRejectRequest={() => handleRejectRequest(user.username)}
 									/>
 								</div>
 							))}
@@ -232,7 +315,8 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 
 						<Pagination
 							currentPage={currentPage}
-							totalPages={Math.max(1, totalPages)}
+							totalPages={totalPages}
+							totalItems={query_users.data.count}
 							onPageChange={handlePageChange}
 							itemsPerPage={itemsPerPage}
 							onItemsPerPageChange={(items) => {

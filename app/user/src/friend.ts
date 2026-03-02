@@ -7,8 +7,43 @@ import {
 	notification_users,
 } from './db/schema';
 import { db } from './utils/db';
-import { eq, and, or, ilike } from 'drizzle-orm';
-import { FoilCTF_Error, FoilCTF_Success } from './utils/types';
+import { eq, and, or, ilike, count as sql_count } from 'drizzle-orm';
+
+
+export class FoilCTF_Error extends Error {
+	public statusCode: number;
+	constructor(message: string, statusCode: number) {
+		super(message);
+		this.statusCode = statusCode;
+
+		this.name = 'FoilCTF_Error';
+	}
+
+	toJSON() {
+		return {
+			error: true,
+			message: this.message,
+			status: this.statusCode,
+		};
+	}
+}
+
+export class FoilCTF_Success {
+	public statusCode: number;
+	public message: string;
+
+	constructor(message: string, statusCode: number) {
+		this.statusCode = statusCode;
+		this.message = message;
+	}
+
+	toJSON() {
+		return {
+			message: this.message,
+			status: this.statusCode,
+		};
+	}
+}
 
 export async function listFriends(req: Request, res: Response) {
 	const decodedUser = res.locals.user;
@@ -32,6 +67,12 @@ export async function listFriends(req: Request, res: Response) {
 				eq(friends.username_2, decodedUser.username)
 			);
 
+	const count_result = await db
+		.select({ total: sql_count() })
+		.from(friends)
+		.where(searchFilter);
+	const total = count_result[0]?.total ?? 0;
+
 	const dbFriends = await db
 		.select()
 		.from(friends)
@@ -47,6 +88,7 @@ export async function listFriends(req: Request, res: Response) {
 		data: decodedUserFriends,
 		limit,
 		page,
+		count: total,
 	});
 }
 
@@ -60,27 +102,48 @@ export async function listFriendRequests(
 	const limit = Math.max(Number(req.query.limit) || 10, 1);
 	const page = Math.max(Number(req.query.page) || 1, 1);
 	const search = req.query.q as string;
+	const type = (req.query.type as string) || 'all'; // 'sent' | 'received' | 'all'
 
-	const filters = [
-		eq(friend_requests.receiver_name, decodedUser.username),
-		eq(friend_requests.sender_name, decodedUser.username),
-	];
-	if (search)
-		filters.push(
-			ilike(friend_requests.sender_name, `${search}%`),
-			ilike(friend_requests.receiver_name, `${search}%`)
+	let whereClause;
+	if (type === 'sent') {
+		whereClause = search
+			? and(
+					eq(friend_requests.sender_name, decodedUser.username),
+					ilike(friend_requests.receiver_name, `%${search}%`)
+				)
+			: eq(friend_requests.sender_name, decodedUser.username);
+	} else if (type === 'received') {
+		whereClause = search
+			? and(
+					eq(friend_requests.receiver_name, decodedUser.username),
+					ilike(friend_requests.sender_name, `%${search}%`)
+				)
+			: eq(friend_requests.receiver_name, decodedUser.username);
+	} else {
+		whereClause = or(
+			eq(friend_requests.receiver_name, decodedUser.username),
+			eq(friend_requests.sender_name, decodedUser.username)
 		);
+	}
+
+	const count_result = await db
+		.select({ total: sql_count() })
+		.from(friend_requests)
+		.where(whereClause);
+	const total = count_result[0]?.total ?? 0;
 
 	const requests = await db
 		.select()
 		.from(friend_requests)
-		.where(or(...filters))
+		.where(whereClause)
 		.limit(limit)
 		.offset(limit * (page - 1));
+
 	return res.status(200).json({
 		data: requests,
 		limit,
 		page,
+		count: total,
 	});
 }
 
