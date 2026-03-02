@@ -217,10 +217,11 @@ Before running this project, ensure you have the following installed:
 - [Prometheus Monitoring](https://prometheus.io/docs/introduction/overview/)
 - [Grafana Dashboards](https://grafana.com/docs/grafana/latest/)
 
-**AI Usage:**
-- **Tasks:** [e.g, Documentation]
-- **Parts of Project:** [e.g, Comments]
-- **Tools Used:** [e.g, GitHub Copilot, ChatGPT, Claude]
+## AI Usage
+
+- **Tasks:** Implementing large text, grammar correction, searching, writing Documentation.
+- **Parts of Project:** README.md, Privacy and Policies, Documentation.
+- **Tools Used:** GitHub Copilot, ChatGPT, Claude.
 
 ## Known Limitations
 
