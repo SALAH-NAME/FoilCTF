@@ -1,20 +1,35 @@
 {
-  "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
+	"compilerOptions": {
+		// File Layout
+		"rootDir": "src",
+		"outDir": "dist",
 
-		"strict": true,
-
-		"target": "esnext",
+		// Environment Settings
 		"module": "nodenext",
-		"moduleResolution": "nodenext",
-		"rewriteRelativeImportExtensions": true,
+		"target": "es2020",
 
+		// For nodejs:
+		"lib": ["esnext"],
+
+		// Other Outputs
 		"sourceMap": true,
-		"emitDecoratorMetadata": true,
-		"experimentalDecorators": true,
-		"strictPropertyInitialization": false
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+		"declaration": true,
+		"declarationMap": true,
+
+		// Stricter Typechecking Options
+		"noUncheckedIndexedAccess": true,
+		"exactOptionalPropertyTypes": true,
+
+		// Recommended Options
+		"strict": true,
+		"isolatedModules": true,
+		"noUncheckedSideEffectImports": true,
+		"moduleDetection": "force",
+		"skipLibCheck": true,
+
+		"esModuleInterop": true,
+		"moduleResolution": "nodenext",
+		"resolveJsonModule": true
+	},
+	"include": ["src"]
 }

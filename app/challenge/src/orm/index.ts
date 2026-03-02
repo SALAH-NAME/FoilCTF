@@ -1,5 +1,5 @@
-import { Sequelize } from 'sequelize';
-import { initModels } from './entities/init-models.ts';
+import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
 
 import {
 	ENV_DATABASE_HOST,
@@ -7,28 +7,12 @@ import {
 	ENV_DATABASE_USER,
 	ENV_DATABASE_PASS,
 	ENV_DATABASE_NAME,
-} from '../env.ts';
+} from '../env.js';
 
-const ORM_CONNECTION_STRING = `postgres://${ENV_DATABASE_USER}:${ENV_DATABASE_PASS}@${ENV_DATABASE_HOST}:${ENV_DATABASE_PORT}/${ENV_DATABASE_NAME}`;
-const orm = new Sequelize(ORM_CONNECTION_STRING, {
-	logging: false,
-});
+const DATABASE_URL = `postgresql://${ENV_DATABASE_USER}:${ENV_DATABASE_PASS}@${ENV_DATABASE_HOST}:${ENV_DATABASE_PORT}/${ENV_DATABASE_NAME}?sslmode=disable`;
+export const pool = new Pool({ connectionString: DATABASE_URL });
+export const orm = drizzle({ client: pool });
 
-function ormInitModels() {
-	const models = initModels(orm);
-
-	models.challenges_attachments.belongsTo(models.challenges, {
-		targetKey: 'id',
-		foreignKey: 'challenge_id',
-	});
-	models.challenges_attachments.belongsTo(models.attachments, {
-		targetKey: 'id',
-		foreignKey: 'attachment_id',
-	});
-
-	return models;
-}
-
-export { ormInitModels, ORM_CONNECTION_STRING };
-export * from './entities/init-models.ts';
+export * from './entities/schema.js';
+export * from './entities/relations.js';
 export default orm;

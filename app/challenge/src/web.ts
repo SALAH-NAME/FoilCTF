@@ -14,6 +14,7 @@ export function respondJSON(
 
 type StatusCode = keyof typeof STATUS_CODES & number;
 export function respondStatus(res: Response, status_code: StatusCode = 200) {
-	res.status(status_code);
-	res.end();
+	res.status(status_code)
+		.send(JSON.stringify({ ok: status_code >= 200 && status_code < 300 }))
+		.end();
 }
