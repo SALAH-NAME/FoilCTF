@@ -666,9 +666,8 @@ export const updateTeam = async (
 				})
 				.where(eq(table_teams.name, team.name));
 		}
-
-		return res.status(200).json(new FoilCTF_Success('Created', 200));
 	});
+	return res.status(200).json(new FoilCTF_Success('Created', 200));
 };
 
 export const getTeams = async (req: Request, res: Response) => {

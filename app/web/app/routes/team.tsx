@@ -245,69 +245,10 @@ export async function remote_delete_team(token: string, team_name: string) {
 	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
 export default function Page({ loaderData }: Route.ComponentProps) {
-	const session_user = loaderData.user;
+	const session = loaderData.user;
+
 	const navigate = useNavigate();
-
-	const query_user = useQuery({
-		queryKey: [
-			'user',
-			{ username: session_user?.username },
-			{ token_access: session_user?.token_access },
-		],
-		initialData: null,
-		queryFn: async () => {
-			if (!session_user) return null;
-			return await fetch_user(session_user.token_access);
-		},
-	});
-	const user = query_user.data;
-
-	const query_members = useQuery({
-		queryKey: [
-			'team-members',
-			{ team_name: user?.team_name ?? null },
-			{ token_access: session_user?.token_access },
-		],
-		initialData: [],
-		queryFn: async () => {
-			if (!session_user || !user?.team_name) return [];
-			const data = await remote_fetch_members(user.team_name);
-			return data?.members ?? [];
-		},
-	});
-	const members = query_members.data;
-
-	const query_details = useQuery({
-		queryKey: [
-			'team',
-			{ team_name: user?.team_name ?? null },
-			{ token_access: session_user?.token_access },
-		],
-		initialData: null,
-		queryFn: async () => {
-			if (!session_user || !user?.team_name) return null;
-			return await remote_fetch_details(user.team_name);
-		},
-	});
-	const details = query_details.data;
-
-	const query_requests = useQuery({
-		queryKey: [
-			'team-requests',
-			{ team_name: user?.team_name ?? null },
-			{ token_access: session_user?.token_access },
-		],
-		initialData: [],
-		queryFn: async () => {
-			if (!session_user?.token_access || !user?.team_name) return [];
-			const { data: requests } = await remote_fetch_requests(
-				session_user?.token_access,
-				user?.team_name
-			);
-			return requests;
-		},
-	});
-	const requests = query_requests.data;
+	const { addToast } = useToast();
 
 	const [activeTab, setActiveTab] = useState<'members' | 'requests'>('members');
 	const [showSettings, setShowSettings] = useState(false);
@@ -327,18 +268,69 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 	const setEditSettingsDescription = (description: string) => {
 		setEditSettings((value) => ({ ...value, description }));
 	};
-	useEffect(() => {
-		if (!details) return;
-		setEditSettings((value) => ({
-			...value,
-			is_locked: details.is_locked ?? false,
-			description: details.description ?? '',
-		}));
-	}, [details?.is_locked, details?.description]);
-
-	const { addToast } = useToast();
 
 	type TeamPayload = { is_locked?: boolean; description?: string };
+
+	const query_user = useQuery({
+		queryKey: [
+			'user',
+			{ username: session?.username },
+			{ token_access: session?.token_access },
+		],
+		initialData: null,
+		queryFn: async () => {
+			if (!session) return null;
+			return await fetch_user(session.token_access);
+		},
+	});
+	const user = query_user.data;
+
+	const query_members = useQuery({
+		queryKey: [
+			'team-members',
+			{ team_name: user?.team_name ?? null },
+			{ token_access: session?.token_access },
+		],
+		initialData: [],
+		queryFn: async () => {
+			if (!session || !user?.team_name) return [];
+			const data = await remote_fetch_members(user.team_name);
+			return data?.members ?? [];
+		},
+	});
+	const members = query_members.data;
+
+	const query_details = useQuery({
+		queryKey: [
+			'team',
+			{ team_name: user?.team_name ?? null },
+			{ token_access: session?.token_access },
+		],
+		initialData: null,
+		queryFn: async () => {
+			if (!session || !user?.team_name) return null;
+			return await remote_fetch_details(user.team_name);
+		},
+	});
+	const details = query_details.data;
+
+	const query_requests = useQuery({
+		queryKey: [
+			'team-requests',
+			{ team_name: user?.team_name ?? null },
+			{ token_access: session?.token_access },
+		],
+		initialData: [],
+		queryFn: async () => {
+			if (!session?.token_access || !user?.team_name) return [];
+			const { data: requests } = await remote_fetch_requests(
+				session?.token_access,
+				user?.team_name
+			);
+			return requests;
+		},
+	});
+	const requests = query_requests.data;
 
 	const queryClient = useQueryClient();
 	const mut_team_update = useMutation<
@@ -350,16 +342,17 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			payload: Partial<TeamPayload>;
 		}
 	>({
-		mutationFn: async ({ payload, token, team_name }) => {
+		mutationFn: async ({ payload, token }) => {
 			if (!token) throw new Error('Unauthorized');
 			if (Object.keys(payload).length === 0) return;
 
 			await remote_update_team(token, payload);
-			await queryClient.invalidateQueries({
-				queryKey: ['team', { team_name }],
-			});
 		},
-		async onSuccess() {
+		async onSuccess(_data, { team_name, token }) {
+			await queryClient.invalidateQueries({
+				queryKey: ['team', { team_name }, { token_access: token }],
+			});
+
 			setShowSettings(false);
 			addToast({
 				variant: 'success',
@@ -383,7 +376,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			payload.is_locked = editSettings.is_locked;
 		mut_team_update.mutate({
 			team_name: user?.team_name,
-			token: session_user?.token_access,
+			token: session?.token_access,
 			payload,
 		});
 	};
@@ -399,12 +392,18 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			await remote_update_team_request(token, team_name, username, 'PUT');
 		},
 		async onSuccess() {
-			await queryClient.invalidateQueries({
-				queryKey: ['team-requests', { team_name: user?.team_name ?? null }],
-			});
-			await queryClient.invalidateQueries({
-				queryKey: ['team-members', { team_name: user?.team_name ?? null }],
-			});
+			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: ['team-requests', { team_name: user?.team_name ?? null }],
+				}),
+				queryClient.invalidateQueries({
+					queryKey: ['team-members', { team_name: user?.team_name ?? null }],
+				}),
+				queryClient.invalidateQueries({
+					queryKey: ['team', { team_name: user?.team_name ?? null }],
+				}),
+			]);
+
 			setShowSettings(false);
 			addToast({
 				variant: 'success',
@@ -422,7 +421,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 	});
 	const handleAcceptRequest = (username: string) =>
 		mut_team_request_accept.mutate({
-			token: session_user?.token_access,
+			token: session?.token_access,
 			team_name: user?.team_name,
 			username,
 		});
@@ -458,7 +457,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 	});
 	const handleRejectRequest = (username: string) =>
 		mut_team_request_reject.mutate({
-			token: session_user?.token_access,
+			token: session?.token_access,
 			team_name: user?.team_name,
 			username,
 		});
@@ -499,7 +498,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		mut_team_member_kick.mutate({
 			username,
 			team_name: user?.team_name,
-			token: session_user?.token_access,
+			token: session?.token_access,
 		});
 
 	const mut_team_member_crown = useMutation<
@@ -536,7 +535,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 	});
 	const handleMakeCaptain = (username: string) =>
 		mut_team_member_crown.mutate({
-			token: session_user?.token_access,
+			token: session?.token_access,
 			team_name: user?.team_name,
 			username,
 		});
@@ -583,7 +582,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 	});
 	const handleLeaveTeam = () =>
 		mut_team_member_leave.mutate({
-			token: session_user?.token_access,
+			token: session?.token_access,
 			team_name: user?.team_name,
 		});
 
@@ -623,12 +622,12 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 	});
 	const handleDeleteTeam = () =>
 		mut_team_delete.mutate({
-			token: session_user?.token_access,
+			token: session?.token_access,
 			team_name: user?.team_name,
 		});
 
 	const disabled = mut_team_update.isPending;
-	const is_captain = details?.captain_name === session_user?.username;
+	const is_captain = details?.captain_name === session?.username;
 
 	const tabs = [
 		{
@@ -645,6 +644,15 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			label: 'Join Requests',
 			count: requests.length,
 		});
+
+	useEffect(() => {
+		if (!details) return;
+		setEditSettings((value) => ({
+			...value,
+			is_locked: details.is_locked ?? false,
+			description: details.description ?? '',
+		}));
+	}, [details?.is_locked, details?.description]);
 	return (
 		<>
 			<PageHeader
@@ -736,7 +744,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 												{...member}
 												is_captain={member.username === details?.captain_name}
 												is_editable={
-													session_user?.username === details?.captain_name
+													session?.username === details?.captain_name
 												}
 												onMakeCaptain={() => handleMakeCaptain(member.username)}
 												onKick={() => handleKickMember(member.username)}
