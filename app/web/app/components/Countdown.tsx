@@ -76,7 +76,7 @@ export default function Countdown({
 				<div key={unit} className="flex flex-col items-center">
 					<div
 						aria-label={`${value} ${unit}`}
-						className="bg-primary text-white font-bold text-xl md:text-2xl lg:text-3xl px-2 py-2 md:px-4 md:py-3 rounded-md w-12 md:w-20 text-center"
+						className="bg-primary text-white font-bold text-sm md:text-xl lg:text-2xl px-1 py-1 lg:px-2 lg:py-2 rounded-md w-12 lg:w-16 text-center"
 					>
 						{value.toString().padStart(2, '0')}
 					</div>
