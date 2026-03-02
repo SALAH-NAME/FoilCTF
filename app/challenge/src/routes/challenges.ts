@@ -1,13 +1,17 @@
 import * as vb from 'valibot';
+import { count, eq, ilike  } from 'drizzle-orm';
 import { type Request, type Response } from 'express';
+import { createSelectSchema, createInsertSchema, createUpdateSchema } from 'drizzle-valibot'
 
-import { challenges as Challenges } from '../orm/index.ts';
-import { respondJSON, respondStatus } from '../web.ts';
-import {
-	schema_challenge_create,
-	schema_challenge_update,
-	schema_pagination,
-} from '../schemas.ts';
+import { schema_pagination } from '../schemas.js';
+import { respondJSON, respondStatus } from '../web.js';
+import orm, { challenges as table_challenges } from '../orm/index.js';
+
+export const valibot_select_challenge = createSelectSchema(table_challenges);
+export const valibot_insert_challenge = createInsertSchema(table_challenges);
+export const valibot_update_challenge = createUpdateSchema(table_challenges);
+
+export type SelectChallenge = vb.InferOutput<typeof valibot_select_challenge>;
 
 export async function route_challenges_list(
 	req: Request,
@@ -19,25 +23,22 @@ export async function route_challenges_list(
 		return respondJSON(res, { errors }, 400);
 	}
 
-	const challenges = await Challenges.findAll({
-		order: [
-			['id', 'ASC'],
-			['name', 'ASC'],
-		],
-		attributes: {
-			include: [
-				'name',
-				'description',
-				'reward',
-				'reward_min',
-				'reward_first_blood',
-				'reward_decrements',
-			],
-		},
-		limit: parse_result.output.limit,
-		offset: parse_result.output.offset,
+	const search_term = '%' + (parse_result.output.search ?? '') + '%';
+	const data = await orm.transaction(async (tx) => {
+		const challenges = await tx
+			.select()
+			.from(table_challenges)
+			.orderBy(table_challenges.id, table_challenges.name)
+			.where(ilike(table_challenges.name, search_term))
+			.limit(parse_result.output.limit)
+			.offset(parse_result.output.offset);
+
+		const [challenges_counter] = await tx
+			.select({ count: count() })
+			.from(table_challenges);
+		return { challenges, count: challenges_counter?.count ?? 0 };
 	});
-	respondJSON(res, challenges);
+	respondJSON(res, data);
 }
 export async function route_challenges_delete(
 	_req: Request,
@@ -51,8 +52,8 @@ export async function route_challenge_create(
 	req: Request,
 	res: Response
 ): Promise<void> {
-	const parse_result = await vb.safeParseAsync(
-		schema_challenge_create,
+	const parse_result = vb.safeParse(
+		valibot_insert_challenge,
 		req.body
 	);
 	if (!parse_result.success) {
@@ -60,17 +61,18 @@ export async function route_challenge_create(
 		return respondJSON(res, { errors }, 400);
 	}
 
-	const challenge = await Challenges.create(parse_result.output);
+	const { output: values } = parse_result;
+	const challenge = await orm.insert(table_challenges).values(values).returning();
 	respondJSON(res, { challenge }, 201);
 }
 export async function route_challenge_update(
 	req: Request<{ id: string }>,
-	res: Response<any, { challenge: Challenges }>
+	res: Response<any, { challenge: SelectChallenge }>
 ): Promise<void> {
-	const challenge = res.locals.challenge;
+	const { challenge } = res.locals;
 
-	const parse_result = await vb.safeParseAsync(
-		schema_challenge_update,
+	const parse_result = vb.safeParse(
+		valibot_update_challenge,
 		req.body
 	);
 	if (!parse_result.success) {
@@ -79,7 +81,7 @@ export async function route_challenge_update(
 	}
 
 	try {
-		await challenge.update(parse_result.output);
+		await orm.update(table_challenges).set(parse_result.output).where(eq(table_challenges.id, challenge.id));
 		respondStatus(res, 200);
 	} catch (error) {
 		console.error(`Could not update challenge#${challenge.id}:`, error);
@@ -88,18 +90,16 @@ export async function route_challenge_update(
 }
 export async function route_challenge_delete(
 	_req: Request<{ id: string }>,
-	res: Response<any, { challenge: Challenges }>
+	res: Response<any, { challenge: SelectChallenge }>
 ): Promise<void> {
 	const { id } = res.locals.challenge;
-	await Challenges.destroy({ where: { id } });
-
+	await orm.delete(table_challenges).where(eq(table_challenges.id, id));
 	respondStatus(res, 200);
 }
 export async function route_challenge_inspect(
 	_req: Request<{ id: string }>,
-	res: Response<any, { challenge: Challenges }>
+	res: Response<any, { challenge: SelectChallenge }>
 ): Promise<void> {
-	const challenge = res.locals.challenge as Challenges;
-
+	const { challenge } = res.locals;
 	respondJSON(res, { challenge }, 200);
 }
