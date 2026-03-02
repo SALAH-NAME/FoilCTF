@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
+import type { EventStatus } from './EventCard';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface CountdownProps {
 	targetDate: string;
+	status?: EventStatus,
 	className?: string;
 }
 
@@ -13,6 +16,7 @@ interface TimeLeft {
 }
 
 export default function Countdown({
+	status,
 	targetDate,
 	className = '',
 }: CountdownProps) {
@@ -27,26 +31,38 @@ export default function Countdown({
 				seconds: Math.floor((difference / 1000) % 60),
 			};
 		}
-
 		return null;
 	};
 
+	const [invalidateQuery, setInvalidateQuery] = useState(false);
 	const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(
 		calculateTimeLeft()
 	);
 
+	const queryClient = useQueryClient();
 	useEffect(() => {
 		const timer = setInterval(() => {
-			setTimeLeft(calculateTimeLeft());
+			const time_left = calculateTimeLeft();
+			if (time_left === null)
+				setInvalidateQuery(true);
+			setTimeLeft(time_left);
 		}, 1000);
 
 		return () => clearInterval(timer);
 	}, [targetDate]);
 
+	useEffect(() => {
+		if (!invalidateQuery)
+			return ;
+
+		const timeout = setTimeout(() => queryClient.invalidateQueries({ queryKey: ['event'] }), 5_000);
+		return (() => clearTimeout(timeout));
+	}, [invalidateQuery]);
+
 	if (!timeLeft) {
 		return (
 			<p className="text-dark/60 font-medium" role="status" aria-live="polite">
-				Event has started!
+				Event {status === 'published' ? 'has started' : 'is done'}!
 			</p>
 		);
 	}
@@ -61,7 +77,7 @@ export default function Countdown({
 				<div key={unit} className="flex flex-col items-center">
 					<div
 						aria-label={`${value} ${unit}`}
-						className="bg-primary text-white font-bold text-xl md:text-2xl lg:text-3xl px-2 py-2 md:px-4 md:py-3 rounded-md w-12 lg:w-20 text-center"
+						className="bg-primary text-white font-bold text-xl md:text-2xl lg:text-3xl px-2 py-2 md:px-4 md:py-3 rounded-md w-12 md:w-20 text-center"
 					>
 						{value.toString().padStart(2, '0')}
 					</div>

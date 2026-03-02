@@ -1,5 +1,5 @@
 import { data, redirect, Form, Link, useSearchParams } from 'react-router';
-import { useEffect, useState, type SubmitEvent } from 'react';
+import { useEffect, useState, type ChangeEvent, type SubmitEvent } from 'react';
 
 import type { Route } from './+types/signin';
 
@@ -189,7 +189,7 @@ export default function Page({ actionData }: Route.ComponentProps) {
 						type="text"
 						label="Username"
 						value={username}
-						onChange={(e) => {
+						onChange={(e: ChangeEvent<HTMLInputElement>) => {
 							const value = e.target.value;
 							setUsername(value);
 							handleChange('username', value);
@@ -205,8 +205,9 @@ export default function Page({ actionData }: Route.ComponentProps) {
 						name="password"
 						type="password"
 						label="Password"
+						autoComplete="on"
 						value={password}
-						onChange={(e) => {
+						onChange={(e: ChangeEvent<HTMLInputElement>) => {
 							const value = e.target.value;
 							setPassword(value);
 							handleChange('password', value);

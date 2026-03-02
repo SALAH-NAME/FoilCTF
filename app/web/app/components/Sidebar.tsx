@@ -10,7 +10,8 @@ import Logo from '~/components/Logo';
 import NotificationBell from '~/components/NotificationBell';
 import NotificationPanel from '~/components/NotificationPanel';
 import { NavLink } from '~/components/NavLink';
-import { fetch_user } from '~/routes/profile';
+import { fetch_profile, fetch_user } from '~/routes/profile';
+import ProfileAvatar from './ProfileAvatar';
 
 type SidebarProps = {
 	session_user: SessionUser | undefined;
@@ -64,7 +65,21 @@ export default function Sidebar({ session_user }: SidebarProps) {
 			return await fetch_user(session_user.token_access);
 		},
 	});
+	const query_profile = useQuery({
+		queryKey: [
+			'profile',
+			{ username: session_user?.username },
+			{ token_access: session_user?.token_access },
+		],
+		initialData: null,
+		queryFn: async () => {
+			if (!session_user) return null;
+			return await fetch_profile(session_user.token_access, session_user.username);
+		},
+	});
+
 	const user = query_user.data;
+	const profile = query_profile.data;
 	return (
 		<>
 			{isMobileOpen && (
@@ -100,12 +115,7 @@ export default function Sidebar({ session_user }: SidebarProps) {
 
 						<nav className="p-4 space-y-2" aria-label="Main navigation">
 							<NavLink item={{ to: '/', label: 'Home', icon: 'home' }} />
-							{!user && (
-								<NavLink
-									item={{ to: '/signin', label: 'Sign In', icon: 'user' }}
-								/>
-							)}
-							{user && (
+							{user?.role === 'admin' && (
 								<NavLink
 									item={{ to: '/dashboard', label: 'Dashboard', icon: 'chart' }}
 								>
@@ -175,6 +185,11 @@ export default function Sidebar({ session_user }: SidebarProps) {
 									/>
 								)}
 							</NavLink>
+							{!user && (
+								<NavLink
+									item={{ to: '/signin', label: 'Sign In', icon: 'user' }}
+								/>
+							)}
 						</nav>
 					</div>
 
@@ -198,11 +213,7 @@ export default function Sidebar({ session_user }: SidebarProps) {
 									<div
 										className={`w-8 h-8 my-1  rounded-full flex items-center justify-center shrink-0 ${is_profile_active ? 'bg-white' : 'bg-secondary'}`}
 									>
-										<Icon
-											name="user"
-											className={`size-4 ${is_profile_active ? 'text-black' : 'text-white'}`}
-											aria-hidden={true}
-										/>
+										<ProfileAvatar avatar={profile?.avatar} className="object-cover rounded-full outline" />
 									</div>
 									{showText && (
 										<div

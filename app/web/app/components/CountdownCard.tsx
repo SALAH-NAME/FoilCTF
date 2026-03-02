@@ -1,4 +1,5 @@
 import Countdown from './Countdown';
+import type { EventStatus } from './EventCard';
 
 type CountdownVariant = 'upcoming' | 'active';
 
@@ -6,9 +7,11 @@ interface CountdownCardProps {
 	variant: CountdownVariant;
 	targetDate: string;
 	title?: string;
+	status?: EventStatus;
 }
 
 export default function CountdownCard({
+	status,
 	variant,
 	targetDate,
 	title,
@@ -31,7 +34,7 @@ export default function CountdownCard({
 				<h2 className="text-lg md:text-xl font-semibold text-foreground">
 					{title || defaultTitles[variant]}
 				</h2>
-				<Countdown targetDate={targetDate} />
+				<Countdown status={status} targetDate={targetDate} />
 			</div>
 		</div>
 	);

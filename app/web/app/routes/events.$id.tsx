@@ -93,8 +93,9 @@ export async function remote_fetch_team(token: string) {
 }
 export async function remote_join_event(token: string, id: string | number) {
 	const url = new URL(`/api/events/${id}/join`, import.meta.env.BROWSER_REST_EVENTS_ORIGIN);
+	const method = 'POST';
 	const headers = new Headers({ 'Authorization': `Bearer ${token}` });
-	const res = await fetch(url, { headers });
+	const res = await fetch(url, { method, headers });
 
 	const content_type =
 		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
@@ -109,6 +110,44 @@ export async function remote_join_event(token: string, id: string | number) {
 	};
 	return json as JSONData_Join;
 }
+export async function remote_leave_event(token: string, id: string | number) {
+	const url = new URL(`/api/events/${id}/leave`, import.meta.env.BROWSER_REST_EVENTS_ORIGIN);
+	const method = 'DELETE';
+	const headers = new Headers({ 'Authorization': `Bearer ${token}` });
+	const res = await fetch(url, { method, headers });
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
+
+	type JSONData_Leave = {
+		ok: true,
+	};
+	return json as JSONData_Leave;
+}
+export async function remote_delete_event(token: string, id: string | number) {
+	const url = new URL(`/api/admin/events/${id}`, import.meta.env.BROWSER_REST_EVENTS_ORIGIN);
+	const method = 'DELETE';
+	const headers = new Headers({ 'Authorization': `Bearer ${token}` });
+	const res = await fetch(url, { method, headers });
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
+
+	type JSONData_Delete = {
+		ok: true,
+	};
+	return json as JSONData_Delete;
+}
 export default function Page({ params, loaderData }: Route.ComponentProps) {
 	const { user } = loaderData;
 
@@ -116,6 +155,7 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 	const { addToast } = useToast();
 
 	const [show_modal_edit, setShowModalEdit] = useState(false);
+	const [show_modal_delete, setShowModalDelete] = useState(false);
 	const [show_modal_unregister, setShowModalUnregister] = useState(false);
 
 	const queryClient = useQueryClient();
@@ -171,41 +211,104 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 			});
 		}
 	});
+	const mut_leave = useMutation<unknown, Error, MutationPayload<{ event_id?: string | number; }>>({
+		async mutationFn({ token, event_id }) {
+			if (!token)
+				throw new Error('Unauthorized');
+			if (!event_id)
+				throw new Error('Event not found');
+			await remote_leave_event(token, event_id);
+		},
+		async onSuccess() {
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: ['event'] }),
+			]);
+
+			addToast({
+				variant: 'success',
+				title: 'Team left the event',
+				message: 'Your team is no longer participating in the event',
+			});
+			setShowModalUnregister(false);
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Team unregistration',
+				message: err.message,
+			});
+		}
+	});
+	const mut_delete = useMutation<unknown, Error, MutationPayload<{ event_id?: string | number; }>>({
+		async mutationFn({ token, role, event_id }) {
+			if (!token || role !== 'admin')
+				throw new Error('Unauthorized');
+			if (!event_id)
+				throw new Error('Event not found');
+			await remote_delete_event(token, event_id);
+		},
+		async onSuccess() {
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: ['events'] }),
+			]);
+
+			addToast({
+				variant: 'success',
+				title: 'Event deleted',
+				message: 'Event has been deleted successfully',
+			});
+			await navigate('/events');
+			// setShowModalUnregister(false);
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Event deletion',
+				message: err.message,
+			});
+		}
+	});
 
 	const is_registered = Boolean(user && data_event && data_event.user_status.is_joined);
-	const can_show_play = Boolean(is_registered || data_event?.user_status.is_organizer);
+	const can_show_play = Boolean((is_registered && data_event?.event.status === 'active') || data_event?.user_status.is_organizer);
 	const can_show_registration = Boolean(user && data_event && data_event?.event.status === 'published' && data_team?.captain_name === user.username);
 	const organizer = ((data_event?.organizers.map(x => x.username).filter(x => !!x).join(', ')) || 'FoilCTF');
 
-	const disabled = query_event.isPending || mut_join.isPending;
+	const disabled = query_event.isPending || mut_join.isPending || mut_leave.isPending || mut_delete.isPending;
 
 	const handleCancelUnregister = () => setShowModalUnregister(false);
 	const handleConfirmUnregister = () => {
-		addToast({
-			variant: 'warning',
-			title: 'Unregistered',
-			message: `You have been removed from ${data_event?.event.name ?? 'N/A'}.`,
-		});
-		setShowModalUnregister(false);
+		const role = user?.role;
+		const token = user?.token_access;
+		const event_id = params.id;
+		mut_leave.mutate({ token, role, event_id });
 	};
 
 	const handleRegister = () => {
+		const role = user?.role;
 		const token = user?.token_access;
 		const event_id = params.id;
-		mut_join.mutate({ token, event_id });
+		mut_join.mutate({ token, role, event_id });
 	};
-	const handleUnregister = () => {
-		alert('Unimplemented');
-	};
+	const handleUnregister = () => setShowModalUnregister(true);
+
+	const handleCloseDelete = () => setShowModalDelete(false);
+	const handleSubmitDelete = () => {
+		const role = user?.role;
+		const token = user?.token_access;
+		const event_id = params.id;
+		mut_delete.mutate({ token, role, event_id });
+	}
 
 	const formatDate = (date_string?: string) => {
 		if (!date_string)
 			return 'N/A';
-		return new Date(date_string).toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric',
+		const intl = new Intl.DateTimeFormat('en-MA', {
+			dateStyle: 'long',
+			timeStyle: 'short',
+			hour12: false,
 		});
+		return intl.format(new Date(date_string));
 	};
 	const getStatusColor = (status?: string) => {
 		switch (status) {
@@ -250,7 +353,17 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 			<PageHeader
 				title={data_event?.event.name ?? 'N/A'}
 				className="mb-4"
-				action={ user?.role === "admin" && 
+				action={ Boolean(data_event) && user?.role === "admin" && <div className="inline-flex gap-4 items-center">
+					<Button
+						disabled={disabled}
+						variant="danger"
+						size="sm"
+						onClick={() => setShowModalDelete(true)}
+						aria-label="Delete this event"
+					>
+						<Icon name="trash" className="size-4" aria-hidden={true} />
+						Delete Event
+					</Button>
 					<Button
 						disabled={disabled}
 						variant="ghost"
@@ -260,7 +373,9 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 					>
 						<Icon name="edit" className="size-4" aria-hidden={true} />
 						Edit Event
-					</Button> }
+					</Button>
+					</div>
+				}
 			/>
 
 			<section aria-labelledby="event-title ">
@@ -344,6 +459,7 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 						{data_event?.event.status === 'published' && (
 							<div className="mb-6">
 								<CountdownCard
+									status={data_event?.event.status}
 									variant="upcoming"
 									targetDate={data_event?.event.start_time}
 								/>
@@ -352,21 +468,11 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 
 						{data_event?.event.status === 'active' && (
 							<div className="mb-6">
-								<CountdownCard variant="active" targetDate={data_event?.event.end_time} />
-							</div>
-						)}
-
-						{data_event?.event.status === 'ended' && (
-							<div className="mb-6">
-								<div
-									className={`col-span-full bg-linear-to-r from-gray-600/10 to-gray-600/5 border-neutral-300 border rounded-md p-4 md:p-6`}
-								>
-									<div className="flex flex-col items-center gap-3 md:gap-4">
-										<h2 className="text-lg md:text-xl font-semibold text-foreground">
-											Event has Ended
-										</h2>
-									</div>
-								</div>
+								<CountdownCard
+									status={data_event?.event.status}
+									variant="active"
+									targetDate={data_event?.event.end_time}
+								/>
 							</div>
 						)}
 
@@ -439,7 +545,7 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 							<dt className="text-sm font-medium text-muted">Duration</dt>
 							<dd className="text-lg font-semibold text-foreground">
 								<span>{formatDuration(data_event?.event.start_time, data_event?.event.end_time)}</span>
-								<span> days</span>
+								<span> day{(formatDuration(data_event?.event.start_time, data_event?.event.end_time) === 1) && 's'}</span>
 							</dd>
 						</div>
 						<div className="flex flex-col gap-2">
@@ -538,6 +644,59 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 								<p className="text-sm text-amber-800">
 									You will lose your current progress and may not be able to
 									re-register if the event reaches maximum capacity.
+								</p>
+							</div>
+						</div>
+					</div>
+				</div>
+			</Modal>
+			<Modal
+				isOpen={show_modal_delete}
+				onClose={handleCloseDelete}
+				title="Confirm event deletion"
+				size="sm"
+				footer={
+					<div className="flex gap-3 justify-end">
+						<Button
+							disabled={disabled}
+							variant="ghost"
+							onClick={handleCloseDelete}
+							type="button"
+							aria-label="Cancel"
+						>
+							Cancel
+						</Button>
+						<Button
+							disabled={disabled}
+							variant="danger"
+							onClick={handleSubmitDelete}
+							type="button"
+							aria-label="Delete"
+						>
+							Delete
+						</Button>
+					</div>
+				}
+			>
+				<div className="space-y-4">
+					<p className="text-foreground">
+						<span>Are you sure you want to delete event</span>
+						<strong className="font-semibold"> {data_event?.event.name ?? 'N/A'}</strong>?
+					</p>
+					<div
+						className="bg-amber-50 border border-amber-200 rounded-md p-4"
+						role="alert"
+					>
+						<div className="flex gap-3">
+							<Icon
+								name="warning"
+								className="w-5 h-5 text-amber-600 shrink-0 mt-0.5"
+								aria-hidden={true}
+							/>
+							<div className="flex-1">
+								<h3 className="font-semibold text-amber-900 mb-1">Warning</h3>
+								<p className="text-sm text-amber-800">
+									Every associated piece of data will be lost, that is including participations, chatrooms, challenges, and more...
 								</p>
 							</div>
 						</div>

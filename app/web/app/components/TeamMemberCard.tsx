@@ -4,6 +4,7 @@ import Icon from './Icon';
 import InfoText from './InfoText';
 import Button from './Button';
 import Modal from './Modal';
+import ProfileAvatar from './ProfileAvatar';
 
 interface TeamMemberCardProps {
 	username: string;
@@ -52,15 +53,7 @@ export default function TeamMemberCard({
 							className="size-16 rounded-full bg-linear-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-xl relative"
 							aria-hidden={true}
 						>
-							{avatar ? (
-								<img
-									src={avatar}
-									alt=""
-									className="size-full rounded-full object-cover"
-								/>
-							) : (
-								username.charAt(0).toUpperCase()
-							)}
+							<ProfileAvatar avatar={avatar ?? null} className="size-full rounded-full object-cover" />
 							{is_captain && (
 								<div
 									className="absolute -top-1 -right-1 bg-yellow-500 rounded-full p-1"

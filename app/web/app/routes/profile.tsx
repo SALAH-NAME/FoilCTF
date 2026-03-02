@@ -119,7 +119,7 @@ async function update_profile_information(
 	}
 }
 
-async function fetch_profile(token: string, username: string) {
+export async function fetch_profile(token: string, username: string) {
 	const uri = new URL(
 		`/api/profiles/${username}`,
 		import.meta.env.BROWSER_REST_USER_ORIGIN
@@ -691,16 +691,6 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 
 		window.location.href = uri_oauth.toString();
 	};
-	/*
-	const handleOAuth42Unlink = async () => {
-		addToast({
-			variant: 'warning',
-
-			title: 'Not implemented',
-			message: 'Unlinking is WIP',
-		});
-	};
-	*/
 
 	const fields = {
 		isprivate: profileData.isPrivateProfile,
@@ -717,6 +707,8 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 					<div className="md:block flex h-32 md:h-40 px-6 justify-center bg-linear-to-r from-primary to-secondary rounded-t-sm">
 						<div className="absolute ring-4 ring-white rounded-full translate-y-1/2">
 							<AvatarUpload
+								avatar={profileData.avatar ?? null}
+								token={token_access}
 								username={profileData.username}
 								currentAvatar={profileData.avatar ?? undefined}
 								onAvatarChange={handleAvatarChange}

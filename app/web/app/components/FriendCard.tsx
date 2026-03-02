@@ -3,6 +3,7 @@ import InfoText from './InfoText';
 import Button from './Button';
 import { useState } from 'react';
 import Modal from './Modal';
+import ProfileAvatar from './ProfileAvatar';
 
 interface FriendCardProps {
 	username: string;
@@ -53,15 +54,7 @@ export default function FriendCard({
 							className="size-16 rounded-full bg-linear-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-xl"
 							aria-hidden={true}
 						>
-							{avatar ? (
-								<img
-									src={avatar}
-									alt=""
-									className="size-full rounded-full object-cover"
-								/>
-							) : (
-								username.charAt(0).toUpperCase()
-							)}
+							<ProfileAvatar avatar={avatar ?? null} className="size-full rounded-full object-cover" />
 						</div>
 					</Link>
 

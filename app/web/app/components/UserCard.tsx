@@ -5,6 +5,7 @@ import type { SessionUser } from '~/session.server';
 import Icon from '~/components/Icon';
 import Button from '~/components/Button';
 import InfoText from '~/components/InfoText';
+import ProfileAvatar from './ProfileAvatar';
 
 export type FriendStatus = 'none' | 'sent' | 'received' | 'friends';
 
@@ -77,8 +78,8 @@ export default function UserCard({
 	};
 
 	return (
-		<article className="bg-white/70 rounded-md p-6 border border-dark/10 hover:border-primary transition-all duration-200 hover:shadow-lg">
-			<div className="flex items-start gap-4">
+		<article className="bg-white/70 rounded-md p-6 border border-dark/10 hover:border-primary transition-all duration-200 hover:shadow-lg h-full">
+			<div className="flex h-full gap-4">
 				<Link
 					to={`/users/${username}`}
 					className="shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus:rounded"
@@ -88,43 +89,37 @@ export default function UserCard({
 						className="size-16 rounded-full bg-linear-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-xl"
 						aria-hidden={true}
 					>
-						{avatar ? (
-							<img
-								src={avatar}
-								alt=""
-								className="size-full rounded-full object-cover"
-							/>
-						) : (
-							username.charAt(0).toUpperCase()
-						)}
+						<ProfileAvatar avatar={avatar ?? null} className="size-full rounded-full object-cover" />
 					</div>
 				</Link>
 
-				<div className="flex-1 min-w-0">
+				<div className="flex-1 h-full min-w-0">
 					<Link
 						to={`/users/${username}`}
 						className="text-lg font-bold text-dark hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus:rounded no-underline block mb-1"
 					>
 						<h3>{username}</h3>
 					</Link>
-					{teamName && (
-						<InfoText icon="user" className="text-sm text-dark/60 mb-2">
-							{teamName}
-						</InfoText>
-					)}
-					<div className="flex flex-wrap gap-3 text-sm text-dark/80">
-						<InfoText icon="challenge" iconClassName="size-4">
-							<span className="font-semibold">{challengesSolved}</span> Solved
-						</InfoText>
-						<InfoText icon="trophy" iconClassName="size-4">
-							<span className="font-semibold text-primary">{totalPoints}</span>{' '}
-							Points
-						</InfoText>
+					<div>
+						{teamName && (
+							<InfoText icon="user" className="text-sm text-dark/60 mb-2">
+								{teamName}
+							</InfoText>
+						)}
+						<div className="flex flex-wrap gap-3 text-sm text-dark/80">
+							<InfoText icon="challenge" iconClassName="size-4">
+								<span className="font-semibold">{challengesSolved}</span> Solved
+							</InfoText>
+							<InfoText icon="trophy" iconClassName="size-4">
+								<span className="font-semibold text-primary">{totalPoints}</span>{' '}
+								Points
+							</InfoText>
+						</div>
 					</div>
 				</div>
 
 				{userState && userState.username !== username && true && (
-					<Button size="sm" {...getButtonProps(friendStatus)}>
+					<Button size="sm" className="h-fit" {...getButtonProps(friendStatus)}>
 						{getButtonContent(friendStatus)}
 					</Button>
 				)}
