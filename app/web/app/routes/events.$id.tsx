@@ -14,12 +14,11 @@ import InfoText from '~/components/InfoText';
 import BackLink from '~/components/BackLink';
 import PageHeader from '~/components/PageHeader';
 import PageSection from '~/components/PageSection';
+import SearchInput from '~/components/SearchInput';
 import CountdownCard from '~/components/CountdownCard';
 import EventStatCard from '~/components/EventStatCard';
 import AdminEventModal from '~/components/AdminEventModal';
 import { remote_fetch_challenges } from './challenges';
-import { remote_fetch_event_challenges } from './events.$id.play';
-import SearchInput from '~/components/SearchInput';
 
 export function meta({ params }: Route.MetaArgs) {
 	return [
@@ -303,8 +302,6 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 		const event_id = params.id;
 		mut_delete.mutate({ token, role, event_id });
 	}
-
-	const handleSubmitChallenges = () => setShowModalChallenges(false);
 
 	const formatDate = (date_string?: string) => {
 		if (!date_string)
@@ -763,16 +760,25 @@ export async function remote_fetch_event_challenges_admin(token: string, id: str
 	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 
 	type JSONData_EventChallenges = {
-		[category: string]: {
-			id: number;
-			name: string;
-			description: string;
-			category: string;
-			reward: number;
-			solves: number;
-			is_solved: boolean;
-		}[],
-	};
+		name: string;
+		ctf_id: number;
+		challenge_id: number;
+		flag: { type: "static", content: string },
+		reward: number;
+		initial_reward: number;
+		reward_first_blood: number;
+		reward_decrements: boolean;
+		reward_min: number;
+		decay: number;
+		attempts: number;
+		solves: number;
+		first_blood_at: string | null;
+		first_blood_id: number | null;
+		container_limits: Record<string, any>;
+		released_at: string | null;
+		requires_challenge_id: number | null;
+		is_hidden: boolean | null;
+	}[];
 	return json as JSONData_EventChallenges;
 }
 export async function remote_unlink_event_challenges(token: string, event_id: string, challenge_id: number) {
@@ -792,7 +798,7 @@ export async function remote_unlink_event_challenges(token: string, event_id: st
 export async function remote_link_event_challenges(token: string, event_id: string, challenge: object & { id: number; }) {
 	const url = new URL(`/api/admin/events/${event_id}/challenges`, import.meta.env.BROWSER_REST_EVENTS_ORIGIN);
 	const method = 'POST';
-	const headers = new Headers({ 'Authorization': `Bearer ${token}` });
+	const headers = new Headers({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' });
 	const res = await fetch(url, { method, headers, body: JSON.stringify([ { ...challenge, challenge_id: challenge.id, ctf_id: Number(event_id), flag: { type: 'static', content: 'flag{' + (Math.random() * 1_000_000).toFixed(0) + '}' } } ]) });
 
 	const content_type =
@@ -803,69 +809,76 @@ export async function remote_link_event_challenges(token: string, event_id: stri
 	const json = await res.json();
 	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
-function ChallengesModal({ show, setShow, user, event_id, disabled: disabled_in = false }: ChallengesModalProps) {
+export async function remote_update_event_challenges(token: string, event_id: string, challenge_id: number, payload: unknown) {
+	const url = new URL(`/api/admin/events/${event_id}/challenges/${challenge_id}`, import.meta.env.BROWSER_REST_EVENTS_ORIGIN);
+	const method = 'PATCH';
+	const headers = new Headers({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application.jsoin' });
+	const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
+}
+function ChallengesModal({ show, setShow, user, event_id, disabled: disabled_sentinel }: ChallengesModalProps) {
 	type Challenge = Awaited<ReturnType<typeof remote_fetch_challenges>>['challenges'][number];
-	type ChallengeLink = Awaited<ReturnType<typeof remote_fetch_event_challenges>>[string][number] & { flag?: string; };
+	type ChallengeLink = Awaited<ReturnType<typeof remote_fetch_event_challenges_admin>>[number];
 
-	const [search_term, setSearchTerm] = useState('');
-	const [items_modifiable, setItemsModifiable] = useState<ChallengeLink[]>([]);
+	const [input_search, set_input_search] = useState('');
+	const [input_search_debounced, set_input_search_debounced] = useState('');
+	useEffect(() => {
+		const value = input_search;
+		const timeout = setTimeout(() => {
+			set_input_search_debounced(value)
+		}, 300);
+		return (() => {
+			clearTimeout(timeout);
+		});
+	}, [input_search]);
 
-	const query_linked = useQuery<unknown, Error, ChallengeLink[]>({
-		queryKey: ['challenges-linked', { username: user.username, searchQuery: search_term }],
+	const query_link = useQuery<unknown, Error, ChallengeLink[]>({
+		queryKey: ['challenges-linked', { username: user.username }],
 		initialData: [],
 		async queryFn() {
 			if (!user)
 				return [];
-			const { username } = user;
-
-			const hierarchy = await remote_fetch_event_challenges_admin(user.token_access, event_id.toString());
-			return Object.values(hierarchy).reduce((prev, curr) => {
-				return prev.concat(...curr); 
-			}, []);
+			return await remote_fetch_event_challenges_admin(user.token_access, event_id.toString());
 		},
 	});
-	const items_linked = query_linked.data;
+	const items_link = query_link.data;
 
-	const query_options = useQuery<unknown, Error, { challenges: Challenge[], count: number }>({
-		queryKey: ['challenges', { username: user.username, searchQuery: search_term }],
+	const [drafts_link, set_drafts_link] = useState<ChallengeLink[]>([]);
+	useEffect(() => {
+		set_drafts_link(items_link);
+	}, [items_link]);
+
+	const query_search = useQuery<unknown, Error, { challenges: Challenge[], count: number }>({
+		queryKey: ['challenges', { username: user.username, searchQuery: input_search_debounced }],
 		initialData: { challenges: [], count: 0 },
 		async queryFn() {
 			if (!user)
 				return { challenges: [], count: 0 };
-			return await remote_fetch_challenges(user.token_access, search_term, 10, 0, "published");
+			return await remote_fetch_challenges(user.token_access, input_search_debounced, 10, 0, "published");
 		},
 	});
-	const { challenges: items_options } = query_options.data;
+	const { challenges: items_search_all } = query_search.data;
+	const items_search = ((items_search: Challenge[], items_link: ChallengeLink[]) => {
+		return items_search.filter(item => {
+			const index = items_link.findIndex(x => item.id === x.challenge_id);
+			return (index === -1);
+		});
+	})(items_search_all, items_link);
 
-	const queryClient = useQueryClient();
 	const { addToast } = useToast();
+	const ref_query_client = useQueryClient();
 
 	type MutationPayload<T> = {
-		token: string;
+		token?: string;
 		event_id: string;
 	} & T;
-	const mut_unlink = useMutation<void, Error, MutationPayload<{ challenge_id: number }>>({
-		async mutationFn({ token, event_id, challenge_id }) {
-			if (!token)
-				throw new Error('Unauthorized');
-			await remote_unlink_event_challenges(token, event_id, challenge_id);
-		},
-		async onSuccess() {
-			await queryClient.invalidateQueries({ queryKey: ['challenges-linked'] });
-			addToast({
-				variant: 'success',
-				title: 'Challenge unlinked',
-				message: 'Challenge has been removed from the event',
-			});
-		},
-		onError(err) {
-			addToast({
-				variant: 'error',
-				title: 'Challenge unlinking',
-				message: err.message,
-			});
-		}
-	});
 	const mut_link = useMutation<void, Error, MutationPayload<{ challenge: Challenge }>>({
 		async mutationFn({ token, event_id, challenge }) {
 			if (!token)
@@ -873,241 +886,276 @@ function ChallengesModal({ show, setShow, user, event_id, disabled: disabled_in 
 			await remote_link_event_challenges(token, event_id, challenge);
 		},
 		async onSuccess() {
-			await queryClient.invalidateQueries({ queryKey: ['challenges'] });
-			await queryClient.invalidateQueries({ queryKey: ['challenges-linked'] });
+			await ref_query_client.invalidateQueries({ queryKey: ['challenges-linked'] });
+			await ref_query_client.invalidateQueries({ queryKey: ['challenges'] });
 			addToast({
 				variant: 'success',
-				title: 'Challenge linked',
+				title: 'Challenge',
 				message: 'Challenge has been added to the event',
 			});
 		},
 		onError(err) {
 			addToast({
 				variant: 'error',
-				title: 'Challenge linking',
+				title: 'Challenge',
+				message: err.message,
+			});
+		}
+	});
+	const mut_unlink = useMutation<void, Error, MutationPayload<{ challenge: ChallengeLink }>>({
+		async mutationFn({ token, event_id, challenge }) {
+			if (!token)
+				throw new Error('Unauthorized');
+			await remote_unlink_event_challenges(token, event_id, challenge.challenge_id);
+		},
+		async onSuccess() {
+			await ref_query_client.invalidateQueries({ queryKey: ['challenges-linked'] });
+			await ref_query_client.invalidateQueries({ queryKey: ['challenges'] });
+			addToast({
+				variant: 'success',
+				title: 'Challenge',
+				message: 'Challenge has been removed from the event',
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Challenge',
+				message: err.message,
+			});
+		}
+	});
+	const mut_update = useMutation<void, Error, MutationPayload<{ challenge_id: number; diff: object; }>>({
+		async mutationFn({ token, event_id, challenge_id, diff }) {
+			if (!token)
+				throw new Error('Unauthorized');
+			await remote_update_event_challenges(token, event_id, challenge_id, diff);
+		},
+		async onSuccess() {
+			await ref_query_client.invalidateQueries({ queryKey: ['challenges-linked'] });
+			addToast({
+				variant: 'success',
+				title: 'Challenge',
+				message: 'Challenge has been updated successfully',
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Challenge',
 				message: err.message,
 			});
 		}
 	});
 
-	useEffect(() => {
-		setItemsModifiable(items_linked);
-	}, [query_linked.dataUpdatedAt])
+	function onClickLink(challenge: Challenge) {
+		mut_link.mutate({ token: user.token_access, event_id, challenge });
+	}
+	function onClickUnlink(challenge: ChallengeLink) {
+		mut_unlink.mutate({ token: user.token_access, event_id, challenge });
+	}
+	function onChangeInput<K extends keyof ChallengeLink>(index: number, property: K, value: string) {
+		switch (property) {
+		case "reward": {
+			const reward = Number(value);
+			if (!isFinite(reward) || reward < 0)
+				return ;
 
-	const handleSubmit = () => setShow(false);
-	const handleUnlink = (challenge_id: number) => mut_unlink.mutate({ token: user.token_access, event_id, challenge_id });
-	const handleLink = (challenge: Challenge) => mut_link.mutate({ token: user.token_access, event_id, challenge });
+			set_drafts_link((state_old) => {
+				const state = structuredClone(state_old);
+				state[index].reward = reward;
+				return (state);
+			});
+		} break ;
+		case "flag": {
+			const flag = value;
+			if (!flag)
+				return ;
 
-	function handleModification<K extends keyof ChallengeLink>(id: number, key: K, value: ChallengeLink[K]) {
-		setItemsModifiable((oldItems) => {
-			const itemIndex = oldItems.findIndex(x => x.id === id);
-			if (itemIndex === -1)
-				return (oldItems);
+			set_drafts_link((state_old) => {
+				const state = structuredClone(state_old);
+				state[index].flag.content = flag;
+				return (state);
+			});
+		} break ;
+		case "decay": {
+			const decay = Number(value);
+			if (!isFinite(decay) || decay < 1)
+				return ;
 
-			const newItems = structuredClone(oldItems);
-			newItems[itemIndex][key] = value;
-			return newItems;
-		});
+			set_drafts_link((state_old) => {
+				const state = structuredClone(state_old);
+				state[index].decay = decay;
+				return (state);
+			});
+		} break ;
+		}
+	}
+	function onClickSave(draft: ChallengeLink) {
+		const doc = items_link.find(x => x.ctf_id === draft.ctf_id && x.challenge_id === draft.challenge_id)!;
+		const map = new Map<string, any>();
+
+		let property: keyof typeof doc;
+		for (property in doc) {
+			switch (property) {
+			case "flag": {
+				const [doc_value, draft_value] = [doc[property], draft[property]];
+				if (doc_value.content !== draft_value.content && draft_value.content)
+					map.set(property, { content: draft_value.content, type: 'static' });
+			} break ;
+			case "reward":
+			case "decay": {
+				const [doc_value, draft_value] = [doc[property], draft[property]];
+				if (doc_value !== draft_value)
+					map.set(property, draft_value);
+			} break ;
+			}
+		}
+
+		if (map.size === 0) {
+			addToast({
+				variant: 'info',
+				title: 'Challenge',
+				message: 'Challenge has has no changes to save',
+			});
+			return ;
+		}
+
+		const diff = Object.fromEntries(map.entries());
+		mut_update.mutate({ token: user.token_access, challenge_id: doc.challenge_id, event_id, diff });
 	}
 
-	const disabled = disabled_in || query_options.isPending || query_linked.isPending || mut_link.isPending || mut_unlink.isPending;
+	const disabled = mut_link.isPending || mut_unlink.isPending || mut_update.isPending || query_search.isPending || disabled_sentinel;
 	return (
 		<Modal
+			title="Challenges"
+			size="xl"
 			isOpen={show}
-			onClose={() => setShow(false)}
-			title="Challenges Manager"
-			size="lg"
-			footer={
-				<div className="flex gap-3 justify-end">
-					<Button
-						disabled={disabled}
-						variant="ghost"
-						onClick={() => setShow(false)}
-						type="button"
-						aria-label="Cancel"
-					>
-						Cancel
-					</Button>
-					<Button
-						disabled={disabled}
-						variant="primary"
-						onClick={handleSubmit}
-						type="button"
-						aria-label="Submit"
-					>
-						Submit
-					</Button>
-				</div>
-			}
-		>
-			<div className="space-y-4 border-b border-neutral-200">
-				<fieldset>
-					<legend className="text-xl font-semibold text-dark mb-4">
-						Challenges
-					</legend>
-
-					{items_linked.length > 0 && (
-						<div className="mb-4">
-							<div
-								className="border border-neutral-300 rounded-md overflow-hidden"
-								role="table"
-								aria-label="Linked challenges"
-							>
-								<div
-									className="bg-neutral-50 border-b border-neutral-300 grid grid-cols-12 gap-2 px-4 py-3 text-sm font-semibold text-dark"
-									role="row"
-								>
-									<span className="col-span-3" role="columnheader">
-										Challenge
-									</span>
-									<span className="col-span-2" role="columnheader">
-										Reward
-									</span>
-									<span className="col-span-2" role="columnheader">
-										Category
-									</span>
-									<span className="col-span-4" role="columnheader">
-										Flag
-									</span>
-									<span className="col-span-1" role="columnheader">
-										<span className="sr-only">Actions</span>
-									</span>
+			onClose={() => setShow(false)}>
+			<div className="space-y-4">
+				{
+					drafts_link.length > 0
+					?	<div className="w-full h-fit grid grid-cols-12 gap-2 place-items-center">
+							<div className="contents bg-neutral-50 border-b border-neutral-300 text-sm font-semibold text-dark" role="row">
+								<div className="col-span-3 pb-2 w-full" role="columnheader">
+									<p>Name</p>
 								</div>
-								{items_linked.map((ch) => (
-									<div
-										key={ch.id}
-										className="grid grid-cols-12 gap-2 px-4 py-3 border-b border-neutral-200 last:border-b-0 items-center"
-										role="row"
-									>
-										<span
-											className="col-span-3 text-sm text-dark font-medium truncate"
-											role="cell"
-											title={ch.name}
-										>
-											{ch.name}
-										</span>
-										<div className="col-span-2" role="cell">
-											<label htmlFor={`reward-${ch.id}`} className="sr-only">
-												Initial reward for {ch.name}
-											</label>
-											<input
-												type="number"
-												id={`reward-${ch.id}`}
-												value={ch.reward}
-												onChange={(e) => {
-													const value = Number(e.target.value);
-													if (isFinite(value))
-														handleModification(ch.id, "reward", value);
-												}}
-												min={0}
-												disabled={disabled}
-												className="w-full px-2 py-1.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-sm"
-											/>
-										</div>
-										<div className="col-span-2" role="cell">
-											<label
-												htmlFor={`first-blood-${ch.id}`}
-												className="sr-only"
-											>
-												{ch.name} challenge category
-											</label>
-											<input
-												type="text"
-												id={`category-${ch.id}`}
-												value={ch.category}
-												onChange={(e) => {
-													const value = e.target.value;
-													if (value)
-														handleModification(ch.id, "category", value);
-												}}
-												min={0}
-												disabled={disabled}
-												className="w-full px-2 py-1.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-sm"
-											/>
-										</div>
-										<div className="col-span-4" role="cell">
-											<label htmlFor={`flag-${ch.id}`} className="sr-only">
-												Flag for {ch.name}
-											</label>
-											<input
-												type="text"
-												id={`flag-${ch.id}`}
-												value={ch.flag}
-												onChange={(e) => {
-													const value = e.target.value;
-													if (value)
-														handleModification(ch.id, "flag", value);
-												}}
-												placeholder="flag{...}"
-												disabled={disabled}
-												className="w-full px-2 py-1.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-sm font-mono"
-											/>
-										</div>
-										<div className="col-span-1 flex justify-end" role="cell">
-											<button
-												type="button"
-												onClick={() => handleUnlink(ch.id)}
-												disabled={disabled}
-												className="p-1.5 hover:bg-red-50 text-white hover:text-red-500 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-												aria-label={`Remove ${ch.name} from event`}
-											>
-												<Icon
-													name="close"
-													className="size-4 stroke-3"
-													aria-hidden={true}
-												/>
-											</button>
-										</div>
-									</div>
-								))}
+								<div className="col-span-2 pb-2 w-full" role="columnheader">
+									<p>Decay</p>
+								</div>
+								<div className="col-span-3 pb-2 w-full" role="columnheader">
+									<p>Reward</p>
+								</div>
+								<div className="col-span-3 pb-2 w-full" role="columnheader">
+									<p>Flag</p>
+								</div>
+								<div className="col-span-1 pb-2 w-full" role="columnheader">
+								</div>
 							</div>
-						</div>
-					)}
-
-					{items_linked.length === 0 && (
-						<p className="text-sm text-muted mb-4">
-							No challenges linked yet. Add challenges to include them in this
-							event.
-						</p>
-					)}
-
-					<div className="space-y-3">
-						<SearchInput
-							value={search_term}
-							onChange={setSearchTerm}
-							placeholder="Search challenges by name..."
-						/>
-
-						{items_options.length > 0 ? (
-							<ul
-								className="max-h-52 overflow-y-auto space-y-1 border border-neutral-200 rounded-md p-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-thumb]:rounded-full"
-								role="listbox"
-								aria-label="Available challenges to link"
-							>
-								{items_options.map((ch) => (
-									<li key={ch.id} role="option" aria-selected={false}>
-										<button
-											type="button"
-											onClick={() => handleLink(ch)}
-											className="w-full text-left px-3 py-2 rounded-md text-white hover:text-primary hover:bg-primary/10 transition-colors flex items-center justify-between gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-											aria-label={`Link challenge ${ch.name}`}
+							{ drafts_link.map((item, index) =>
+								<div key={item.ctf_id + '+' + item.challenge_id} className="contents border-b border-neutral-200 last:border-b-0" role="row">
+									<div className="col-span-3 pb-2" role="cell">
+										<input type="text" className="w-full h-full px-4 py-2 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors" value={item.name ?? 'N/A'} readOnly />
+									</div>
+									<div className="col-span-2 pb-2" role="cell">
+										<input type="number" className="w-full h-full px-4 py-2 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors" placeholder="16 solves" value={item.decay} onChange={(ev) => onChangeInput(index, "decay", ev.target.value)} disabled={disabled} />
+									</div>
+									<div className="col-span-3 pb-2" role="cell">
+										<input type="number" className="w-full h-full px-4 py-2 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors" placeholder="500 points" value={item.reward} onChange={(ev) => onChangeInput(index, "reward", ev.target.value)} disabled={disabled} />
+									</div>
+									<div className="col-span-3 pb-2" role="cell">
+										<input type="text" className="w-full h-full px-4 py-2 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors" placeholder="flag{whats_up}" value={item.flag.content} onChange={(ev) => onChangeInput(index, "flag", ev.target.value)} disabled={disabled} />
+									</div>
+									<div className="col-span-1 pb-2 inline-flex items-center justify-around" role="cell">
+										<button type="button" onClick={() => onClickSave(item)}
+											className="p-2 opacity-75 hover:opacity-100 bg-white rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+											aria-label="Unlink this challenge from the event"
 										>
-											<span className="text-sm font-medium truncate">
-												{ch.name}
-											</span>
-											<span className="text-xs  shrink-0">{ch.reward} pts</span>
+											<Icon
+												name="save"
+												className="size-5 shrink-0 text-dark"
+												aria-hidden={false}
+											/>
 										</button>
-									</li>
-								))}
-							</ul>
-						) : 
-							search_term && 
-							<p className="text-sm text-muted py-2">
-									No matching challenges found
+										<button type="button" onClick={() => onClickUnlink(item)}
+											className="p-2 opacity-75 hover:opacity-100 bg-white rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+											aria-label="Unlink this challenge from the event"
+										>
+											<Icon
+												name="trash"
+												className="size-5 shrink-0 text-dark"
+												aria-hidden={false}
+											/>
+										</button>
+									</div>
+								</div>
+							)}
+						</div>
+					:	<div className="flex justify-center items-center">
+							<p className="text-sm text-muted">
+								No challenges linked yet. Add challenges to include them in this
+								event.
 							</p>
-						}
-					</div>
-				</fieldset>
+						</div>
+				}
+				<SearchInput value={input_search} onChange={set_input_search} placeholder="Look up challenges for inclusion in this event" />
+				{
+					items_search.length > 0
+					?	<div className="w-full h-fit grid grid-cols-12 place-items-center">
+							<div className="contents bg-neutral-50 border-b border-neutral-300 text-sm font-semibold text-dark" role="row">
+								<div className="col-span-2 pb-2" role="columnheader">
+									<p>Name</p>
+								</div>
+								<div className="col-span-2 pb-2" role="columnheader">
+									<p>Category</p>
+								</div>
+								<div className="col-span-1 pb-2" role="columnheader">
+									<p>Reward</p>
+								</div>
+								<div className="col-span-2 pb-2" role="columnheader">
+									<p>R. Minimum</p>
+								</div>
+								<div className="col-span-2 pb-2" role="columnheader">
+									<p>R. Decrements</p>
+								</div>
+								<div className="col-span-2 pb-2" role="columnheader">
+									<p>R. First Blood</p>
+								</div>
+								<div className="col-span-1 pb-2" role="columnheader">
+								</div>
+							</div>
+							{ items_search.map(item =>
+								<div key={item.id} className="contents border-b border-neutral-200 last:border-b-0" role="row">
+									<div className="col-span-2 pb-2" role="cell">
+										<p>{item.name}</p>
+									</div>
+									<div className="col-span-2 pb-2" role="cell">
+										<p>{item.category}</p>
+									</div>
+									<div className="col-span-1 pb-2" role="cell">
+										<p>{item.reward}</p>
+									</div>
+									<div className="col-span-2 pb-2" role="cell">
+										<p>{item.reward_min}</p>
+									</div>
+									<div className="col-span-2 pb-2" role="cell">
+										<p>{item.reward_decrements ? "Yes" : "No"}</p>
+									</div>
+									<div className="col-span-2 pb-2" role="cell">
+										<p>{item.reward_first_blood}</p>
+									</div>
+									<div className="col-span-1 pb-2" role="cell">
+										<Button type="button" size="sm" disabled={disabled} onClick={() => onClickLink(item)}>Link</Button>
+									</div>
+								</div>
+							) }
+						</div>
+					:	<div className="flex justify-center items-center">
+							<p className="text-sm text-muted">
+								Search term yields no results, try another one
+							</p>
+						</div>
+				}
 			</div>
 		</Modal>
 	);

@@ -11,7 +11,7 @@ import (
 func (h *Hub) RegisterRoutes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
-		AllowedMethods: []string{http.MethodHead, http.MethodGet, http.MethodPost, http.MethodDelete},
+		AllowedMethods: []string{http.MethodHead, http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPatch},
 		AllowedHeaders: []string{"*"},
 	}))
 	r.Use(middleware.Logger)
@@ -28,17 +28,23 @@ func (h *Hub) RegisterRoutes() http.Handler {
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/events", func(r chi.Router) {
 			r.Get("/", h.ListEvents)
+
 			r.Route("/{id}", func(r chi.Router) {
 				r.Use(h.EnsureEventExists)
+
 				r.Get("/", h.GetEvent)
 				r.Get("/scoreboard", h.GetScoreboard)
+
 				r.Group(func(r chi.Router) {
 					r.Use(h.PlayerAuthMiddleware)
+
 					r.Get("/status", h.StatusEvent)
 					r.Post("/join", h.JoinEvent)
 					r.Delete("/leave", h.LeaveEvent)
+
 					r.Group(func(r chi.Router) {
 						r.Use(h.EnsureEventAccess)
+
 						r.Get("/challenges", h.ListCtfsChallenges)
 						r.Post("/challenges/{chall_id}/submit", h.SubmitFlag)
 					})
@@ -47,17 +53,23 @@ func (h *Hub) RegisterRoutes() http.Handler {
 		})
 		r.Route("/admin/events", func(r chi.Router) {
 			r.Use(h.OrganizerAuthMiddleware)
+
 			r.Get("/", h.ListAllEvents)
 			r.Post("/", h.CreateEvent)
 
 			r.Route("/{id}", func(r chi.Router) {
 				r.Use(h.EnsureEventOwnership)
+
 				r.Put("/", h.UpdateEvent)
 				r.Delete("/", h.DeleteEvent)
+
 				r.Post("/start", h.StartEvent)
 				r.Post("/stop", h.StopEvent)
+
 				r.Get("/challenges", h.ListCtfsChallengesAdmin)
 				r.Post("/challenges", h.LinkChallenge)
+
+				r.Patch("/challenges/{chall_id}", h.UpdateChallenge)
 				r.Delete("/challenges/{chall_id}", h.UnlinkChallenge)
 			})
 		})
