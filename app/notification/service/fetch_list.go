@@ -8,12 +8,12 @@ import (
 )
 
 func (hub *Hub) HandleListNotifications(w http.ResponseWriter, r *http.Request) {
-	userID := strconv.Itoa(r.Context().Value(userIDKey).(int))
+	userID := r.Context().Value(userIDKey).(int)
 	limit := getLimit(r)
 	ListNotifications(userID, limit, hub, w)
 }
 
-func ListNotifications(userID string, limit int, hub *Hub, w http.ResponseWriter) {
+func ListNotifications(userID int, limit int, hub *Hub, w http.ResponseWriter) {
 	var totalCount, unreadCount int64
 	notifications := []NotificationResponse{}
 
@@ -38,10 +38,10 @@ func ListNotifications(userID string, limit int, hub *Hub, w http.ResponseWriter
 	}
 }
 
-func GetTotalCount(totalCount *int64, hub *Hub, w http.ResponseWriter, userID string) error {
+func GetTotalCount(totalCount *int64, hub *Hub, w http.ResponseWriter, userID int) error {
 
 	err := hub.Db.Table("notifications").
-		Joins("LEFT JOIN notification_users ON notification_users.notification_id = notifications.id AND notification_users.notified_id = ?", userID).
+		Joins("LEFT JOIN notification_users ON notification_users.notification_id = notifications.id AND notification_users.user_id = ?", userID).
 		Where("notification_users.is_dismissed IS NULL OR notification_users.is_dismissed = ?", false).
 		Count(totalCount).Error
 
@@ -53,11 +53,11 @@ func GetTotalCount(totalCount *int64, hub *Hub, w http.ResponseWriter, userID st
 	return nil
 }
 
-func GetUnreadCount(unreadCount *int64, hub *Hub, w http.ResponseWriter, userID string) error {
+func GetUnreadCount(unreadCount *int64, hub *Hub, w http.ResponseWriter, userID int) error {
 
 	err := hub.Db.Table("notifications").
-		Joins("LEFT JOIN notification_users ON notification_users.notification_id = notifications.id AND notification_users.notified_id = ?", userID).
-		Where("(notification_users.notified_id IS NULL OR notification_users.is_read = ?)", false).
+		Joins("LEFT JOIN notification_users ON notification_users.notification_id = notifications.id AND notification_users.user_id = ?", userID).
+		Where("(notification_users.read_at IS NULL OR notification_users.is_read = ?)", false).
 		Where("(notification_users.is_dismissed IS NULL or notification_users.is_dismissed = ?)", false).
 		Count(unreadCount).Error
 
@@ -69,14 +69,15 @@ func GetUnreadCount(unreadCount *int64, hub *Hub, w http.ResponseWriter, userID 
 	return nil
 }
 
-func GetNotifications(hub *Hub, w http.ResponseWriter, userID string, notifications *[]NotificationResponse, limit int) error {
-	err := hub.Db.Table("notifications").
-		Joins("LEFT JOIN notification_users ON notification_users.notification_id = notifications.id AND notification_users.notified_id = ?", userID).
-		Where("notification_users.is_dismissed IS NULL OR notification_users.is_dismissed = ?", false).
+func GetNotifications(hub *Hub, w http.ResponseWriter, userID int, notifications *[]NotificationResponse, limit int) error {
+	err := hub.Db.
+		Table("notification_users").
+		Joins("LEFT JOIN notifications ON notifications.id = notification_users.notification_id").
+		Where("notification_users.user_id = ?", userID).
 		Select("notifications.*, COALESCE(notification_users.is_read, false) AS is_read").
 		Order("notifications.created_at DESC").
-		Limit(limit).
-		Scan(notifications).Error
+		Scan(notifications).
+		Error
 	if err != nil {
 		log.Printf("Error fetching notifications: %v", err)
 		JSONError(w, "Inernal Server Error", http.StatusInternalServerError)

@@ -14,8 +14,8 @@ func GetNonDeletedRecords(tx *gorm.DB, userID int) ([]UserNotification, error) {
 	var ids []int
 
 	err := tx.Table("notifications").
-		Joins("LEFT JOIN notification_users on notification_users.notification_id = notifications.id AND notification_users.notified_id = ?", userID).
-		Where("notification_users.notified_id IS NULL OR notification_users.is_dismissed = ? ", false).
+		Joins("LEFT JOIN notification_users on notification_users.notification_id = notifications.id AND notification_users.user_id = ?", userID).
+		Where("notification_users.read_at IS NULL OR notification_users.is_dismissed = ? ", false).
 		Pluck("notifications.id", &ids).Error
 
 	lenIDs := len(ids)
@@ -49,7 +49,7 @@ func (hub *Hub) HandleDeleteAll(w http.ResponseWriter, r *http.Request) {
 
 		err = tx.Table("notification_users").
 			Clauses(clause.OnConflict{
-				Columns: []clause.Column{{Name: "notification_id"}, {Name: "notified_id"}},
+				Columns: []clause.Column{{Name: "notification_id"}, {Name: "user_id"}},
 				DoUpdates: clause.Assignments(map[string]interface{}{
 					"is_dismissed": true,
 					"is_read":      true,
@@ -86,7 +86,7 @@ func (hub *Hub) HandleDeleteSingle(w http.ResponseWriter, r *http.Request) {
 	}
 	err = hub.Db.Table("notification_users").
 		Clauses(clause.OnConflict{
-			Columns: []clause.Column{{Name: "notification_id"}, {Name: "notified_id"}},
+			Columns: []clause.Column{{Name: "notification_id"}, {Name: "user_id"}},
 			DoUpdates: clause.Assignments(map[string]interface{}{
 				"is_dismissed": true,
 				"is_read":      true,

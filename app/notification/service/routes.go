@@ -3,28 +3,36 @@ package service
 import (
 	"net/http"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 func (hub *Hub) RegisterRoutes() http.Handler {
-	r := mux.NewRouter()
+	r := chi.NewRouter()
+	r.Use(cors.Handler(cors.Options{
+		AllowedMethods: []string{http.MethodHead, http.MethodGet, http.MethodPost, http.MethodDelete},
+		AllowedHeaders: []string{"*"},
+	}))
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.RealIP)
 
-	r.Handle("/metrics", MetricsHandler()).Methods(http.MethodGet)
-
-	r.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+	r.Get("/metrics", MetricsHandler().(http.HandlerFunc))
+	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-	}).Methods(http.MethodGet)
+	})
 
-	apiRoute := r.PathPrefix("/api/notifications").Subrouter()
-	apiRoute.Use(hub.AuthMiddleware)
+	r.Route("/api/notifications", func (r chi.Router) {
+		r.Use(hub.AuthMiddleware)
 
-	apiRoute.HandleFunc("/ws", hub.ServeWs).Methods(http.MethodGet)
-	apiRoute.HandleFunc("/", hub.HandleListNotifications).Methods(http.MethodGet)
-	apiRoute.HandleFunc("/", hub.HandleReadAll).Methods(http.MethodPatch)
-	apiRoute.HandleFunc("/", hub.HandleDeleteAll).Methods(http.MethodDelete)
+		r.Get("/", hub.HandleListNotifications)
+		r.Patch("/", hub.HandleReadAll)
+		r.Delete("/", hub.HandleDeleteAll)
 
-	apiRoute.HandleFunc("/{id:[0-9]+}", hub.HandleReadSingle).Methods(http.MethodPatch)
-	apiRoute.HandleFunc("/{id:[0-9]+}", hub.HandleDeleteSingle).Methods(http.MethodDelete)
-
+		r.Get("/ws", hub.ServeWs)
+		r.Patch("/{id:[0-9]+}", hub.HandleReadSingle)
+		r.Delete("/{id:[0-9]+}", hub.HandleDeleteSingle)
+	})
 	return MetricsMiddleware(r)
 }
