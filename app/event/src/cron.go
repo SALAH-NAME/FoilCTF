@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
+ 	"encoding/json"
+ 	"fmt"
 	"log"
 	"time"
 
@@ -16,11 +16,25 @@ func (h *Hub) SyncCtfStatus() {
 		var res *gorm.DB
 		now := time.Now()
 
-
-		var rows []struct {
+		type UserRow struct {
 			UserID int `gorm:"column:user_id"`
 			CtfID  int `gorm:"column:ctf_id"`
 			CtfName string `gorm:"column:ctf_name"`
+		}
+
+		var usersStarting []UserRow
+		var usersEnding []UserRow
+
+		res = tx.
+			Table("ctfs").
+			Select("u.id as user_id, ctfs.id as ctf_id, ctfs.name as ctf_name").
+			Joins("LEFT JOIN participations p ON p.ctf_id = ctfs.id").
+			Joins("LEFT JOIN teams t ON p.team_id = t.id").
+			Joins("RIGHT JOIN users u ON u.team_name = t.name").
+			Where("ctfs.status = 'published' AND ctfs.start_time < ?", now).
+			Scan(&usersStarting)
+		if res.Error != nil {
+			return res.Error
 		}
 
 		res = tx.
@@ -28,14 +42,13 @@ func (h *Hub) SyncCtfStatus() {
 			Select("u.id as user_id, ctfs.id as ctf_id, ctfs.name as ctf_name").
 			Joins("LEFT JOIN participations p ON p.ctf_id = ctfs.id").
 			Joins("LEFT JOIN teams t ON p.team_id = t.id").
-			Joins("LEFT JOIN users u ON u.team_name = t.name").
-			Where("ctfs.status = 'published' AND ctfs.start_time < ?", now).
-			Scan(&rows)
+			Joins("RIGHT JOIN users u ON u.team_name = t.name").
+			Where("ctfs.status = 'active' AND ctfs.end_time < ?", now).
+			Scan(&usersEnding)
 		if res.Error != nil {
 			return res.Error
 		}
 
-		// TODO(xenobas): Continue work on notification triggers
 		res = tx.
 			Table("ctfs").
 			Where("status = 'published' AND ? > start_time", now).
@@ -45,13 +58,24 @@ func (h *Hub) SyncCtfStatus() {
 		}
 		rowsAffectedActive := res.RowsAffected
 
-		if len(rows) > 0 {
+		res = tx.
+			Table("ctfs").
+			Where("status = 'active' AND ? > end_time", now).
+			Updates(Ctf{Status: "ended"})
+		if res.Error != nil {
+			return res.Error
+		}
+		rowsAffectedEnded := res.RowsAffected
+
+		if rowsAffectedActive + rowsAffectedEnded > 0 {
+			log.Printf("DEBUG - SyncCtfStatus - %d rows set as 'active', and %d set as 'ended'", rowsAffectedActive, rowsAffectedEnded)
+		}
+
+		if len(usersStarting) > 0 {
 			ctfIDToNotificationID := make(map[int]int)
 
-			notificationUsers := make([]NotificationUsers, len(rows))
-			for index := range rows {
-				row := rows[index]
-
+			notificationUsers := make([]NotificationUsers, len(usersStarting))
+			for index, row := range usersStarting {
 				notificationID, exists := ctfIDToNotificationID[row.CtfID]
 				if !exists {
 					contentsMap := map[string]string {
@@ -89,42 +113,17 @@ func (h *Hub) SyncCtfStatus() {
 					return res.Error
 				}
 			}
-			tx.CreateInBatches(notificationUsers, 50)
+			res := tx.Table("notification_users").CreateInBatches(notificationUsers, 50)
+			if res.Error != nil {
+				return res.Error
+			}
 		}
+		if len(usersEnding) > 0 {
+			ctfIDToNotifID := make(map[int]int)
+			notificationUsers := make([]NotificationUsers, len(usersEnding))
 
-		var rowsEnding []struct {
-			UserID  int    `gorm:"column:user_id"`
-			CtfID   int    `gorm:"column:ctf_id"`
-			CtfName string `gorm:"column:ctf_name"`
-		}
-		res = tx.
-			Table("ctfs").
-			Select("u.id as user_id, ctfs.id as ctf_id, ctfs.name as ctf_name").
-			Joins("LEFT JOIN participations p ON p.ctf_id = ctfs.id").
-			Joins("LEFT JOIN teams t ON p.team_id = t.id").
-			Joins("LEFT JOIN users u ON u.team_name = t.name").
-			Where("ctfs.status = 'active' AND ctfs.end_time < ?", now).
-			Scan(&rowsEnding)
-		if res.Error != nil {
-			return res.Error
-		}
-
-		res = tx.
-			Table("ctfs").
-			Where("status = 'active' AND ? > end_time", now).
-			Updates(Ctf{Status: "ended"})
-		if res.Error != nil {
-			return res.Error
-		}
-		rowsAffectedEnded := res.RowsAffected
-
-		if len(rowsEnding) > 0 {
-			ctfIDToEndNotifID := make(map[int]int)
-			endNotifUsers := make([]NotificationUsers, len(rowsEnding))
-
-			for index := range rowsEnding {
-				row := rowsEnding[index]
-				notifID, exists := ctfIDToEndNotifID[row.CtfID]
+			for index, row := range usersEnding {
+				notifID, exists := ctfIDToNotifID[row.CtfID]
 				if !exists {
 					contentsMap := map[string]string{
 						"type":    "event",
@@ -141,14 +140,14 @@ func (h *Hub) SyncCtfStatus() {
 					if res.Error != nil {
 						return res.Error
 					}
-					ctfIDToEndNotifID[row.CtfID] = notif.ID
+					ctfIDToNotifID[row.CtfID] = notif.ID
 					notifID = notif.ID
 				}
-				endNotifUsers[index].UserID = row.UserID
-				endNotifUsers[index].NotificationID = notifID
+				notificationUsers[index].UserID = row.UserID
+				notificationUsers[index].NotificationID = notifID
 			}
 
-			for _, notifID := range ctfIDToEndNotifID {
+			for _, notifID := range ctfIDToNotifID {
 				res = tx.
 					Table("notifications").
 					Where("id = ?", notifID).
@@ -157,11 +156,10 @@ func (h *Hub) SyncCtfStatus() {
 					return res.Error
 				}
 			}
-			tx.CreateInBatches(endNotifUsers, 50)
-		}
-
-		if rowsAffectedActive + rowsAffectedEnded > 0 {
-			log.Printf("DEBUG - SyncCtfStatus - %d rows set as 'active', and %d set as 'ended'", rowsAffectedActive, rowsAffectedEnded)
+			res := tx.Table("notification_users").CreateInBatches(notificationUsers, 50)
+			if res.Error != nil {
+				return res.Error
+			}
 		}
 		return nil
 	})

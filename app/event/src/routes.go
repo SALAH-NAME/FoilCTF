@@ -11,7 +11,7 @@ import (
 func (h *Hub) RegisterRoutes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
-		AllowedMethods: []string{http.MethodHead, http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPatch},
+		AllowedMethods: []string{http.MethodHead, http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPatch, http.MethodPut},
 		AllowedHeaders: []string{"*"},
 	}))
 	r.Use(middleware.Logger)
