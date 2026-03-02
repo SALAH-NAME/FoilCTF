@@ -552,7 +552,7 @@ const ModalCreateTeam = ({
 					type="text"
 					label="Name"
 					value={teamName}
-					onChange={(ev) => setTeamName(ev.target.value)}
+					onChange={(ev:any) => setTeamName(ev.target.value)}
 					error={errorTeamName}
 					placeholder="hackers_1995"
 					required

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '~/contexts/ToastContext';
 import PageHeader from '../components/PageHeader';
 import Button from '../components/Button';
 import SearchInput from '../components/SearchInput';
@@ -147,6 +148,7 @@ export default function Page() {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [searchQuery, setSearchQuery] = useState('');
 	const queryClient = useQueryClient();
+	const { addToast } = useToast();
 
 	// Modal state
 	const [showCreateModal, setShowCreateModal] = useState(false);
@@ -187,6 +189,18 @@ export default function Page() {
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ['challenges'] });
 			setDeleteTarget(null);
+			addToast({
+				variant: 'success',
+				title: 'Challenge deleted',
+				message: 'The challenge has been deleted successfully',
+			});
+		},
+		onError: (err: Error) => {
+			addToast({
+				variant: 'error',
+				title: 'Challenge deletion failed',
+				message: err.message,
+			});
 		},
 	});
 

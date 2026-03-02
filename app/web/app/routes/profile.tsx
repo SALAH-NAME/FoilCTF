@@ -990,7 +990,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 						type="email"
 						label="New Email Address"
 						value={emailForm.newEmail}
-						onChange={(e) => {
+						onChange={(e:any) => {
 							const value = e.target.value;
 							setEmailForm((prev) => ({ ...prev, newEmail: value }));
 							handleEmailChange('email', value, emailForm);
@@ -1009,7 +1009,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 						type="password"
 						label="Current Password"
 						value={emailForm.password}
-						onChange={(e) => {
+						onChange={(e:any) => {
 							const value = e.target.value;
 							setEmailForm((prev) => ({ ...prev, password: value }));
 							handleEmailChange('password', value, emailForm);
@@ -1058,7 +1058,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 						type="password"
 						label="Current Password"
 						value={passwordForm.currentPassword}
-						onChange={(e) => {
+						onChange={(e:any) => {
 							const value = e.target.value;
 							setPasswordForm((prev) => ({ ...prev, currentPassword: value }));
 							handlePasswordChange('currentPassword', value, passwordForm);
@@ -1080,7 +1080,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 						type="password"
 						label="New Password"
 						value={passwordForm.newPassword}
-						onChange={(e) => {
+						onChange={(e:any) => {
 							const value = e.target.value;
 							setPasswordForm((prev) => ({ ...prev, newPassword: value }));
 							handlePasswordChange('newPassword', value, passwordForm);
@@ -1103,7 +1103,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 						type="password"
 						label="Confirm New Password"
 						value={passwordForm.confirmPassword}
-						onChange={(e) => {
+						onChange={(e:any) => {
 							const value = e.target.value;
 							setPasswordForm((prev) => ({ ...prev, confirmPassword: value }));
 							handlePasswordChange('confirmPassword', value, passwordForm);
@@ -1189,7 +1189,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 								type="text"
 								label=""
 								value={deleteForm.confirmation}
-								onChange={(e) => {
+								onChange={(e:any) => {
 									const value = e.target.value;
 									setDeleteForm((prev) => ({
 										...prev,
@@ -1219,7 +1219,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 							type="password"
 							label="Current Password"
 							value={deleteForm.password}
-							onChange={(e) =>
+							onChange={(e:any) =>
 								setDeleteForm((prev) => ({ ...prev, password: e.target.value }))
 							}
 							onBlur={() => {}}
