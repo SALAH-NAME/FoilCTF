@@ -1,4 +1,8 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import {
+	useQuery,
+	useQueryClient,
+	type UseQueryResult,
+} from '@tanstack/react-query';
 import {
 	createContext,
 	useCallback,
@@ -30,12 +34,28 @@ export const NotificationSocketContext = createContext<{
 	messages: NotificationMessage[];
 	performOpen: (token: string) => void;
 
-	query?: UseQueryResult<NotificationMessageNew[], Error>,
-}>({ messages: [], is_open: false, performOpen: () => {} });
+	query?: UseQueryResult<NotificationMessageNew[], Error>;
+
+	remoteMarkRead: (id: number) => Promise<void>;
+	remoteMarkAllRead: () => Promise<void>;
+	remoteDismiss: (id: number) => Promise<void>;
+	remoteClearAll: () => Promise<void>;
+}>({
+	messages: [],
+	is_open: false,
+	performOpen: () => {},
+	remoteMarkRead: async () => {},
+	remoteMarkAllRead: async () => {},
+	remoteDismiss: async () => {},
+	remoteClearAll: async () => {},
+});
 
 async function remote_fetch_notifications(token: string) {
-	const url = new URL('/api/notifications', import.meta.env.BROWSER_REST_NOTIFICATION_ORIGIN);
-	const headers = new Headers({ 'Authorization': `Bearer ${token}` });
+	const url = new URL(
+		'/api/notifications',
+		import.meta.env.BROWSER_REST_NOTIFICATION_ORIGIN
+	);
+	const headers = new Headers({ Authorization: `Bearer ${token}` });
 	const res = await fetch(url, { headers });
 	const content_type =
 		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
@@ -52,7 +72,7 @@ async function remote_fetch_notifications(token: string) {
 			type?: NotificationType;
 			title: string;
 			message: string;
-		},
+		};
 	};
 	type JSONData_Notifications = {
 		notifications: JSONData_Notification[];
@@ -60,6 +80,58 @@ async function remote_fetch_notifications(token: string) {
 		unread_count: number;
 	};
 	return json as JSONData_Notifications;
+}
+
+async function remote_mark_read_notification(token: string, id: number) {
+	const url = new URL(
+		`/api/notifications/${id}`,
+		import.meta.env.BROWSER_REST_NOTIFICATION_ORIGIN
+	);
+	const headers = new Headers({ Authorization: `Bearer ${token}` });
+	const res = await fetch(url, { method: 'PATCH', headers });
+	if (!res.ok) {
+		const json = await res.json().catch(() => ({}));
+		throw new Error(json.error ?? 'Failed to mark notification as read');
+	}
+}
+
+async function remote_mark_all_read_notifications(token: string) {
+	const url = new URL(
+		'/api/notifications',
+		import.meta.env.BROWSER_REST_NOTIFICATION_ORIGIN
+	);
+	const headers = new Headers({ Authorization: `Bearer ${token}` });
+	const res = await fetch(url, { method: 'PATCH', headers });
+	if (!res.ok) {
+		const json = await res.json().catch(() => ({}));
+		throw new Error(json.error ?? 'Failed to mark all notifications as read');
+	}
+}
+
+async function remote_dismiss_notification(token: string, id: number) {
+	const url = new URL(
+		`/api/notifications/${id}`,
+		import.meta.env.BROWSER_REST_NOTIFICATION_ORIGIN
+	);
+	const headers = new Headers({ Authorization: `Bearer ${token}` });
+	const res = await fetch(url, { method: 'DELETE', headers });
+	if (!res.ok) {
+		const json = await res.json().catch(() => ({}));
+		throw new Error(json.error ?? 'Failed to dismiss notification');
+	}
+}
+
+async function remote_clear_all_notifications(token: string) {
+	const url = new URL(
+		'/api/notifications',
+		import.meta.env.BROWSER_REST_NOTIFICATION_ORIGIN
+	);
+	const headers = new Headers({ Authorization: `Bearer ${token}` });
+	const res = await fetch(url, { method: 'DELETE', headers });
+	if (!res.ok) {
+		const json = await res.json().catch(() => ({}));
+		throw new Error(json.error ?? 'Failed to clear all notifications');
+	}
 }
 
 type NotificationSocketProviderProps = {
@@ -73,6 +145,7 @@ export function NotificationSocketProvider({
 	children,
 }: NotificationSocketProviderProps) {
 	const { addToast } = useToast();
+	const queryClient = useQueryClient();
 
 	const ref_socket = useRef<WebSocket>(null);
 	const [is_open, setIsOpen] = useState<boolean>(false);
@@ -80,29 +153,36 @@ export function NotificationSocketProvider({
 		NotificationMessage[]
 	>([]);
 
+	const queryKey = [
+		'notifications',
+		{ token: user?.token_access, username: user?.username },
+	];
 	const query = useQuery({
-		queryKey: ['notifications', { token: user?.token_access, username: user?.username }],
+		queryKey,
 		async queryFn() {
-			if (!user?.token_access || !user?.username)
-				return [];
+			if (!user?.token_access || !user?.username) return [];
 
-			const { notifications } = await remote_fetch_notifications(user.token_access);
-			const notificationMessages: NotificationMessage[] = notifications.map(n => ({
-				event: 'new',
-				target_id: user?.id,
-				metadata: {
-					created_at: n.created_at,
-					id: n.notification_id,
-					is_read: n.is_read,
-					link: "",
-					message: n.contents.message,
-					title: n.contents.title,
-					type: n.contents.type ?? 'system',
-				},
-			}));
+			const { notifications } = await remote_fetch_notifications(
+				user.token_access
+			);
+			const notificationMessages: NotificationMessage[] = notifications.map(
+				(n) => ({
+					event: 'new',
+					target_id: user?.id,
+					metadata: {
+						created_at: n.created_at,
+						id: n.notification_id,
+						is_read: n.is_read,
+						link: '',
+						message: n.contents.message,
+						title: n.contents.title,
+						type: n.contents.type ?? 'system',
+					},
+				})
+			);
 			setNotificationMessages(notificationMessages);
 			return notificationMessages;
-		}
+		},
 	});
 
 	const performOpen = useCallback(
@@ -126,18 +206,86 @@ export function NotificationSocketProvider({
 				console.error('WebSocket error:', event);
 			};
 			ref_socket.current.onmessage = (msg: MessageEvent<string>) => {
-				const notificationMessage = JSON.parse(msg.data);
-				setNotificationMessages((oldNotificationMessages) => {
-					return [...oldNotificationMessages, notificationMessage];
-				});
+				const data = JSON.parse(msg.data);
+				switch (data.event) {
+					case 'new':
+						setNotificationMessages((old) => [...old, data]);
+						break;
+					case 'read':
+						setNotificationMessages((old) =>
+							old.map((m) =>
+								m.metadata.id === data.metadata?.notification_id
+									? { ...m, metadata: { ...m.metadata, is_read: true } }
+									: m
+							)
+						);
+						break;
+					case 'read_all':
+						setNotificationMessages((old) =>
+							old.map((m) => ({
+								...m,
+								metadata: { ...m.metadata, is_read: true },
+							}))
+						);
+						break;
+					case 'delete':
+						setNotificationMessages((old) =>
+							old.filter(
+								(m) => m.metadata.id !== data.metadata?.notification_id
+							)
+						);
+						break;
+					case 'delete_all':
+						setNotificationMessages([]);
+						break;
+				}
 			};
 		},
 		[url]
 	);
 
+	const remoteMarkRead = useCallback(
+		async (id: number) => {
+			if (!user?.token_access) return;
+			await remote_mark_read_notification(user.token_access, id);
+			queryClient.invalidateQueries({ queryKey });
+		},
+		[user?.token_access, queryClient, queryKey]
+	);
+
+	const remoteMarkAllRead = useCallback(async () => {
+		if (!user?.token_access) return;
+		await remote_mark_all_read_notifications(user.token_access);
+		queryClient.invalidateQueries({ queryKey });
+	}, [user?.token_access, queryClient, queryKey]);
+
+	const remoteDismiss = useCallback(
+		async (id: number) => {
+			if (!user?.token_access) return;
+			await remote_dismiss_notification(user.token_access, id);
+			queryClient.invalidateQueries({ queryKey });
+		},
+		[user?.token_access, queryClient, queryKey]
+	);
+
+	const remoteClearAll = useCallback(async () => {
+		if (!user?.token_access) return;
+		await remote_clear_all_notifications(user.token_access);
+		queryClient.invalidateQueries({ queryKey });
+	}, [user?.token_access, queryClient, queryKey]);
+
 	return (
 		<NotificationSocketContext
-			value={{ messages: notificationMessages, query, is_open, performOpen }}
+			value={{
+				messages: notificationMessages,
+				query,
+				is_open,
+				performOpen,
+				remoteMarkRead,
+				remoteMarkAllRead,
+				remoteDismiss,
+				remoteClearAll,
+			}}
 		>
 			{children}
 		</NotificationSocketContext>

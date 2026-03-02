@@ -41,7 +41,9 @@ interface NotificationContextType {
 	clearAll: () => void;
 }
 
-const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+const NotificationContext = createContext<NotificationContextType | undefined>(
+	undefined
+);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
 	type NotificationsState = {
@@ -59,14 +61,28 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 	const closePanel = useCallback(() => setIsPanelOpen(false), []);
 	const togglePanel = useCallback(() => setIsPanelOpen((prev) => !prev), []);
 
-	const markAsRead = useCallback((id: string) => {
-		setNotificationsState(({ elements, last_index }) => {
-			return {
-				elements: elements.map((n) => (n.id === id ? { ...n, read: true } : n)),
-				last_index,
-			};
-		});
-	}, []);
+	const {
+		messages,
+		remoteMarkRead,
+		remoteMarkAllRead,
+		remoteDismiss,
+		remoteClearAll,
+	} = useNotificationSocketProvider();
+
+	const markAsRead = useCallback(
+		(id: string) => {
+			setNotificationsState(({ elements, last_index }) => {
+				return {
+					elements: elements.map((n) =>
+						n.id === id ? { ...n, read: true } : n
+					),
+					last_index,
+				};
+			});
+			remoteMarkRead(parseInt(id)).catch(console.error);
+		},
+		[remoteMarkRead]
+	);
 	const markAllAsRead = useCallback(() => {
 		setNotificationsState(({ elements, last_index }) => {
 			return {
@@ -74,15 +90,20 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 				last_index,
 			};
 		});
-	}, []);
-	const dismiss = useCallback((id: string) => {
-		setNotificationsState(({ elements, last_index }) => {
-			return {
-				elements: elements.filter((n) => n.id !== id),
-				last_index,
-			};
-		});
-	}, []);
+		remoteMarkAllRead().catch(console.error);
+	}, [remoteMarkAllRead]);
+	const dismiss = useCallback(
+		(id: string) => {
+			setNotificationsState(({ elements, last_index }) => {
+				return {
+					elements: elements.filter((n) => n.id !== id),
+					last_index,
+				};
+			});
+			remoteDismiss(parseInt(id)).catch(console.error);
+		},
+		[remoteDismiss]
+	);
 	const clearAll = useCallback(() => {
 		setNotificationsState(({ last_index }) => {
 			return {
@@ -90,9 +111,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 				last_index,
 			};
 		});
-	}, []);
+		remoteClearAll().catch(console.error);
+	}, [remoteClearAll]);
 
-	const { messages } = useNotificationSocketProvider();
 	const [_lastMessageIndex, setLastMessageIndex] = useState(0);
 	useEffect(() => {
 		setNotificationsState(({ elements, last_index }) => {
@@ -116,7 +137,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 				// TODO(xenobas): Fix repeating plays
 			}
 			return {
-				elements: [...elements, ...elements_new],
+				elements: [...elements_new, ...elements],
 				last_index: messages.length,
 			};
 		});

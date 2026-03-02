@@ -4,7 +4,6 @@ go 1.25.5
 
 require (
 	github.com/go-chi/chi/v5 v5.2.5
-	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/lib/pq v1.11.2
 	github.com/prometheus/client_golang v1.23.2
