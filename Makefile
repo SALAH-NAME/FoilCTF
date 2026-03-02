@@ -19,6 +19,9 @@ init: env-generate ## Initialize project for first time
 	@echo "  2. Run 'make build && make up' to start all services"
 	@echo "  3. Access https://localhost:PORT"
 
+run: init build up ## Initialize, build and start all services
+	@echo "All services started!"
+
 up: ## Start all services with $(COMPOSE)
 	@echo "Starting all services..."
 	$(COMPOSE) up -d
