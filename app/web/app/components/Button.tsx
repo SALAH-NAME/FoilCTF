@@ -7,7 +7,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 	variant?: ButtonVariant;
 	size?: ButtonSize;
 	icon?: ReactNode;
-	children: ReactNode;
+	children?: ReactNode;
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(

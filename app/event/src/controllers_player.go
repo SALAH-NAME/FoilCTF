@@ -546,30 +546,21 @@ func (h *Hub) ListCtfsChallengesAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// get required challenge data
-	unfilteredChallenges := []UnfilteredCtfChallenges{}
-	err := h.Db.Table("ctfs_challenges").
-		Select("ctfs_challenges.challenge_id AS id, challenges.name, challenges.description, "+
-			"challenges.category, ctfs_challenges.reward, ctfs_challenges.solves, "+
-			"ctfs_challenges.is_hidden, ctfs_challenges.released_at, ctfs_challenges.requires_challenge_id").
-		Joins("INNER JOIN challenges on ctfs_challenges.challenge_id = challenges.id").
+	var challenges []struct {
+		CtfsChallenge
+		Name string `json:"name" gorm:"column:name"`
+	}
+	err := h.Db.
+		Select("ctfs_challenges.*, challenges.name as name").
+		Table("ctfs_challenges").
 		Where("ctfs_challenges.ctf_id = ?", event.ID).
-		Scan(&unfilteredChallenges).Error
+		Joins("LEFT JOIN challenges ON challenges.id = ctfs_challenges.challenge_id").
+		Find(&challenges).
+		Error
 	if err != nil {
-		log.Printf("ERROR - List Ctfs - Could not query challenge data: %v", err)
+		log.Printf("ERROR - Admin List Ctf Challenges - Could not query challenge data: %v", err)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-
-	grouped := make(map[string][]PlayerChallengeView)
-	for _, challenge := range unfilteredChallenges {
-		category := challenge.PlayerChallengeView.Category
-		if category == "" {
-			category = "General"
-		}
-		grouped[category] = append(grouped[category], challenge.PlayerChallengeView)
-
-	}
-
-	JSONResponse(w, grouped, http.StatusOK)
+	JSONResponse(w, challenges, http.StatusOK)
 }

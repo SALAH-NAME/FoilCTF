@@ -249,6 +249,45 @@ func (h *Hub) LinkChallenge(w http.ResponseWriter, r *http.Request) {
 	JSONResponse(w, resp, http.StatusCreated)
 }
 
+func (h *Hub) UpdateChallenge(w http.ResponseWriter, r *http.Request) {
+	event, okEvent := r.Context().Value(eventKey).(Ctf)
+	if !okEvent {
+		log.Printf("ERROR - HTTP - Could not get event from the request context")
+		JSONError(w, "Event not found", http.StatusNotFound)
+		return
+	}
+
+	challengeID, err := h.ReadIntParam(r, "chall_id")
+	if err != nil {
+		log.Printf("ERROR - REQUEST - could not get challenge id due to: %v", err)
+		JSONResponse(w, map[string]string{ "error": "Invalid challenge id parameter" }, http.StatusBadRequest)
+		return
+	}
+
+	var values map[string]any
+	if err := json.NewDecoder(r.Body).Decode(&values); err != nil {
+		log.Printf("ERROR - HTTP - Invalid request format: %v", err)
+		JSONError(w, "Invalid Input", http.StatusBadRequest)
+		return
+	}
+
+	result := h.Db.Table("ctfs_challenges").
+		Where("ctf_id = ? AND challenge_id = ?", event.ID, challengeID).
+		Limit(1).
+		Updates(values)
+	if err := result.Error; err != nil {
+		log.Printf("ERROR - DATABASE - %v", err)
+		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if result.RowsAffected == 0 {
+		JSONError(w, "Event challenge not found", http.StatusNotFound)
+		return
+	}
+
+	JSONResponse(w, map[string]bool{ "ok": true }, http.StatusCreated)
+}
+
 func (h *Hub) UnlinkChallenge(w http.ResponseWriter, r *http.Request) {
 	event, ok := r.Context().Value(eventKey).(Ctf)
 	if !ok {
