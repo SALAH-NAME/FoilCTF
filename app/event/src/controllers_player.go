@@ -40,25 +40,32 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 		now := time.Now()
 		// lock challenge instance
 		var link CtfsChallenge
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("ctf_id = ? AND challenge_id = ?", eventID, challengeID).
-			First(&link).Error
+
+		err := tx.Transaction(func (tx *gorm.DB) error {
+			err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Where("ctf_id = ? AND challenge_id = ?", eventID, challengeID).
+				First(&link).Error
+			if err != nil {
+				return err
+			}
+			// check if already solved
+			if tx.Table("solves").
+				Where("ctf_id = ? AND chall_id = ? AND team_id = ?", eventID, challengeID, teamID).
+				Find(&Solve{}).RowsAffected > 0 {
+				return errors.New("already solved")
+			}
+			// update attemps count and the time of last attempt
+			err = tx.Model(&link).
+				Update("attempts", link.Attempts + 1).Error
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 		if err != nil {
 			return err
 		}
-		// check if already solved
-		if tx.Table("solves").
-			Where("ctf_id = ? AND chall_id = ? AND team_id = ?", eventID, challengeID, teamID).
-			Find(&Solve{}).RowsAffected > 0 {
-			return errors.New("already solved")
-		}
-		// update attemps count and the time of last attempt
-		link.Attempts++
-		err = tx.Model(&link).
-			Update("attempts", link.Attempts).Error
-		if err != nil {
-			return err
-		}
+
 		err = tx.Table("participations").
 			Where("ctf_id = ? AND team_id = ?", eventID, teamID).
 			Update("last_attempt_at", now).Error
@@ -189,6 +196,63 @@ func (h *Hub) SubmitFlag(w http.ResponseWriter, r *http.Request) {
 		"points_earned": finalPoints,
 	}
 	JSONResponse(w, resp, http.StatusOK)
+}
+
+func (h *Hub) StatusEvent(w http.ResponseWriter, r *http.Request) {
+	userID, _, err := GetUserInfo(r)
+	if err != nil {
+		log.Printf("DEBUG - Status - Unauthorized: %v", err)
+		JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	event, ok := r.Context().Value(eventKey).(Ctf)
+	if !ok {
+		log.Printf("DEBUG - Status - Could not get event from the request context")
+		JSONError(w, "event not found", http.StatusNotFound)
+		return
+	}
+
+	teamID, ok := r.Context().Value(teamIDKey).(int)
+	if !ok {
+		log.Printf("DEBUG - Status - Could not get team id for user %d from the request context", *userID)
+		JSONError(w, "Team not found", http.StatusNotFound)
+		return
+	}
+
+	type EventDetails struct {
+		TeamName string `json:"team_name" gorm:"column:team_name"`
+		Rank int `json:"rank" gorm:"column:rank"`
+		TotalPoints int `json:"total_points" gorm:"column:total_points"`
+		SolvedChallenges int `json:"solved_challenges" gorm:"column:solved_challenges"`
+		TotalChallenges int64 `json:"total_challenges" gorm:"column:total_challenges"`
+	}
+	var eventDetails EventDetails
+	err = h.Db.Transaction(func (tx *gorm.DB) (err error) {
+		err = h.Db.
+			Table("ctfs_challenges").
+			Where("ctf_id = ?", event.ID).
+			Count(&eventDetails.TotalChallenges).
+			Error
+		if err != nil {
+			return err
+		}
+
+		err = h.Db.
+			Table("participations p").
+			Select("t.name as team_name, p.score as total_points, p.solves as solved_challenges, ROW_NUMBER() OVER (PARTITION BY p.ctf_id ORDER BY p.score) AS rank").
+			Joins("LEFT JOIN teams t ON t.id = p.team_id").
+			Where("ctf_id = ? AND team_id = ?", event.ID, teamID).
+			Scan(&eventDetails).
+			Error
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	JSONResponse(w, eventDetails, http.StatusCreated)
 }
 
 func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {

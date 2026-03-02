@@ -133,13 +133,11 @@ func HandleSubmitError(w http.ResponseWriter, err error) {
 		"already solved": http.StatusConflict,
 		"incorrect flag": http.StatusBadRequest,
 	}
-	code, exists := errorMap[err.Error()]
-	if !exists {
+	if code, exists := errorMap[err.Error()]; exists {
+		JSONError(w, err.Error(), code)
+	} else {
 		JSONError(w, "Internal Server error", http.StatusInternalServerError)
-		return
 	}
-
-	JSONError(w, err.Error(), code)
 }
 
 func (h *Hub) Notify(title, message string, eventID int) error {
