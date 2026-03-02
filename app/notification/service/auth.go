@@ -15,10 +15,11 @@ type contextKey string
 const (
 	userIDKey   contextKey = "contextKeyUserId"
 	userRoleKey contextKey = "contextKeyUserRole"
+	userNameKey contextKey = "contextKeyUserName"
 )
 
 type FoilClaims struct {
-	UserID   *int `json:"id"`
+	UserID   *int   `json:"id"`
 	UserName string `json:"username"`
 	UserRole string `json:"role"`
 	jwt.RegisteredClaims
@@ -65,6 +66,7 @@ func (hub *Hub) AuthMiddleware(next http.Handler) http.Handler {
 
 		ctx := context.WithValue(r.Context(), userIDKey, *claims.UserID)
 		ctx = context.WithValue(ctx, userRoleKey, claims.UserRole)
+		ctx = context.WithValue(ctx, userNameKey, claims.UserName)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

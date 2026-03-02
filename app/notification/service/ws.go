@@ -8,6 +8,7 @@ import (
 func (hub *Hub) ServeWs(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(userIDKey).(int)
 	userRole := r.Context().Value(userRoleKey).(string)
+	userName := r.Context().Value(userNameKey).(string)
 
 	connection, err := hub.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -16,7 +17,7 @@ func (hub *Hub) ServeWs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	joinedClient := NewClient(userID, userRole, connection, hub)
+	joinedClient := NewClient(userID, userName, userRole, connection, hub)
 	hub.RegisterChan <- joinedClient
 
 	go joinedClient.ReadFromConnectionTunnel()

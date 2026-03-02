@@ -157,7 +157,7 @@ export const leaveTeam = async (
 				type: 'team',
 				title: 'Member Left Team',
 				message: `${decodedUser.username} has left the team`,
-				link: '/teams',
+				link: '/team',
 			};
 			res.locals.exception = decodedUser.username;
 		});
@@ -237,7 +237,7 @@ export const deleteMember = async (
 						type: 'team',
 						title: 'Removed From Team',
 						message: `You have been removed from ${target_team_name}`,
-						link: '/teams',
+						// link: `/teams/${target_team_name}`,
 					},
 				})
 				.returning();
@@ -257,7 +257,7 @@ export const deleteMember = async (
 			type: 'team',
 			title: 'Member Kicked',
 			message: `${target_username} has been removed from the team`,
-			link: '/teams',
+			link: '/team',
 		};
 		res.locals.exception = captain_user.username;
 	});
@@ -303,7 +303,7 @@ export const handOverLeadership = async (
 			type: 'team',
 			title: 'New Captain',
 			message: `${captain_user.username} made you the captain of the team`,
-			link: '/teams',
+			link: '/team',
 		};
 	});
 	next();
@@ -357,7 +357,7 @@ export const sendJoinRequest = async (
 			type: 'team',
 			title: 'New Join Request',
 			message: `${jwt_user.username} wants to join your team`,
-			link: `/teams/${request_team.name}/requests`,
+			link: `/team`,
 		};
 	});
 	next();
@@ -449,7 +449,7 @@ export const acceptJoinRequest = async (
 						type: 'team',
 						title: 'Join Request Accepted',
 						message: `Your request to join ${target_team_name} has been accepted! Welcome to the team.`,
-						link: '/teams',
+						link: '/team',
 					},
 				})
 				.returning();
@@ -469,7 +469,7 @@ export const acceptJoinRequest = async (
 			type: 'team',
 			title: 'New Team Member',
 			message: `${teamJoinRequest.username} joined the team`,
-			link: '/teams',
+			link: '/team',
 		};
 		res.locals.exception = target_username;
 	});
@@ -514,7 +514,7 @@ export const declineJoinRequest = async (
 						type: 'team',
 						title: 'Join Request Declined',
 						message: `Your request to join ${target_team_name} was declined`,
-						link: '/teams',
+						// link: '/teams',
 					},
 				})
 				.returning();
@@ -791,7 +791,7 @@ export const route_team_delete = async (
 					type: 'team',
 					title: 'Team Dissolved',
 					message: `Team ${team.name} has been dissolved by the captain`,
-					link: '/teams',
+					link: '/team',
 				},
 			})
 			.returning();

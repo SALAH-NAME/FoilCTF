@@ -1,24 +1,20 @@
 import { useState } from 'react';
 import { data, useSearchParams } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-
-import type { Route } from './+types/index';
-
-import { fmtDateTime } from '~/utils';
-import { api_challenge_delete } from '~/api';
-
-import Icon from '~/components/Icon';
-import Modal from '~/components/Modal';
-import Button from '~/components/Button';
-import Spinner from '~/components/Spinner';
-import FilterTabs from '~/components/FilterTabs';
-import PageHeader from '~/components/PageHeader';
-import Pagination from '~/components/Pagination';
-import SearchInput from '~/components/SearchInput';
-import type { Challenge } from '~/components/AdminChallengeModal';
-import AdminChallengeModal from '~/components/AdminChallengeModal';
-import { request_session_user } from '~/session.server';
 import { useToast } from '~/contexts/ToastContext';
+import PageHeader from '../components/PageHeader';
+import Button from '../components/Button';
+import SearchInput from '../components/SearchInput';
+import FilterTabs from '../components/FilterTabs';
+import Pagination from '../components/Pagination';
+import Modal from '../components/Modal';
+import Icon from '../components/Icon';
+import Spinner from '../components/Spinner';
+import AdminChallengeModal from '../components/AdminChallengeModal';
+import type { Challenge } from '../components/AdminChallengeModal';
+import { fmtDateTime } from '../utils';
+import type { Route } from './+types/index';
+import { request_session_user } from '~/session.server';
 
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Challenges' }];
@@ -30,21 +26,23 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 type StatusFilter = 'all' | 'published' | 'draft';
 
-export async function remote_fetch_challenges(token: string, search: string, limit: number, offset: number, status: 'published' | 'draft' | 'all') {
+export async function remote_fetch_challenges(
+	token: string,
+	search: string,
+	limit: number,
+	offset: number,
+	status: 'published' | 'draft' | 'all'
+) {
 	const uri = new URL(
 		`/api/challenges`,
 		import.meta.env.BROWSER_REST_CHALLENGES_ORIGIN
 	);
-	if (search)
-		uri.searchParams.set('search', search);
-	if (status !== 'all')
-		uri.searchParams.set('status', status);
-	if (isFinite(limit))
-		uri.searchParams.set('limit', limit.toString());
-	if (isFinite(offset))
-		uri.searchParams.set('offset', offset.toString());
+	if (search) uri.searchParams.set('search', search);
+	if (status !== 'all') uri.searchParams.set('status', status);
+	if (isFinite(limit)) uri.searchParams.set('limit', limit.toString());
+	if (isFinite(offset)) uri.searchParams.set('offset', offset.toString());
 
-	const headers = new Headers({ 'Authorization': `Bearer ${token}` });
+	const headers = new Headers({ Authorization: `Bearer ${token}` });
 	const res = await fetch(uri, { headers });
 
 	const content_type =
@@ -80,7 +78,7 @@ export async function remote_delete_challenge(token: string, id: number) {
 		import.meta.env.BROWSER_REST_CHALLENGES_ORIGIN
 	);
 	const method = 'DELETE';
-	const headers = new Headers({ 'Authorization': `Bearer ${token}` });
+	const headers = new Headers({ Authorization: `Bearer ${token}` });
 	const res = await fetch(uri, { method, headers });
 
 	const content_type =
@@ -118,23 +116,40 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		isError,
 		error,
 	} = useQuery({
-		queryKey: ['challenges', { username: user?.username, searchQuery, currentPage, itemsPerPage, activeFilter }],
+		queryKey: [
+			'challenges',
+			{
+				username: user?.username,
+				searchQuery,
+				currentPage,
+				itemsPerPage,
+				activeFilter,
+			},
+		],
 		initialData: { challenges: [], count: 0 },
 		async queryFn() {
-			if (!user)
-				return { challenges: [], count: 0 };
+			if (!user) return { challenges: [], count: 0 };
 			const { username } = user;
-			return await remote_fetch_challenges(username, searchQuery, itemsPerPage, (currentPage - 1) * itemsPerPage, activeFilter);
+			return await remote_fetch_challenges(
+				username,
+				searchQuery,
+				itemsPerPage,
+				(currentPage - 1) * itemsPerPage,
+				activeFilter
+			);
 		},
 	});
 
 	const { addToast } = useToast();
 
 	// Delete mutation
-	const mut_delete = useMutation<unknown, Error, { token?: string, id: number }>({
+	const mut_delete = useMutation<
+		unknown,
+		Error,
+		{ token?: string; id: number }
+	>({
 		mutationFn: async ({ token, id }) => {
-			if (!token)
-				throw new Error('Unauthorized');
+			if (!token) throw new Error('Unauthorized');
 			await remote_delete_challenge(token, id);
 		},
 		async onSuccess() {
@@ -143,23 +158,20 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			addToast({
 				variant: 'success',
 				title: 'Challenge deleted',
-				message: 'Challenge has been deleted successfully',
+				message: 'The challenge has been deleted successfully',
 			});
 		},
-		onError(err) {
+		onError: (err: Error) => {
 			addToast({
 				variant: 'error',
-				title: 'Challenge deletion',
+				title: 'Challenge deletion failed',
 				message: err.message,
 			});
 		},
 	});
 
 	// Pagination
-	const totalPages = Math.max(
-		1,
-		Math.ceil(challenges_count / itemsPerPage)
-	);
+	const totalPages = Math.max(1, Math.ceil(challenges_count / itemsPerPage));
 
 	const handleFilterChange = (value: string) => {
 		const newParams = new URLSearchParams(searchParams);
@@ -427,7 +439,13 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 						</Button>
 						<Button
 							variant="danger"
-							onClick={() => deleteTarget && mut_delete.mutate({ token: user?.token_access, id: deleteTarget.id })}
+							onClick={() =>
+								deleteTarget &&
+								mut_delete.mutate({
+									token: user?.token_access,
+									id: deleteTarget.id,
+								})
+							}
 							disabled={mut_delete.status === 'pending'}
 							aria-label="Confirm deletion"
 						>

@@ -117,6 +117,12 @@ func main() {
 	r.Use(middleware.RealIP)
 	r.Use(metricsMiddleware)
 
+	if config.RateLimitEnabled {
+		store := newRateLimiterStore(config.RateLimitRPS, config.RateLimitBurst)
+		r.Use(rateLimitMiddleware(store))
+		log.Printf("[%s] Rate limiting enabled: %.0f req/s per IP, burst %d", config.ServiceName, config.RateLimitRPS, config.RateLimitBurst)
+	}
+
 	r.Get("/health", healthHandler)
 	r.Handle("/metrics", metricsHandler())
 

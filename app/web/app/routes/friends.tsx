@@ -205,6 +205,19 @@ export async function remote_refuse_friend_request(
 	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
 
+async function remote_fetch_online_users(token: string): Promise<Set<string>> {
+	const url = new URL(
+		'/api/notifications/online',
+		import.meta.env.BROWSER_REST_NOTIFICATION_ORIGIN
+	);
+	const res = await fetch(url, {
+		headers: { Authorization: `Bearer ${token}` },
+	});
+	if (!res.ok) return new Set();
+	const json: { usernames: string[] } = await res.json();
+	return new Set(json.usernames ?? []);
+}
+
 export default function Page() {
 	const { userState: user } = useUserAuth();
 	const { token_access } = user;
@@ -246,7 +259,8 @@ export default function Page() {
 		initialData: { data: [], limit: 10, page: 1, count: 0 },
 		queryFn: async ({ queryKey }) => {
 			const [_queryKeyPrime, variables] = queryKey;
-			if (typeof variables === 'string') return { data: [], limit: 10, page: 1, count: 0 };
+			if (typeof variables === 'string')
+				return { data: [], limit: 10, page: 1, count: 0 };
 
 			const { searchQuery, currentPage, itemsPerPage } = variables;
 			return await remote_fetch_friends(
@@ -266,7 +280,8 @@ export default function Page() {
 		enabled: activeTab === 'received',
 		queryFn: async ({ queryKey }) => {
 			const [_queryKeyPrime, variables] = queryKey;
-			if (typeof variables === 'string') return { data: [], limit: 10, page: 1, count: 0 };
+			if (typeof variables === 'string')
+				return { data: [], limit: 10, page: 1, count: 0 };
 
 			const { searchQuery, currentPage, itemsPerPage } = variables;
 			return await remote_fetch_friend_requests(
@@ -287,7 +302,8 @@ export default function Page() {
 		enabled: activeTab === 'sent',
 		queryFn: async ({ queryKey }) => {
 			const [_queryKeyPrime, variables] = queryKey;
-			if (typeof variables === 'string') return { data: [], limit: 10, page: 1, count: 0 };
+			if (typeof variables === 'string')
+				return { data: [], limit: 10, page: 1, count: 0 };
 
 			const { searchQuery, currentPage, itemsPerPage } = variables;
 			return await remote_fetch_friend_requests(
@@ -298,6 +314,13 @@ export default function Page() {
 				'sent'
 			);
 		},
+	});
+	const query_online_users = useQuery({
+		queryKey: ['friends-online', { token_access }],
+		initialData: new Set<string>(),
+		enabled: activeTab === 'friends',
+		refetchInterval: 30_000,
+		queryFn: async () => remote_fetch_online_users(token_access),
 	});
 	const mut_friend_remove = useMutation<unknown, Error, string>({
 		mutationFn: async (target) => {
@@ -322,7 +345,9 @@ export default function Page() {
 	const mut_friend_request_cancel = useMutation<unknown, Error, string>({
 		mutationFn: async (target) => {
 			await remote_cancel_friend_request(token_access, target);
-			await queryClient.invalidateQueries({ queryKey: ['friends-requests-sent'] });
+			await queryClient.invalidateQueries({
+				queryKey: ['friends-requests-sent'],
+			});
 		},
 		onSuccess() {
 			addToast({
@@ -342,7 +367,9 @@ export default function Page() {
 	const mut_friend_request_accept = useMutation<unknown, Error, string>({
 		mutationFn: async (target) => {
 			await remote_accept_friend_request(token_access, target);
-			await queryClient.invalidateQueries({ queryKey: ['friends-requests-received'] });
+			await queryClient.invalidateQueries({
+				queryKey: ['friends-requests-received'],
+			});
 			await queryClient.invalidateQueries({ queryKey: ['friends'] });
 		},
 		onSuccess() {
@@ -363,7 +390,9 @@ export default function Page() {
 	const mut_friend_request_refuse = useMutation<unknown, Error, string>({
 		mutationFn: async (target) => {
 			await remote_refuse_friend_request(token_access, target);
-			await queryClient.invalidateQueries({ queryKey: ['friends-requests-received'] });
+			await queryClient.invalidateQueries({
+				queryKey: ['friends-requests-received'],
+			});
 			await queryClient.invalidateQueries({ queryKey: ['friends'] });
 		},
 		onSuccess() {
@@ -416,27 +445,38 @@ export default function Page() {
 		},
 	];
 
-	const filteredSent: Friend[] = query_requests_sent.data.data
-		.map(({ receiver_name: username }) => ({
+	const filteredSent: Friend[] = query_requests_sent.data.data.map(
+		({ receiver_name: username }) => ({
 			username,
 			challengesSolved: 0,
 			totalPoints: 0,
-		}));
+		})
+	);
 	const filteredFriends: Friend[] = query_friends.data.data.map((username) => ({
 		username,
 		challengesSolved: 0,
 		totalPoints: 0,
 	}));
-	const filteredReceived: Friend[] = query_requests_received.data.data
-		.map(({ sender_name: username }) => ({
+	const filteredReceived: Friend[] = query_requests_received.data.data.map(
+		({ sender_name: username }) => ({
 			username,
 			challengesSolved: 0,
 			totalPoints: 0,
-		}));
+		})
+	);
 
-	const totalPages_friends = Math.max(1, Math.ceil(query_friends.data.count / itemsPerPage));
-	const totalPages_received = Math.max(1, Math.ceil(query_requests_received.data.count / itemsPerPage));
-	const totalPages_sent = Math.max(1, Math.ceil(query_requests_sent.data.count / itemsPerPage));
+	const totalPages_friends = Math.max(
+		1,
+		Math.ceil(query_friends.data.count / itemsPerPage)
+	);
+	const totalPages_received = Math.max(
+		1,
+		Math.ceil(query_requests_received.data.count / itemsPerPage)
+	);
+	const totalPages_sent = Math.max(
+		1,
+		Math.ceil(query_requests_sent.data.count / itemsPerPage)
+	);
 
 	const handlePageChange = (page: number) => {
 		const newParams = new URLSearchParams(searchParams);
@@ -489,8 +529,7 @@ export default function Page() {
 								aria-live="polite"
 							>
 								<p className="text-dark/60">
-									You don't have any friends yet. Start by searching for
-									users!
+									You don't have any friends yet. Start by searching for users!
 								</p>
 							</div>
 						) : filteredFriends.length === 0 ? (
@@ -515,6 +554,7 @@ export default function Page() {
 											<FriendCard
 												{...friend}
 												type="friend"
+												isOnline={query_online_users.data.has(friend.username)}
 												onRemove={() => handleRemoveFriend(friend.username)}
 											/>
 										</div>
@@ -577,12 +617,8 @@ export default function Page() {
 											<FriendCard
 												{...request}
 												type="received"
-												onAccept={() =>
-													handleAcceptRequest(request.username)
-												}
-												onReject={() =>
-													handleRefuseRequest(request.username)
-												}
+												onAccept={() => handleAcceptRequest(request.username)}
+												onReject={() => handleRefuseRequest(request.username)}
 											/>
 										</div>
 									))}
@@ -644,9 +680,7 @@ export default function Page() {
 											<FriendCard
 												{...request}
 												type="sent"
-												onCancel={() =>
-													handleCancelRequest(request.username)
-												}
+												onCancel={() => handleCancelRequest(request.username)}
 											/>
 										</div>
 									))}

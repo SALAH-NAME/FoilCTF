@@ -5,6 +5,7 @@ import Button from '../components/Button';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type SubmitEvent } from 'react';
+import { useToast } from '~/contexts/ToastContext';
 
 import type { Route } from './+types/index';
 import {
@@ -47,6 +48,7 @@ function DialogCreate({
 	}, [open]);
 
 	const queryClient = useQueryClient();
+	const { addToast } = useToast();
 	const mutCreate = useMutation({
 		mutationFn: async (body: FormData): Promise<Record<string, any>> => {
 			await api_sandbox_image_create(body);
@@ -58,7 +60,19 @@ function DialogCreate({
 			await queryClient.invalidateQueries({
 				queryKey: ['instances'],
 			});
+			addToast({
+				variant: 'success',
+				title: 'Instance created',
+				message: 'The instance image has been built successfully',
+			});
 			triggerClose();
+		},
+		onError: (err: Error) => {
+			addToast({
+				variant: 'error',
+				title: 'Instance creation failed',
+				message: err.message,
+			});
 		},
 	});
 
@@ -142,6 +156,7 @@ function DialogInstance({
 	}, [open]);
 
 	const queryClient = useQueryClient();
+	const { addToast } = useToast();
 	const mutDelete = useMutation({
 		mutationFn: async () => {
 			const [name] = fmtImageName(instance.names_history?.[0]).split(':');
@@ -150,12 +165,21 @@ function DialogInstance({
 			return await api_sandbox_image_delete(name);
 		},
 
-		onError: (err) => {
-			console.error(err);
+		onError: (err: Error) => {
+			addToast({
+				variant: 'error',
+				title: 'Instance deletion failed',
+				message: err.message,
+			});
 		},
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
 				queryKey: ['instances'],
+			});
+			addToast({
+				variant: 'success',
+				title: 'Instance deleted',
+				message: 'The instance image has been deleted successfully',
 			});
 			triggerClose();
 		},

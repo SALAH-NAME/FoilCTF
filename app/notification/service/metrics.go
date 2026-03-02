@@ -53,9 +53,10 @@ var (
 type responseWriterStatusful struct {
 	http.ResponseWriter
 
-	Status int
+	Status      int
 	wroteHeader bool
 }
+
 func (w *responseWriterStatusful) WriteHeader(statusCode int) {
 	if w.wroteHeader {
 		return
@@ -106,7 +107,7 @@ func MetricsMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		wStatus := responseWriterStatusful{ w, http.StatusOK, false }
+		wStatus := responseWriterStatusful{w, http.StatusOK, false}
 
 		start := time.Now()
 		next.ServeHTTP(&wStatus, r)

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '~/contexts/ToastContext';
 import Modal from './Modal';
 import Button from './Button';
 import FormInput from './FormInput';
@@ -14,7 +15,6 @@ import {
 	api_attachment_remove,
 } from '../api';
 import type { SessionUser } from '~/session.server';
-import { useToast } from '~/contexts/ToastContext';
 
 export interface Challenge {
 	id: number;
@@ -91,6 +91,7 @@ export default function AdminChallengeModal({
 }: AdminChallengeModalProps) {
 	const isEditMode = !!challenge;
 	const queryClient = useQueryClient();
+	const { addToast } = useToast();
 
 	const [name, setName] = useState('');
 	const [description, setDescription] = useState('');
@@ -160,7 +161,6 @@ export default function AdminChallengeModal({
 		}
 	}, [serverAttachments, isEditMode]);
 
-	const { addToast } = useToast();
 
 	const mut_create = useMutation({
 		mutationFn: async () => {
@@ -183,6 +183,11 @@ export default function AdminChallengeModal({
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['challenges'] });
+			addToast({
+				variant: 'success',
+				title: 'Challenge created',
+				message: 'The challenge has been created successfully',
+			});
 			onSuccess?.();
 			onClose();
 
@@ -231,6 +236,11 @@ export default function AdminChallengeModal({
 		},
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ['challenges'] });
+			addToast({
+				variant: 'success',
+				title: 'Challenge updated',
+				message: 'The challenge has been updated successfully',
+			});
 			onSuccess?.();
 			onClose();
 

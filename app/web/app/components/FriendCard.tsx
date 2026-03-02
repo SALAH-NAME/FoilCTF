@@ -12,6 +12,7 @@ interface FriendCardProps {
 	challengesSolved: number;
 	totalPoints: number;
 	type: 'friend' | 'received' | 'sent';
+	isOnline?: boolean;
 	onRemove?: () => void;
 	onAccept?: () => void;
 	onReject?: () => void;
@@ -25,6 +26,7 @@ export default function FriendCard({
 	challengesSolved,
 	totalPoints,
 	type,
+	isOnline,
 	onRemove,
 	onAccept,
 	onReject,
@@ -50,11 +52,23 @@ export default function FriendCard({
 						className="shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus:rounded"
 						aria-label={`View ${username}'s profile`}
 					>
-						<div
-							className="size-16 rounded-full bg-linear-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-xl"
-							aria-hidden={true}
-						>
-							<ProfileAvatar avatar={avatar ?? null} className="size-full rounded-full object-cover" />
+						<div className="relative">
+							<div
+								className="size-16 rounded-full bg-linear-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-xl"
+								aria-hidden={true}
+							>
+								<ProfileAvatar
+									avatar={avatar ?? null}
+									className="size-full rounded-full object-cover"
+								/>
+							</div>
+							{isOnline !== undefined && (
+								<span
+									className={`absolute bottom-0.5 right-0.5 size-3.5 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}
+									aria-label={isOnline ? 'Online' : 'Offline'}
+									title={isOnline ? 'Online' : 'Offline'}
+								/>
+							)}
 						</div>
 					</Link>
 
