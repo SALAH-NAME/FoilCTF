@@ -7,7 +7,12 @@ import Pagination from '~/components/Pagination';
 import type { Route } from './+types/users';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '~/contexts/ToastContext';
-import { remote_send_friend_request } from './friends';
+import {
+	remote_send_friend_request,
+	remote_cancel_friend_request,
+	remote_accept_friend_request,
+	remote_refuse_friend_request,
+} from './friends';
 import { request_session } from '~/session.server';
 
 export function meta({}: Route.MetaArgs) {
@@ -120,9 +125,9 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		mutationFn: async (target) => {
 			if (!token_access) throw new Error('Unauthorized');
 			await remote_send_friend_request(token_access, target);
-			await queryClient.invalidateQueries({ queryKey: ['users'] });
 		},
-		onSuccess() {
+		async onSuccess() {
+			await queryClient.invalidateQueries({ queryKey: ['users'] });
 			addToast({
 				variant: 'success',
 				title: 'Friend request sent',
@@ -133,6 +138,72 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			addToast({
 				variant: 'error',
 				title: 'Friend request not sent',
+				message: err.message,
+			});
+		},
+	});
+
+	const mut_friend_request_cancel = useMutation<unknown, Error, string>({
+		mutationFn: async (target) => {
+			if (!token_access) throw new Error('Unauthorized');
+			await remote_cancel_friend_request(token_access, target);
+		},
+		async onSuccess() {
+			await queryClient.invalidateQueries({ queryKey: ['users'] });
+			addToast({
+				variant: 'success',
+				title: 'Friend request cancelled',
+				message: '',
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Failed to cancel friend request',
+				message: err.message,
+			});
+		},
+	});
+
+	const mut_friend_request_accept = useMutation<unknown, Error, string>({
+		mutationFn: async (target) => {
+			if (!token_access) throw new Error('Unauthorized');
+			await remote_accept_friend_request(token_access, target);
+		},
+		async onSuccess() {
+			await queryClient.invalidateQueries({ queryKey: ['users'] });
+			addToast({
+				variant: 'success',
+				title: 'Friend request accepted',
+				message: '',
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Failed to accept friend request',
+				message: err.message,
+			});
+		},
+	});
+
+	const mut_friend_request_reject = useMutation<unknown, Error, string>({
+		mutationFn: async (target) => {
+			if (!token_access) throw new Error('Unauthorized');
+			await remote_refuse_friend_request(token_access, target);
+		},
+		async onSuccess() {
+			await queryClient.invalidateQueries({ queryKey: ['users'] });
+			addToast({
+				variant: 'success',
+				title: 'Friend request rejected',
+				message: '',
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Failed to reject friend request',
 				message: err.message,
 			});
 		},
@@ -169,9 +240,20 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		setSearchParams(newParams);
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	};
-	const handleAddFriend = (target: string) => {
+	const action_pending =
+		mut_friend_request_send.isPending ||
+		mut_friend_request_cancel.isPending ||
+		mut_friend_request_accept.isPending ||
+		mut_friend_request_reject.isPending;
+
+	const handleAddFriend = (target: string) =>
 		mut_friend_request_send.mutate(target);
-	};
+	const handleCancelRequest = (target: string) =>
+		mut_friend_request_cancel.mutate(target);
+	const handleAcceptRequest = (target: string) =>
+		mut_friend_request_accept.mutate(target);
+	const handleRejectRequest = (target: string) =>
+		mut_friend_request_reject.mutate(target);
 	return (
 		<>
 			<PageHeader title="Find Users" />
@@ -221,8 +303,11 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 									<UserCard
 										{...user}
 										userState={userState}
-										disabled={mut_friend_request_send.isPending}
+										disabled={action_pending}
 										onAddFriend={() => handleAddFriend(user.username)}
+										onCancelRequest={() => handleCancelRequest(user.username)}
+										onAcceptRequest={() => handleAcceptRequest(user.username)}
+										onRejectRequest={() => handleRejectRequest(user.username)}
 									/>
 								</div>
 							))}

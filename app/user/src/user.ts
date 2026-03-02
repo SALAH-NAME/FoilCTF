@@ -78,8 +78,14 @@ export async function route_user_list(
 			)
 		);
 		const orm_on_friend_requests = or(
-			eq(table_friend_requests.sender_name, table_users.username),
-			eq(table_friend_requests.receiver_name, table_users.username)
+			and(
+				eq(table_friend_requests.sender_name, user_dispatcher.username),
+				eq(table_friend_requests.receiver_name, table_users.username)
+			),
+			and(
+				eq(table_friend_requests.sender_name, table_users.username),
+				eq(table_friend_requests.receiver_name, user_dispatcher.username)
+			)
 		);
 		const orm_select = {
 			user: table_users,
