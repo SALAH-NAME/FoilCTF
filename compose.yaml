@@ -88,6 +88,7 @@ services:
       context: ./app/web/
       dockerfile: Containerfile
       args:
+        - BROWSER_REST_CHALLENGES_ORIGIN=${BROWSER_REST_CHALLENGES_ORIGIN:-https://localhost:3443}
         - BROWSER_REST_CHAT_ORIGIN=${BROWSER_REST_CHAT_ORIGIN:-https://localhost:3443}
         - BROWSER_REST_USER_ORIGIN=${BROWSER_REST_USER_ORIGIN:-https://localhost:3443}
         - BROWSER_REST_EVENTS_ORIGIN=${BROWSER_REST_EVENTS_ORIGIN:-https://localhost:3443}

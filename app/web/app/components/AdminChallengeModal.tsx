@@ -15,7 +15,6 @@ import {
 	api_attachment_remove,
 } from '../api';
 import type { SessionUser } from '~/session.server';
-import { useToast } from '~/contexts/ToastContext';
 
 export interface Challenge {
 	id: number;
@@ -162,7 +161,6 @@ export default function AdminChallengeModal({
 		}
 	}, [serverAttachments, isEditMode]);
 
-	const { addToast } = useToast();
 
 	const mut_create = useMutation({
 		mutationFn: async () => {
