@@ -183,11 +183,6 @@ export default function AdminChallengeModal({
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['challenges'] });
-			addToast({
-				variant: 'success',
-				title: 'Challenge created',
-				message: 'The challenge has been created successfully',
-			});
 			onSuccess?.();
 			onClose();
 
@@ -252,8 +247,7 @@ export default function AdminChallengeModal({
 		},
 		onError: (error: Error) => {
 			setFormError(
-				error?.errors?.[0]?.message ||
-					error?.message ||
+				error?.message ||
 					'Failed to update challenge'
 			);
 
