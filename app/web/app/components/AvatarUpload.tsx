@@ -153,6 +153,16 @@ export default function AvatarUpload({
 
 		const file = e.target.files?.[0];
 		if (file) {
+			if (!file.type.startsWith("image/")) {
+				addToast({
+					variant: 'error',
+					title: 'Avatar upload',
+					message: 'Avatar must be an image',
+				});
+				e.target.value = "";
+				return ;
+			}
+
 			const reader = new FileReader();
 			reader.onloadend = () => {
 				setPreviewUrl(reader.result as string);
