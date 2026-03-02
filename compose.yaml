@@ -88,10 +88,12 @@ services:
       context: ./app/web/
       dockerfile: Containerfile
       args:
+        - BROWSER_REST_CHAT_ORIGIN=${BROWSER_REST_CHAT_ORIGIN:-https://localhost:3443}
         - BROWSER_REST_USER_ORIGIN=${BROWSER_REST_USER_ORIGIN:-https://localhost:3443}
-        - BROWSER_SOCKET_NOTIFICATION=${BROWSER_SOCKET_NOTIFICATION:-wss://localhost:3443}
         - BROWSER_REST_EVENTS_ORIGIN=${BROWSER_REST_EVENTS_ORIGIN:-https://localhost:3443}
         - BROWSER_REST_NOTIFICATION_ORIGIN=${BROWSER_REST_NOTIFICATION_ORIGIN:-https://localhost:3443}
+        - BROWSER_SOCKET_CHAT=${BROWSER_SOCKET_CHAT:-wss://localhost:3443}
+        - BROWSER_SOCKET_NOTIFICATION=${BROWSER_SOCKET_NOTIFICATION:-wss://localhost:3443}
     environment:
       - PORT=${WEB_PORT:-3000}
       - SERVER_ACCESS_SECRET=${ACCESS_TOKEN_SECRET:?ACCESS_TOKEN_SECRET must be set}
