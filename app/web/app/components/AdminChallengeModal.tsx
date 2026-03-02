@@ -398,7 +398,7 @@ export default function AdminChallengeModal({
 							type="text"
 							label="Name"
 							value={name}
-							onChange={(e) => setName(e.target.value)}
+							onChange={(e:any) => setName(e.target.value)}
 							placeholder="Enter challenge name..."
 							required={!isEditMode}
 						/>
@@ -408,7 +408,7 @@ export default function AdminChallengeModal({
 							type="textarea"
 							label="Description"
 							value={description}
-							onChange={(e) => setDescription(e.target.value)}
+							onChange={(e:any) => setDescription(e.target.value)}
 							placeholder="Describe the challenge objectives, hints, and context..."
 							rows={4}
 							required={!isEditMode}
