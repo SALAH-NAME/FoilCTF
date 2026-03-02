@@ -1,5 +1,5 @@
 import * as vb from 'valibot';
-import { count, eq, ilike  } from 'drizzle-orm';
+import { and, count, eq, ilike  } from 'drizzle-orm';
 import { type Request, type Response } from 'express';
 import { createSelectSchema, createInsertSchema, createUpdateSchema } from 'drizzle-valibot'
 
@@ -24,18 +24,23 @@ export async function route_challenges_list(
 	}
 
 	const search_term = '%' + (parse_result.output.search ?? '') + '%';
+	const conditions = [ilike(table_challenges.name, search_term)];
+	if (parse_result.output.status)
+		conditions.push(eq(table_challenges.is_published, parse_result.output.status === "published"));
+
 	const data = await orm.transaction(async (tx) => {
 		const challenges = await tx
 			.select()
 			.from(table_challenges)
 			.orderBy(table_challenges.id, table_challenges.name)
-			.where(ilike(table_challenges.name, search_term))
+			.where(and(...conditions))
 			.limit(parse_result.output.limit)
 			.offset(parse_result.output.offset);
 
 		const [challenges_counter] = await tx
 			.select({ count: count() })
-			.from(table_challenges);
+			.from(table_challenges)
+			.where(and(...conditions));
 		return { challenges, count: challenges_counter?.count ?? 0 };
 	});
 	respondJSON(res, data);
@@ -45,7 +50,7 @@ export async function route_challenges_delete(
 	res: Response
 ): Promise<void> {
 	// TODO(xenobas): Bulk delete
-	respondStatus(res, 501);
+	return respondJSON(res, { error: "Not Implemented" }, 501);
 }
 
 export async function route_challenge_create(
@@ -80,13 +85,10 @@ export async function route_challenge_update(
 		return respondJSON(res, { errors }, 400);
 	}
 
-	try {
+	const values = parse_result.output;
+	if (Object.keys(values).length > 0)
 		await orm.update(table_challenges).set(parse_result.output).where(eq(table_challenges.id, challenge.id));
-		respondStatus(res, 200);
-	} catch (error) {
-		console.error(`Could not update challenge#${challenge.id}:`, error);
-		respondStatus(res, 400);
-	}
+	return respondJSON(res, { ok: true }, 200);
 }
 export async function route_challenge_delete(
 	_req: Request<{ id: string }>,
@@ -94,12 +96,12 @@ export async function route_challenge_delete(
 ): Promise<void> {
 	const { id } = res.locals.challenge;
 	await orm.delete(table_challenges).where(eq(table_challenges.id, id));
-	respondStatus(res, 200);
+	return respondJSON(res, { ok: true }, 200);
 }
 export async function route_challenge_inspect(
 	_req: Request<{ id: string }>,
 	res: Response<any, { challenge: SelectChallenge }>
 ): Promise<void> {
 	const { challenge } = res.locals;
-	respondJSON(res, { challenge }, 200);
+	return respondJSON(res, { challenge }, 200);
 }

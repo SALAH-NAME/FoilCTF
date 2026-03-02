@@ -6,6 +6,7 @@ export const schema_attachment_create = vb.object({
 });
 export const schema_pagination = vb.object({
 	search: vb.optional(vb.string()),
+	status: vb.optional(vb.union([vb.literal("draft"), vb.literal("published")])),
 	limit: vb.pipe(vb.optional(vb.string(), '50'), vb.toNumber()),
 	offset: vb.pipe(vb.optional(vb.string(), '0'), vb.toNumber()),
 });

@@ -1,218 +1,164 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { data, useSearchParams } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import PageHeader from '../components/PageHeader';
-import Button from '../components/Button';
-import SearchInput from '../components/SearchInput';
-import FilterTabs from '../components/FilterTabs';
-import Pagination from '../components/Pagination';
-import Modal from '../components/Modal';
-import Icon from '../components/Icon';
-import Spinner from '../components/Spinner';
-import AdminChallengeModal from '../components/AdminChallengeModal';
-import type { Challenge } from '../components/AdminChallengeModal';
-import { api_challenge_list, api_challenge_delete } from '../api';
-import { fmtDateTime } from '../utils';
+
 import type { Route } from './+types/index';
+
+import { fmtDateTime } from '~/utils';
+import { api_challenge_delete } from '~/api';
+
+import Icon from '~/components/Icon';
+import Modal from '~/components/Modal';
+import Button from '~/components/Button';
+import Spinner from '~/components/Spinner';
+import FilterTabs from '~/components/FilterTabs';
+import PageHeader from '~/components/PageHeader';
+import Pagination from '~/components/Pagination';
+import SearchInput from '~/components/SearchInput';
+import type { Challenge } from '~/components/AdminChallengeModal';
+import AdminChallengeModal from '~/components/AdminChallengeModal';
+import { request_session_user } from '~/session.server';
+import { useToast } from '~/contexts/ToastContext';
 
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Challenges' }];
 }
+export async function loader({ request }: Route.LoaderArgs) {
+	const user = await request_session_user(request);
+	return data({ user });
+}
 
 type StatusFilter = 'all' | 'published' | 'draft';
 
-const mockChallenges: Challenge[] = [
-	{
-		id: 101,
-		name: 'SQL Injection 101',
-		description:
-			'Exploit a classic SQL injection vulnerability to extract the hidden flag from the database.',
-		flag: 'flag{sql_1nj3ct10n_m4st3r}',
-		reward: 200,
-		reward_min: 100,
-		reward_first_blood: 50,
-		reward_decrements: true,
-		is_published: true,
-		author_id: 1,
-		created_at: '2026-01-10T08:00:00Z',
-		updated_at: '2026-01-10T08:00:00Z',
-	},
-	{
-		id: 102,
-		name: 'XSS Playground',
-		description:
-			'Find and exploit a reflected XSS vulnerability to steal the admin session cookie.',
-		flag: 'flag{xss_c00k13_st3al3r}',
-		reward: 300,
-		reward_min: 150,
-		reward_first_blood: 75,
-		reward_decrements: true,
-		is_published: true,
-		author_id: 1,
-		created_at: '2026-01-11T09:00:00Z',
-		updated_at: '2026-01-11T09:00:00Z',
-	},
-	{
-		id: 103,
-		name: 'Buffer Overflow Basics',
-		description:
-			'Overflow the stack buffer to overwrite the return address and redirect execution to win().',
-		flag: 'flag{buff3r_0v3rfl0w_w1n}',
-		reward: 450,
-		reward_min: 200,
-		reward_first_blood: 100,
-		reward_decrements: true,
-		is_published: true,
-		author_id: 1,
-		created_at: '2026-01-12T10:00:00Z',
-		updated_at: '2026-01-12T10:00:00Z',
-	},
-	{
-		id: 104,
-		name: 'RSA Factoring',
-		description:
-			'The RSA modulus was generated with weak primes. Factor n and recover the plaintext.',
-		flag: 'flag{rsa_w34k_pr1m3s_cr4ck}',
-		reward: 500,
-		reward_min: 250,
-		reward_first_blood: 125,
-		reward_decrements: true,
-		is_published: true,
-		author_id: 1,
-		created_at: '2026-01-13T11:00:00Z',
-		updated_at: '2026-01-13T11:00:00Z',
-	},
-	{
-		id: 105,
-		name: 'Forensics: Lost Packet',
-		description:
-			'A pcap file holds the secret. Reconstruct the TCP stream and extract the hidden message.',
-		flag: 'flag{pcap_l0st_4nd_f0und}',
-		reward: 250,
-		reward_min: 100,
-		reward_first_blood: 60,
-		reward_decrements: false,
-		is_published: true,
-		author_id: 1,
-		created_at: '2026-01-14T12:00:00Z',
-		updated_at: '2026-01-14T12:00:00Z',
-	},
-	{
-		id: 106,
-		name: 'Reverse Me',
-		description:
-			'Reverse engineer the binary and figure out the correct password to get the flag.',
-		flag: 'flag{r3v3rs3_p4ssw0rd_g4m3}',
-		reward: 400,
-		reward_min: 200,
-		reward_first_blood: 100,
-		reward_decrements: true,
-		is_published: false,
-		author_id: 1,
-		created_at: '2026-01-15T13:00:00Z',
-		updated_at: '2026-01-15T13:00:00Z',
-	},
-	{
-		id: 107,
-		name: 'SSRF via PDF',
-		description:
-			'The application converts user-supplied URLs to PDFs. Pivot to the internal network.',
-		flag: 'flag{ssrf_pdf_1nt3rn4l_n3t}',
-		reward: 600,
-		reward_min: 300,
-		reward_first_blood: 150,
-		reward_decrements: true,
-		is_published: false,
-		author_id: 1,
-		created_at: '2026-01-16T14:00:00Z',
-		updated_at: '2026-01-16T14:00:00Z',
-	},
-	{
-		id: 108,
-		name: 'Miscellaneous: Hello World',
-		description: 'A warm-up challenge. Read the rule book and submit the flag.',
-		flag: 'flag{w3lc0m3_t0_f0ilctf}',
-		reward: 50,
-		reward_min: 50,
-		reward_first_blood: 0,
-		reward_decrements: false,
-		is_published: true,
-		author_id: 1,
-		created_at: '2026-01-17T08:00:00Z',
-		updated_at: '2026-01-17T08:00:00Z',
-	},
-];
+export async function remote_fetch_challenges(token: string, search: string, limit: number, offset: number, status: 'published' | 'draft' | 'all') {
+	const uri = new URL(
+		`/api/challenges`,
+		import.meta.env.BROWSER_REST_CHALLENGES_ORIGIN
+	);
+	if (search)
+		uri.searchParams.set('search', search);
+	if (status !== 'all')
+		uri.searchParams.set('status', status);
+	if (isFinite(limit))
+		uri.searchParams.set('limit', limit.toString());
+	if (isFinite(offset))
+		uri.searchParams.set('offset', offset.toString());
 
-export default function Page() {
-	const [searchParams, setSearchParams] = useSearchParams();
-	const [searchQuery, setSearchQuery] = useState('');
+	const headers = new Headers({ 'Authorization': `Bearer ${token}` });
+	const res = await fetch(uri, { headers });
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
+
+	type JSONData_Challenges = {
+		challenges: {
+			id: number;
+			is_published: boolean;
+			name: string;
+			description: string;
+			category: string;
+			reward: number;
+			reward_min: number;
+			reward_first_blood: number;
+			reward_decrements: boolean;
+			author_id: number;
+			created_at: string;
+			updated_at: string;
+		}[];
+		count: number;
+	};
+	return json as JSONData_Challenges;
+}
+export async function remote_delete_challenge(token: string, id: number) {
+	const uri = new URL(
+		`/api/challenges/${id}`,
+		import.meta.env.BROWSER_REST_CHALLENGES_ORIGIN
+	);
+	const method = 'DELETE';
+	const headers = new Headers({ 'Authorization': `Bearer ${token}` });
+	const res = await fetch(uri, { method, headers });
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
+}
+
+export default function Page({ loaderData }: Route.ComponentProps) {
 	const queryClient = useQueryClient();
+	const [searchQuery, setSearchQuery] = useState('');
+	const [searchParams, setSearchParams] = useSearchParams();
 
 	// Modal state
-	const [showCreateModal, setShowCreateModal] = useState(false);
-	const [editChallenge, setEditChallenge] = useState<Challenge | null>(null);
 	const [deleteTarget, setDeleteTarget] = useState<Challenge | null>(null);
+	const [editChallenge, setEditChallenge] = useState<Challenge | null>(null);
+	const [showCreateModal, setShowCreateModal] = useState(false);
 
 	// Filter state
 	const filterParam = searchParams.get('status') as StatusFilter | null;
-	const activeFilter: StatusFilter = filterParam || 'all';
+	const activeFilter: StatusFilter = filterParam ?? 'all';
+
 	const currentPage = parseInt(searchParams.get('page') || '1', 10);
-	const itemsPerPage = parseInt(searchParams.get('perPage') || '16', 10);
+	const itemsPerPage = parseInt(searchParams.get('perPage') || '10', 10);
+
+	const { user } = loaderData;
 
 	// Fetch challenges
 	const {
-		data: challenges,
+		data: { challenges, count: challenges_count },
 		isLoading,
 		isError,
 		error,
 	} = useQuery({
-		queryKey: ['challenges'],
-		queryFn: async (): Promise<Challenge[]> => {
-			try {
-				const result = await api_challenge_list();
-				const list = Array.isArray(result) ? result : [];
-				return list.length > 0 ? list : mockChallenges;
-			} catch {
-				return mockChallenges;
-			}
+		queryKey: ['challenges', { username: user?.username, searchQuery, currentPage, itemsPerPage, activeFilter }],
+		initialData: { challenges: [], count: 0 },
+		async queryFn() {
+			if (!user)
+				return { challenges: [], count: 0 };
+			const { username } = user;
+			return await remote_fetch_challenges(username, searchQuery, itemsPerPage, (currentPage - 1) * itemsPerPage, activeFilter);
 		},
-		initialData: [],
 	});
+
+	const { addToast } = useToast();
 
 	// Delete mutation
-	const mutDelete = useMutation({
-		mutationFn: async (id: number) => {
-			await api_challenge_delete(id);
+	const mut_delete = useMutation<unknown, Error, { token?: string, id: number }>({
+		mutationFn: async ({ token, id }) => {
+			if (!token)
+				throw new Error('Unauthorized');
+			await remote_delete_challenge(token, id);
 		},
-		onSuccess: async () => {
+		async onSuccess() {
 			await queryClient.invalidateQueries({ queryKey: ['challenges'] });
 			setDeleteTarget(null);
+			addToast({
+				variant: 'success',
+				title: 'Challenge deleted',
+				message: 'Challenge has been deleted successfully',
+			});
 		},
-	});
-
-	// Filter & search
-	const filteredChallenges = challenges.filter((ch) => {
-		const matchesSearch = ch.name
-			.toLowerCase()
-			.includes(searchQuery.toLowerCase());
-		const matchesFilter =
-			activeFilter === 'all'
-				? true
-				: activeFilter === 'published'
-					? ch.is_published
-					: !ch.is_published;
-		return matchesSearch && matchesFilter;
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Challenge deletion',
+				message: err.message,
+			});
+		},
 	});
 
 	// Pagination
 	const totalPages = Math.max(
 		1,
-		Math.ceil(filteredChallenges.length / itemsPerPage)
-	);
-	const startIndex = (currentPage - 1) * itemsPerPage;
-	const paginatedChallenges = filteredChallenges.slice(
-		startIndex,
-		startIndex + itemsPerPage
+		Math.ceil(challenges_count / itemsPerPage)
 	);
 
 	const handleFilterChange = (value: string) => {
@@ -279,7 +225,7 @@ export default function Page() {
 				/>
 
 				<div aria-live="polite" aria-atomic="true" className="sr-only">
-					{filteredChallenges.length} challenges found
+					{challenges_count} challenges found
 				</div>
 
 				{isLoading && (
@@ -303,7 +249,7 @@ export default function Page() {
 					</div>
 				)}
 
-				{!isLoading && !isError && filteredChallenges.length === 0 && (
+				{!isLoading && !isError && challenges_count === 0 && (
 					<div className="text-center py-12">
 						<p className="text-muted">
 							{searchQuery || activeFilter !== 'all'
@@ -313,7 +259,7 @@ export default function Page() {
 					</div>
 				)}
 
-				{!isLoading && !isError && filteredChallenges.length > 0 && (
+				{!isLoading && !isError && challenges_count > 0 && (
 					<>
 						<div
 							className="bg-white border border-neutral-300 rounded-md overflow-hidden"
@@ -341,7 +287,7 @@ export default function Page() {
 								</span>
 							</div>
 
-							{paginatedChallenges.map((challenge) => (
+							{challenges.map((challenge) => (
 								<div
 									key={challenge.id}
 									className="grid grid-cols-1 md:grid-cols-12 gap-2 px-4 py-3 border-b border-neutral-200 last:border-b-0 items-center hover:bg-neutral-50 transition-colors"
@@ -441,7 +387,7 @@ export default function Page() {
 						<Pagination
 							currentPage={currentPage}
 							totalPages={totalPages}
-							totalItems={filteredChallenges.length}
+							totalItems={challenges_count}
 							itemsPerPage={itemsPerPage}
 							onPageChange={handlePageChange}
 							onItemsPerPageChange={(items) => {
@@ -456,6 +402,7 @@ export default function Page() {
 			</div>
 
 			<AdminChallengeModal
+				user={user}
 				isOpen={showCreateModal || !!editChallenge}
 				onClose={() => {
 					setShowCreateModal(false);
@@ -474,17 +421,17 @@ export default function Page() {
 						<Button
 							variant="secondary"
 							onClick={() => setDeleteTarget(null)}
-							disabled={mutDelete.status === 'pending'}
+							disabled={mut_delete.status === 'pending'}
 						>
 							Cancel
 						</Button>
 						<Button
 							variant="danger"
-							onClick={() => deleteTarget && mutDelete.mutate(deleteTarget.id)}
-							disabled={mutDelete.status === 'pending'}
+							onClick={() => deleteTarget && mut_delete.mutate({ token: user?.token_access, id: deleteTarget.id })}
+							disabled={mut_delete.status === 'pending'}
 							aria-label="Confirm deletion"
 						>
-							{mutDelete.status === 'pending' ? (
+							{mut_delete.status === 'pending' ? (
 								<>
 									<Spinner scale={0.7} />
 									Deleting...
@@ -522,7 +469,7 @@ export default function Page() {
 							</div>
 						</div>
 					</div>
-					{mutDelete.status === 'error' && (
+					{mut_delete.status === 'error' && (
 						<p className="text-sm text-red-600" role="alert">
 							Failed to delete challenge. Please try again.
 						</p>

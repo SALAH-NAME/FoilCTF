@@ -83,5 +83,5 @@ export async function route_attachment_delete(
 				eq(table_challenges_attachments.challenge_id, challenge_attachment.challenge_id),
 			)
 		);
-	respondStatus(res, 204);
+	respondJSON(res, { ok: true }, 200);
 }

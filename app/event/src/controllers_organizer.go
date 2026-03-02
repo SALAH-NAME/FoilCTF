@@ -278,7 +278,7 @@ func (h *Hub) UnlinkChallenge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	JSONResponse(w, nil, http.StatusNoContent)
+	JSONResponse(w, map[string]bool{ "ok": true }, http.StatusOK)
 }
 
 func (h *Hub) StartEvent(w http.ResponseWriter, r *http.Request) {
