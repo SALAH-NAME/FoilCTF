@@ -9,7 +9,6 @@ import {
 import { db } from './utils/db';
 import { eq, and, or, ilike, count as sql_count } from 'drizzle-orm';
 
-
 export class FoilCTF_Error extends Error {
 	public statusCode: number;
 	constructor(message: string, statusCode: number) {

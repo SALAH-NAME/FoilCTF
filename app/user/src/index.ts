@@ -32,6 +32,7 @@ import {
 	uploadAvatar,
 	upload,
 	updateTokens,
+	route_profile_avatar_delete,
 } from './profile';
 
 import {
@@ -48,6 +49,7 @@ import {
 	SALT_ROUNDS,
 } from './auth';
 import {
+	route_user_delete,
 	route_user_list,
 	route_user_me,
 	route_user_me_requests,
@@ -70,7 +72,7 @@ import {
 	notifyAllMembers,
 	notifyCaptain,
 	route_team_delete,
-    route_team_me,
+	route_team_me,
 } from './team';
 import {
 	sendFriendRequest,
@@ -111,12 +113,19 @@ app.get(
 	authenticateTokenProfile,
 	getPublicProfile
 );
-app.post(
-	'/api/profiles/:username/avatar',
+app.put(
+	'/api/profiles/:username',
 	parseNonExistingParam,
+	middleware_schema_validate(updateProfileSchema),
 	middleware_auth,
-	upload.single('avatar'),
-	uploadAvatar
+	updateProfile
+);
+
+// SECTION: Profile avatar
+app.delete(
+	'/api/profiles/:username/avatar',
+	middleware_auth,
+	route_profile_avatar_delete
 );
 app.use(
 	'/api/profiles/:username/avatar',
@@ -126,12 +135,12 @@ app.use(
 		redirect: false,
 	})
 );
-app.put(
-	'/api/profiles/:username',
+app.post(
+	'/api/profiles/:username/avatar',
 	parseNonExistingParam,
-	middleware_schema_validate(updateProfileSchema),
 	middleware_auth,
-	updateProfile
+	upload.single('avatar'),
+	uploadAvatar
 );
 
 // SECTION: OAuth
@@ -151,6 +160,12 @@ app.put(
 	middleware_auth,
 	route_user_update,
 	updateTokens
+);
+app.delete(
+	'/api/users/:username',
+	parseNonExistingParam,
+	middleware_auth,
+	route_user_delete
 );
 
 // SECTION: Friends
@@ -180,15 +195,13 @@ app.delete(
 );
 app.delete('/api/friends/:username', middleware_auth, removeFriend);
 
-// SECTION: Teams
-app.get('/api/teams', getTeams);
-
 // SECTION: Health
 app.get('/health', (_req, res) => {
 	return res.status(200).json(new FoilCTF_Success('OK', 200));
 });
 app.get('/metrics', route_metrics);
 
+// SECTION: Teams
 app.get('/api/teams', getTeams);
 app.get('/api/teams/me', middleware_auth, route_team_me);
 app.get('/api/teams/:team_name', getTeamDetails);
