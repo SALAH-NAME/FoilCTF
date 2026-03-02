@@ -53,7 +53,7 @@ export default function Countdown({
 
 	return (
 		<div
-			className={`flex gap-1 md:gap-4 ${className}`}
+			className={`flex gap-2 md:gap-4 ${className}`}
 			role="timer"
 			aria-live="off"
 		>
@@ -61,7 +61,7 @@ export default function Countdown({
 				<div key={unit} className="flex flex-col items-center">
 					<div
 						aria-label={`${value} ${unit}`}
-						className="bg-primary text-white font-bold text-xl md:text-2xl lg:text-3xl px-2 py-2 md:px-4 md:py-3 rounded-md min-w-12 text-center"
+						className="bg-primary text-white font-bold text-xl md:text-2xl lg:text-3xl px-2 py-2 md:px-4 md:py-3 rounded-md w-12 lg:w-20 text-center"
 					>
 						{value.toString().padStart(2, '0')}
 					</div>

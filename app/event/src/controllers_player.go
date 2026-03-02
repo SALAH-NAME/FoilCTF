@@ -223,18 +223,46 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 			return errors.New("team not found")
 		}
 
-		var currentPanticipants int64
-		err := tx.Table("participations").Where("ctf_id = ?", event.ID).
-			Count(&currentPanticipants).Error
+		var user User
+		err = tx.First(&user, *userID).Error
+		if err != nil {
+			return errors.New("user not found")
+		}
+		if user.Username != team.CaptainName {
+			return errors.New("user is not captain")
+		}
+
+		var participationsOld []Participation
+		err := tx.
+			Table("participations").
+			Where("ctf_id = ? AND team_id = ?", event.ID, team.ID).
+			Find(&participationsOld).
+			Error
+		if err != nil {
+			return err
+		}
+		if len(participationsOld) > 0 {
+			return errors.New("already registered")
+		}
+
+		var currentParticipants int64
+		err = tx.
+			Table("participations").
+			Where("ctf_id = ?", event.ID).
+			Count(&currentParticipants).
+			Error
 		if err != nil {
 			return err
 		}
 
-		if event.MaxTeams != nil && *event.MaxTeams <= int(currentPanticipants) {
+		if event.MaxTeams != nil && *event.MaxTeams <= int(currentParticipants) {
 			return errors.New("event is full")
 		}
-		if team.TeamSize < event.TeamMembersMin || team.TeamSize > event.TeamMembersMax {
-			return errors.New("invalid team size")
+		if team.MembersCount < event.TeamMembersMin {
+			return errors.New("team is too small")
+		}
+		if team.MembersCount > event.TeamMembersMax {
+			return errors.New("team is too large")
 		}
 
 		participation := Participation{
@@ -242,18 +270,23 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 			CtfID:  event.ID,
 			Score:  0,
 		}
-		err = tx.Table("participations").
-			Create(&participation).Error
+		err = tx.
+			Table("participations").
+			Create(&participation).
+			Error
 		if err != nil {
-			return errors.New("already registered")
+			return err
 		}
 
 		roomInstance = ChatRoom{
-			CtfID:     event.ID,
-			TeamID:    &teamID,
-			Room_Type: "team",
+			CtfID:    event.ID,
+			TeamID:   &teamID,
+			RoomType: "team",
 		}
-		err = tx.Table("chat_rooms").Create(&roomInstance).Error
+		err = tx.
+			Table("chat_rooms").
+			Create(&roomInstance).
+			Error
 		if err != nil {
 			return err
 		}
@@ -273,13 +306,72 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := map[string]any{
-		"event":          event,
-		"registered":     true,
-		"team_id":        teamID,
-		"team_chat_room": roomInstance.ID,
-		"ctf_chat_room":  globalChatRoomID,
+		"ok": true,
 	}
 	JSONResponse(w, resp, http.StatusCreated)
+}
+
+func (h *Hub) LeaveEvent(w http.ResponseWriter, r *http.Request) {
+	userID, _, err := GetUserInfo(r)
+	if err != nil {
+		log.Printf("DEBUG - Leave - Unauthorized: %v", err)
+		JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	event, ok := r.Context().Value(eventKey).(Ctf)
+	if !ok {
+		log.Printf("DEBUG - Leave - Could not get event from the request context")
+		JSONError(w, "event not found", http.StatusNotFound)
+		return
+	}
+
+	teamID, ok := r.Context().Value(teamIDKey).(int)
+	if !ok {
+		log.Printf("DEBUG - Leave - Could not get team id for user %d from the request context", *userID)
+		JSONError(w, "Team not found", http.StatusNotFound)
+		return
+	}
+
+	err = h.Db.Transaction(func(tx *gorm.DB) error {
+		var team Team
+		err = tx.First(&team, teamID).Error
+		if err != nil {
+			return errors.New("team not found")
+		}
+
+		var user User
+		err = tx.First(&user, *userID).Error
+		if err != nil {
+			return errors.New("user not found")
+		}
+		if user.Username != team.CaptainName {
+			return errors.New("user is not captain")
+		}
+
+		var participation Participation
+		result := tx.
+			Table("participations").
+			Where("ctf_id = ? AND team_id = ?", event.ID, team.ID).
+			Delete(&participation)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return errors.New("team has no active participation in the event")
+		}
+
+		return nil
+	})
+	if err != nil {
+		HandleLeaveError(w, err)
+		return
+	}
+
+	resp := map[string]any{
+		"ok": true,
+	}
+	JSONResponse(w, resp, http.StatusOK)
 }
 
 func (h *Hub) ListCtfsChallenges(w http.ResponseWriter, r *http.Request) {

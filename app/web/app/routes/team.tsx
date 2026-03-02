@@ -34,7 +34,10 @@ type RequestPayload<T> = {
 } & T;
 
 export async function remote_fetch_members(team: string) {
-	const uri = new URL(`/api/teams/${team}/members`, import.meta.env.BROWSER_REST_USER_ORIGIN);
+	const uri = new URL(
+		`/api/teams/${team}/members`,
+		import.meta.env.BROWSER_REST_USER_ORIGIN
+	);
 	const res = await fetch(uri);
 
 	const content_type =
@@ -43,8 +46,7 @@ export async function remote_fetch_members(team: string) {
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 
 	type JSONData_Member = {
 		id: number | null;
@@ -56,7 +58,10 @@ export async function remote_fetch_members(team: string) {
 	return json as { members: JSONData_Member[] };
 }
 export async function remote_fetch_details(team: string) {
-	const uri = new URL(`/api/teams/${team}`, import.meta.env.BROWSER_REST_USER_ORIGIN);
+	const uri = new URL(
+		`/api/teams/${team}`,
+		import.meta.env.BROWSER_REST_USER_ORIGIN
+	);
 	const res = await fetch(uri);
 
 	const content_type =
@@ -65,8 +70,7 @@ export async function remote_fetch_details(team: string) {
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 
 	type JSONData_Details = {
 		name: string;
@@ -79,11 +83,14 @@ export async function remote_fetch_details(team: string) {
 	return json as JSONData_Details;
 }
 export async function remote_fetch_requests(token: string, team: string) {
-	const uri = new URL(`/api/teams/${team}/requests`, import.meta.env.BROWSER_REST_USER_ORIGIN);
+	const uri = new URL(
+		`/api/teams/${team}/requests`,
+		import.meta.env.BROWSER_REST_USER_ORIGIN
+	);
 	const res = await fetch(uri, {
 		headers: {
-			'Authorization': `Bearer ${token}`,
-		}
+			Authorization: `Bearer ${token}`,
+		},
 	});
 
 	const content_type =
@@ -92,8 +99,7 @@ export async function remote_fetch_requests(token: string, team: string) {
 		throw new Error('Unexpected response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 	type JSONData_Requests = {
 		data: string[];
 		page: number;
@@ -118,15 +124,22 @@ export async function remote_update_team(token: string, payload: any) {
 		throw new Error('Invalid response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
-export async function remote_update_team_request(token: string, team_name: string, username: string, method: 'PUT' | 'DELETE') {
-	const uri = new URL(`/api/teams/${team_name}/requests/${username}`, import.meta.env.BROWSER_REST_USER_ORIGIN);
+export async function remote_update_team_request(
+	token: string,
+	team_name: string,
+	username: string,
+	method: 'PUT' | 'DELETE'
+) {
+	const uri = new URL(
+		`/api/teams/${team_name}/requests/${username}`,
+		import.meta.env.BROWSER_REST_USER_ORIGIN
+	);
 	const res = await fetch(uri, {
 		method,
 		headers: {
-			'Authorization': `Bearer ${token}`,
+			Authorization: `Bearer ${token}`,
 		},
 	});
 
@@ -136,15 +149,21 @@ export async function remote_update_team_request(token: string, team_name: strin
 		throw new Error('Invalid response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
-export async function remote_update_team_member_kick(token: string, team_name: string, username: string) {
-	const uri = new URL(`/api/teams/${team_name}/members/${username}`, import.meta.env.BROWSER_REST_USER_ORIGIN);
+export async function remote_update_team_member_kick(
+	token: string,
+	team_name: string,
+	username: string
+) {
+	const uri = new URL(
+		`/api/teams/${team_name}/members/${username}`,
+		import.meta.env.BROWSER_REST_USER_ORIGIN
+	);
 	const res = await fetch(uri, {
 		method: 'DELETE',
 		headers: {
-			'Authorization': `Bearer ${token}`,
+			Authorization: `Bearer ${token}`,
 		},
 	});
 
@@ -154,11 +173,17 @@ export async function remote_update_team_member_kick(token: string, team_name: s
 		throw new Error('Invalid response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
-export async function remote_update_team_member_crown(token: string, team_name: string, username: string) {
-	const uri = new URL(`/api/teams/${team_name}/crown`, import.meta.env.BROWSER_REST_USER_ORIGIN);
+export async function remote_update_team_member_crown(
+	token: string,
+	team_name: string,
+	username: string
+) {
+	const uri = new URL(
+		`/api/teams/${team_name}/crown`,
+		import.meta.env.BROWSER_REST_USER_ORIGIN
+	);
 	const res = await fetch(uri, {
 		method: 'PUT',
 		headers: {
@@ -174,16 +199,21 @@ export async function remote_update_team_member_crown(token: string, team_name: 
 		throw new Error('Invalid response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
-export async function remote_update_team_member_leave(token: string, team_name: string) {
-	const uri = new URL(`/api/teams/${team_name}/members/me`, import.meta.env.BROWSER_REST_USER_ORIGIN);
+export async function remote_update_team_member_leave(
+	token: string,
+	team_name: string
+) {
+	const uri = new URL(
+		`/api/teams/${team_name}/members/me`,
+		import.meta.env.BROWSER_REST_USER_ORIGIN
+	);
 	const res = await fetch(uri, {
 		method: 'DELETE',
 		headers: {
-			'Authorization': `Bearer ${token}`,
-		}
+			Authorization: `Bearer ${token}`,
+		},
 	});
 
 	const content_type =
@@ -192,16 +222,18 @@ export async function remote_update_team_member_leave(token: string, team_name: 
 		throw new Error('Invalid response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
 export async function remote_delete_team(token: string, team_name: string) {
-	const uri = new URL(`/api/teams/${team_name}`, import.meta.env.BROWSER_REST_USER_ORIGIN);
+	const uri = new URL(
+		`/api/teams/${team_name}`,
+		import.meta.env.BROWSER_REST_USER_ORIGIN
+	);
 	const res = await fetch(uri, {
 		method: 'DELETE',
 		headers: {
-			'Authorization': `Bearer ${token}`,
-		}
+			Authorization: `Bearer ${token}`,
+		},
 	});
 
 	const content_type =
@@ -210,8 +242,7 @@ export async function remote_delete_team(token: string, team_name: string) {
 		throw new Error('Invalid response format');
 
 	const json = await res.json();
-	if (!res.ok)
-		throw new Error(json.error ?? 'Internal server error');
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
 export default function Page({ loaderData }: Route.ComponentProps) {
 	const session_user = loaderData.user;
@@ -239,8 +270,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		],
 		initialData: [],
 		queryFn: async () => {
-			if (!session_user || !user?.team_name)
-				return [];
+			if (!session_user || !user?.team_name) return [];
 			const data = await remote_fetch_members(user.team_name);
 			return data?.members ?? [];
 		},
@@ -255,8 +285,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		],
 		initialData: null,
 		queryFn: async () => {
-			if (!session_user || !user?.team_name)
-				return null;
+			if (!session_user || !user?.team_name) return null;
 			return await remote_fetch_details(user.team_name);
 		},
 	});
@@ -270,9 +299,11 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		],
 		initialData: [],
 		queryFn: async () => {
-			if (!session_user?.token_access || !user?.team_name)
-				return [];
-			const { data: requests } = await remote_fetch_requests(session_user?.token_access, user?.team_name);
+			if (!session_user?.token_access || !user?.team_name) return [];
+			const { data: requests } = await remote_fetch_requests(
+				session_user?.token_access,
+				user?.team_name
+			);
 			return requests;
 		},
 	});
@@ -283,36 +314,50 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 	const [showLeaveModal, setShowLeaveModal] = useState(false);
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-	const [editSettings, setEditSettings] = useState({ description: '', is_locked: false });
+	const [editSettings, setEditSettings] = useState({
+		description: '',
+		is_locked: false,
+	});
 	const toggleEditSettingsIsLocked = () => {
-		setEditSettings(value => ({ ...value, is_locked: !value.is_locked }));
+		setEditSettings((value) => ({ ...value, is_locked: !value.is_locked }));
 	};
 	const setEditSettingsIsLocked = (is_locked: boolean) => {
-		setEditSettings(value => ({ ...value, is_locked }));
+		setEditSettings((value) => ({ ...value, is_locked }));
 	};
 	const setEditSettingsDescription = (description: string) => {
-		setEditSettings(value => ({ ...value, description }));
+		setEditSettings((value) => ({ ...value, description }));
 	};
 	useEffect(() => {
-		if (!details)
-			return ;
-		setEditSettings(value => ({ ...value, is_locked: details.is_locked ?? false, description: details.description ?? '' }));
+		if (!details) return;
+		setEditSettings((value) => ({
+			...value,
+			is_locked: details.is_locked ?? false,
+			description: details.description ?? '',
+		}));
 	}, [details?.is_locked, details?.description]);
 
 	const { addToast } = useToast();
 
-	type TeamPayload = { is_locked?: boolean; description?: string; };
+	type TeamPayload = { is_locked?: boolean; description?: string };
 
 	const queryClient = useQueryClient();
-	const mut_team_update = useMutation<unknown, Error, { token?: string | null; team_name?: string | null; payload: Partial<TeamPayload> }>({
+	const mut_team_update = useMutation<
+		unknown,
+		Error,
+		{
+			token?: string | null;
+			team_name?: string | null;
+			payload: Partial<TeamPayload>;
+		}
+	>({
 		mutationFn: async ({ payload, token, team_name }) => {
-			if (!token)
-				throw new Error('Unauthorized');
-			if (Object.keys(payload).length === 0)
-				return ;
+			if (!token) throw new Error('Unauthorized');
+			if (Object.keys(payload).length === 0) return;
 
 			await remote_update_team(token, payload);
-			await queryClient.invalidateQueries({ queryKey: ['team', { team_name }] });
+			await queryClient.invalidateQueries({
+				queryKey: ['team', { team_name }],
+			});
 		},
 		async onSuccess() {
 			setShowSettings(false);
@@ -331,25 +376,35 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		},
 	});
 	const onSubmitEditSettings = () => {
-		const payload: Partial<TeamPayload> = { };
+		const payload: Partial<TeamPayload> = {};
 		if (editSettings.description !== query_details.data?.description)
 			payload.description = editSettings.description;
 		if (editSettings.is_locked !== query_details.data?.is_locked)
 			payload.is_locked = editSettings.is_locked;
-		mut_team_update.mutate({ team_name: user?.team_name, token: session_user?.token_access, payload });
+		mut_team_update.mutate({
+			team_name: user?.team_name,
+			token: session_user?.token_access,
+			payload,
+		});
 	};
 
-	const mut_team_request_accept = useMutation<unknown, Error, RequestPayload<{ username: string; }>>({
-		mutationFn: async ({ token, team_name, username}) => {
-			if (!token)
-				throw new Error('Unauthorized');
-			if (!team_name)
-				throw new Error('Missing team name');
+	const mut_team_request_accept = useMutation<
+		unknown,
+		Error,
+		RequestPayload<{ username: string }>
+	>({
+		mutationFn: async ({ token, team_name, username }) => {
+			if (!token) throw new Error('Unauthorized');
+			if (!team_name) throw new Error('Missing team name');
 			await remote_update_team_request(token, team_name, username, 'PUT');
 		},
 		async onSuccess() {
-			await queryClient.invalidateQueries({ queryKey: ['team-requests', { team_name: user?.team_name ?? null }] });
-			await queryClient.invalidateQueries({ queryKey: ['team-members', { team_name: user?.team_name ?? null }] });
+			await queryClient.invalidateQueries({
+				queryKey: ['team-requests', { team_name: user?.team_name ?? null }],
+			});
+			await queryClient.invalidateQueries({
+				queryKey: ['team-members', { team_name: user?.team_name ?? null }],
+			});
 			setShowSettings(false);
 			addToast({
 				variant: 'success',
@@ -365,18 +420,27 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			});
 		},
 	});
-	const handleAcceptRequest = (username: string) => mut_team_request_accept.mutate({ token: session_user?.token_access, team_name: user?.team_name, username });
+	const handleAcceptRequest = (username: string) =>
+		mut_team_request_accept.mutate({
+			token: session_user?.token_access,
+			team_name: user?.team_name,
+			username,
+		});
 
-	const mut_team_request_reject = useMutation<unknown, Error, RequestPayload<{ username: string }>>({
-		mutationFn: async ({ token, team_name, username}) => {
-			if (!token)
-				throw new Error('Unauthorized');
-			if (!team_name)
-				throw new Error('Missing team name');
+	const mut_team_request_reject = useMutation<
+		unknown,
+		Error,
+		RequestPayload<{ username: string }>
+	>({
+		mutationFn: async ({ token, team_name, username }) => {
+			if (!token) throw new Error('Unauthorized');
+			if (!team_name) throw new Error('Missing team name');
 			await remote_update_team_request(token, team_name, username, 'DELETE');
 		},
 		async onSuccess() {
-			await queryClient.invalidateQueries({ queryKey: ['team-requests', { team_name: user?.team_name ?? null }] });
+			await queryClient.invalidateQueries({
+				queryKey: ['team-requests', { team_name: user?.team_name ?? null }],
+			});
 			setShowSettings(false);
 			addToast({
 				variant: 'success',
@@ -392,19 +456,30 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			});
 		},
 	});
-	const handleRejectRequest = (username: string) => mut_team_request_reject.mutate({ token: session_user?.token_access, team_name: user?.team_name, username });
+	const handleRejectRequest = (username: string) =>
+		mut_team_request_reject.mutate({
+			token: session_user?.token_access,
+			team_name: user?.team_name,
+			username,
+		});
 
-	const mut_team_member_kick = useMutation<unknown, Error, RequestPayload<{ username: string }>>({
-		mutationFn: async ({ token, team_name, username}) => {
-			if (!token)
-				throw new Error('Unauthorized');
-			if (!team_name)
-				throw new Error('Missing team name');
+	const mut_team_member_kick = useMutation<
+		unknown,
+		Error,
+		RequestPayload<{ username: string }>
+	>({
+		mutationFn: async ({ token, team_name, username }) => {
+			if (!token) throw new Error('Unauthorized');
+			if (!team_name) throw new Error('Missing team name');
 			await remote_update_team_member_kick(token, team_name, username);
 		},
 		async onSuccess() {
-			await queryClient.invalidateQueries({ queryKey: ['team-members', { team_name: user?.team_name ?? null }] });
-			await queryClient.invalidateQueries({ queryKey: ['team', { team_name: user?.team_name ?? null }] });
+			await queryClient.invalidateQueries({
+				queryKey: ['team-members', { team_name: user?.team_name ?? null }],
+			});
+			await queryClient.invalidateQueries({
+				queryKey: ['team', { team_name: user?.team_name ?? null }],
+			});
 			setShowSettings(false);
 			addToast({
 				variant: 'success',
@@ -420,19 +495,30 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			});
 		},
 	});
-	const handleKickMember = (username: string) => mut_team_member_kick.mutate({ username, team_name: user?.team_name, token: session_user?.token_access });
+	const handleKickMember = (username: string) =>
+		mut_team_member_kick.mutate({
+			username,
+			team_name: user?.team_name,
+			token: session_user?.token_access,
+		});
 
-	const mut_team_member_crown = useMutation<unknown, Error, RequestPayload<{ username: string }>>({
-		mutationFn: async ({ token, team_name, username}) => {
-			if (!token)
-				throw new Error('Unauthorized');
-			if (!team_name)
-				throw new Error('Missing team name');
+	const mut_team_member_crown = useMutation<
+		unknown,
+		Error,
+		RequestPayload<{ username: string }>
+	>({
+		mutationFn: async ({ token, team_name, username }) => {
+			if (!token) throw new Error('Unauthorized');
+			if (!team_name) throw new Error('Missing team name');
 			await remote_update_team_member_crown(token, team_name, username);
 		},
 		async onSuccess() {
-			await queryClient.invalidateQueries({ queryKey: ['team-members', { team_name: user?.team_name ?? null }] });
-			await queryClient.invalidateQueries({ queryKey: ['team', { team_name: user?.team_name ?? null }] });
+			await queryClient.invalidateQueries({
+				queryKey: ['team-members', { team_name: user?.team_name ?? null }],
+			});
+			await queryClient.invalidateQueries({
+				queryKey: ['team', { team_name: user?.team_name ?? null }],
+			});
 			setShowSettings(false);
 			addToast({
 				variant: 'success',
@@ -448,14 +534,21 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			});
 		},
 	});
-	const handleMakeCaptain = (username: string) => mut_team_member_crown.mutate({ token: session_user?.token_access, team_name: user?.team_name, username });
+	const handleMakeCaptain = (username: string) =>
+		mut_team_member_crown.mutate({
+			token: session_user?.token_access,
+			team_name: user?.team_name,
+			username,
+		});
 
-	const mut_team_member_leave = useMutation<unknown, Error, RequestPayload<unknown>>({
+	const mut_team_member_leave = useMutation<
+		unknown,
+		Error,
+		RequestPayload<unknown>
+	>({
 		mutationFn: async ({ token, team_name }) => {
-			if (!token)
-				throw new Error('Unauthorized');
-			if (!team_name)
-				throw new Error('Missing team name');
+			if (!token) throw new Error('Unauthorized');
+			if (!team_name) throw new Error('Missing team name');
 			await remote_update_team_member_leave(token, team_name);
 		},
 		onMutate: () => {
@@ -463,8 +556,12 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		},
 		async onSuccess() {
 			await Promise.all([
-				queryClient.invalidateQueries({ queryKey: ['team-members', { team_name: user?.team_name ?? null }] }),
-				queryClient.invalidateQueries({ queryKey: ['teams', { team_name: user?.team_name ?? null }] }),
+				queryClient.invalidateQueries({
+					queryKey: ['team-members', { team_name: user?.team_name ?? null }],
+				}),
+				queryClient.invalidateQueries({
+					queryKey: ['teams', { team_name: user?.team_name ?? null }],
+				}),
 			]);
 
 			setShowSettings(false);
@@ -484,14 +581,16 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			});
 		},
 	});
-	const handleLeaveTeam = () => mut_team_member_leave.mutate({ token: session_user?.token_access, team_name: user?.team_name });
+	const handleLeaveTeam = () =>
+		mut_team_member_leave.mutate({
+			token: session_user?.token_access,
+			team_name: user?.team_name,
+		});
 
 	const mut_team_delete = useMutation<unknown, Error, RequestPayload<unknown>>({
 		mutationFn: async ({ token, team_name }) => {
-			if (!token)
-				throw new Error('Unauthorized');
-			if (!team_name)
-				throw new Error('Missing team name');
+			if (!token) throw new Error('Unauthorized');
+			if (!team_name) throw new Error('Missing team name');
 			await remote_delete_team(token, team_name);
 		},
 		onMutate: () => {
@@ -499,8 +598,12 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		},
 		async onSuccess() {
 			await Promise.all([
-				queryClient.invalidateQueries({ queryKey: ['team-members', { team_name: user?.team_name ?? null }] }),
-				queryClient.invalidateQueries({ queryKey: ['teams', { team_name: user?.team_name ?? null }] }),
+				queryClient.invalidateQueries({
+					queryKey: ['team-members', { team_name: user?.team_name ?? null }],
+				}),
+				queryClient.invalidateQueries({
+					queryKey: ['teams', { team_name: user?.team_name ?? null }],
+				}),
 			]);
 			setShowSettings(false);
 			addToast({
@@ -518,17 +621,23 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			});
 		},
 	});
-	const handleDeleteTeam = () => mut_team_delete.mutate({ token: session_user?.token_access, team_name: user?.team_name });
+	const handleDeleteTeam = () =>
+		mut_team_delete.mutate({
+			token: session_user?.token_access,
+			team_name: user?.team_name,
+		});
 
 	const disabled = mut_team_update.isPending;
 	const is_captain = details?.captain_name === session_user?.username;
 
-	const tabs = [{
-		id: 'members',
-		value: 'members',
-		label: 'Members',
-		count: members.length,
-	}];
+	const tabs = [
+		{
+			id: 'members',
+			value: 'members',
+			label: 'Members',
+			count: members.length,
+		},
+	];
 	if (is_captain)
 		tabs.push({
 			id: 'requests',
@@ -539,7 +648,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 	return (
 		<>
 			<PageHeader
-				title={details?.name ?? "N/A"}
+				title={details?.name ?? 'N/A'}
 				action={
 					<div className="flex gap-3">
 						{is_captain && (
@@ -626,7 +735,9 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 											<TeamMemberCard
 												{...member}
 												is_captain={member.username === details?.captain_name}
-												is_editable={session_user?.username === details?.captain_name}
+												is_editable={
+													session_user?.username === details?.captain_name
+												}
 												onMakeCaptain={() => handleMakeCaptain(member.username)}
 												onKick={() => handleKickMember(member.username)}
 											/>
@@ -641,7 +752,9 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 								<h2
 									id="requests-heading"
 									className="text-2xl font-bold text-dark mb-4"
-								>Join Requests</h2>
+								>
+									Join Requests
+								</h2>
 								{requests.length === 0 ? (
 									<div
 										className="bg-white/70 rounded-md p-8 border border-dark/10 text-center"
@@ -675,11 +788,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 							Team Statistics
 						</h2>
 						<div className="space-y-4 sticky top-4">
-							<StatsCard
-								iconName="trophy"
-								label="Points Earned"
-								value={0}
-							/>
+							<StatsCard iconName="trophy" label="Points Earned" value={0} />
 							<StatsCard
 								iconName="calendar"
 								label="Event Participations"
@@ -716,7 +825,11 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 						>
 							Cancel
 						</Button>
-						<Button variant="primary" onClick={onSubmitEditSettings} disabled={disabled}>
+						<Button
+							variant="primary"
+							onClick={onSubmitEditSettings}
+							disabled={disabled}
+						>
 							Save Changes
 						</Button>
 					</div>
@@ -728,7 +841,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 						name="description"
 						type="textarea"
 						value={editSettings.description}
-						onChange={(e) => setEditSettingsDescription(e.target.value)}
+						onChange={(e:any) => setEditSettingsDescription(e.target.value)}
 						placeholder="Describe your team..."
 						rows={4}
 					/>
@@ -786,7 +899,10 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 
 			<Modal
 				isOpen={showLeaveModal}
-				onClose={() => { if (disabled) return ; setShowLeaveModal(false) }}
+				onClose={() => {
+					if (disabled) return;
+					setShowLeaveModal(false);
+				}}
 				title="Leave Team"
 				size="sm"
 				footer={

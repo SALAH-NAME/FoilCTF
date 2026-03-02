@@ -91,7 +91,8 @@ export default function TeamMemberCard({
 						</div>
 						<div className="flex flex-wrap gap-3 text-sm text-dark/80">
 							<InfoText icon="challenge" iconClassName="size-4">
-								<span className="font-semibold">{challenges_solved}</span> Solved
+								<span className="font-semibold">{challenges_solved}</span>{' '}
+								Solved
 							</InfoText>
 							<InfoText icon="trophy" iconClassName="size-4">
 								<span className="font-semibold text-primary">

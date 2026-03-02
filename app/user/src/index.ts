@@ -70,6 +70,7 @@ import {
 	notifyAllMembers,
 	notifyCaptain,
 	route_team_delete,
+    route_team_me,
 } from './team';
 import {
 	sendFriendRequest,
@@ -189,6 +190,7 @@ app.get('/health', (_req, res) => {
 app.get('/metrics', route_metrics);
 
 app.get('/api/teams', getTeams);
+app.get('/api/teams/me', middleware_auth, route_team_me);
 app.get('/api/teams/:team_name', getTeamDetails);
 app.put(
 	'/api/teams',

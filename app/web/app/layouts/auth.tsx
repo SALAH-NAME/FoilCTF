@@ -69,7 +69,7 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 		async onSuccess() {
 			await navigate('/signout');
 		},
-		async onError(err) {
+		onError(err) {
 			addToast({
 				variant: 'error',
 				title: 'Sign out Error',

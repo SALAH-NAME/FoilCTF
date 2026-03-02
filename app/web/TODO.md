@@ -1,0 +1,2 @@
+- [ ] Clean up all the todos
+- [ ] Fixup the friends debacle

@@ -1,11 +1,15 @@
-import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import FormInput from './FormInput';
-import FormToggle from './FormToggle';
-import Button from './Button';
-import Icon from './Icon';
-import SearchInput from './SearchInput';
-import { api_challenge_list } from '../api';
+import { useToast } from '~/contexts/ToastContext';
+import { useNavigate } from 'react-router';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState, type SubmitEvent, type ChangeEvent } from 'react';
+
+import type { SessionUser } from '~/session.server';
+
+import Icon from '~/components/Icon';
+import Button from '~/components/Button';
+import FormInput from '~/components/FormInput';
+import FormToggle from '~/components/FormToggle';
+import SearchInput from '~/components/SearchInput';
 
 export interface EventFormData {
 	name: string;
@@ -19,7 +23,6 @@ export interface EventFormData {
 	maxTeams: string;
 	linkedChallenges: LinkedChallenge[];
 }
-
 export interface LinkedChallenge {
 	id: number;
 	name: string;
@@ -37,139 +40,102 @@ interface ChallengeOption {
 	rewardFirstBlood?: number;
 	description: string;
 }
-
 interface EventFormProps {
-	initialData?: Partial<EventFormData>;
-	onSubmit: (data: EventFormData) => void;
+	user?: SessionUser;
 	onCancel: () => void;
-	isSubmitting?: boolean;
-	submitLabel?: string;
-	/** When true, removes PageSection card wrappers for use inside a Modal */
-	compact?: boolean;
 }
 
-export default function EventForm({
-	initialData,
-	onSubmit,
-	onCancel,
-	isSubmitting = false,
-	submitLabel = 'Create Event',
-	compact = false,
-}: EventFormProps) {
-	const [name, setName] = useState(initialData?.name ?? '');
-	const [description, setDescription] = useState(
-		initialData?.description ?? ''
-	);
-	const [organizer, setOrganizer] = useState(initialData?.organizer ?? '');
-	const [startDate, setStartDate] = useState(initialData?.startDate ?? '');
-	const [endDate, setEndDate] = useState(initialData?.endDate ?? '');
-	const [registrationOpen, setRegistrationOpen] = useState(
-		initialData?.registrationOpen ?? true
-	);
-	const [teamMembersMin, setTeamMembersMin] = useState(
-		initialData?.teamMembersMin ?? '1'
-	);
-	const [teamMembersMax, setTeamMembersMax] = useState(
-		initialData?.teamMembersMax ?? '5'
-	);
-	const [maxTeams, setMaxTeams] = useState(initialData?.maxTeams ?? '100');
-	const [linkedChallenges, setLinkedChallenges] = useState<LinkedChallenge[]>(
-		initialData?.linkedChallenges ?? []
-	);
+interface EventCreate {
+	name: string;
+	start_time: string;
+	end_time: string;
+	is_open: boolean;
 
-	const [challengeSearch, setChallengeSearch] = useState('');
-	const [formError, setFormError] = useState('');
+	status?: 'published' | 'draft';
+	max_teams?: number;
+	description?: string; 
+	team_members_min?: number;
+	team_members_max?: number;
+}
 
-	const mockChallenges: ChallengeOption[] = [
-		{
-			id: 101,
-			name: 'SQL Injection 101',
-			reward: 100,
-			rewardMin: 50,
-			rewardFirstBlood: 25,
-			description: 'Basic SQL injection',
-		},
-		{
-			id: 102,
-			name: 'XSS Adventure',
-			reward: 150,
-			rewardMin: 75,
-			rewardFirstBlood: 35,
-			description: 'Cross-site scripting',
-		},
-		{
-			id: 103,
-			name: 'Buffer Overflow',
-			reward: 300,
-			rewardMin: 150,
-			rewardFirstBlood: 75,
-			description: 'Classic buffer overflow',
-		},
-		{
-			id: 104,
-			name: 'RSA Cracker',
-			reward: 250,
-			rewardMin: 100,
-			rewardFirstBlood: 60,
-			description: 'Break weak RSA',
-		},
-		{
-			id: 105,
-			name: 'Forensics: Hidden File',
-			reward: 200,
-			rewardMin: 80,
-			rewardFirstBlood: 50,
-			description: 'Find the hidden flag',
-		},
-		{
-			id: 106,
-			name: 'Reverse Me',
-			reward: 350,
-			rewardMin: 175,
-			rewardFirstBlood: 85,
-			description: 'Reverse engineering challenge',
-		},
-	];
+export async function remote_create_event(token: string, event: EventCreate) {
+	const url = new URL('/api/admin/events', import.meta.env.BROWSER_REST_EVENTS_ORIGIN);
 
-	// Fetch available challenges for linking
-	const { data: fetchedChallenges } = useQuery({
+	const method = 'POST';
+	const headers = new Headers({ 'Authorization': `Bearer ${token}` });
+	const body = JSON.stringify(event);
+	const res = await fetch(url, { method, headers, body });
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
+
+	type JSONData_EventCreate = {
+		id: number;
+	};
+	return json as JSONData_EventCreate;
+}
+
+export default function EventForm({ user, onCancel }: EventFormProps) {
+	const navigate = useNavigate();
+	const { addToast } = useToast();
+
+	const [input_open, setInputOpen] = useState(true);
+	const [input_name, setInputName] = useState('');
+	const [input_time_end, setInputTimeEnd] = useState('');
+	const [input_time_start, setInputTimeStart] = useState('');
+	const [input_description, setInputDescription] = useState('');
+	const [input_max_teams, setInputMaxTeams] = useState('8');
+	const [input_team_members_min, setInputTeamMembersMin] = useState('3');
+	const [input_team_members_max, setInputTeamMembersMax] = useState('5');
+	const [input_challenges, setInputLinkedChallenges] = useState<
+		LinkedChallenge[]
+	>([]);
+
+	const [error_form, setErrorForm] = useState('');
+	const [search_challenges, setSearchChallenges] = useState('');
+
+	// TODO(xenobas): Fetch available challenges for linking
+	const query_challenges = useQuery({
 		queryKey: ['challenges-for-linking'],
-		queryFn: async () => {
-			const result = await api_challenge_list();
-			return (Array.isArray(result) ? result : []) as ChallengeOption[];
-		},
 		initialData: [],
+		queryFn: async () => {
+			// const result = await api_challenge_list();
+			//return (Array.isArray(result) ? result : []) as ChallengeOption[];
+			return [] as ChallengeOption[];
+		},
+	});
+	const data_challenges = query_challenges.data.filter(({ id }) => {
+		return !input_challenges.some((lc) => lc.id === id);
 	});
 
-	const availableChallenges =
-		fetchedChallenges.length > 0 ? fetchedChallenges : mockChallenges;
-
-	// Sync initial data on changes
-	useEffect(() => {
-		if (initialData) {
-			setName(initialData.name ?? '');
-			setDescription(initialData.description ?? '');
-			setOrganizer(initialData.organizer ?? '');
-			setStartDate(initialData.startDate ?? '');
-			setEndDate(initialData.endDate ?? '');
-			setRegistrationOpen(initialData.registrationOpen ?? true);
-			setTeamMembersMin(initialData.teamMembersMin ?? '1');
-			setTeamMembersMax(initialData.teamMembersMax ?? '5');
-			setMaxTeams(initialData.maxTeams ?? '100');
-			setLinkedChallenges(initialData.linkedChallenges ?? []);
+	type MutationPayload<T> = {
+		token?: string | null;
+		role?: 'admin' | 'user';
+	} & T;
+	type MutationPayloadCreate = MutationPayload<EventCreate>
+	const mut_event = useMutation<Awaited<ReturnType<typeof remote_create_event>>, Error, MutationPayloadCreate>({
+		async mutationFn({ token, role, ...event }) {
+			if (!token || role !== 'admin')
+				throw new Error('Unauthorized');
+			return await remote_create_event(token, event);
+		},
+		async onSuccess({ id }) {
+			addToast({
+				variant: 'success',
+				title: 'Event Creation',
+				message: 'Event has been created successfully'
+			});
+			await navigate(`/events/${id}`);
 		}
-	}, [initialData]);
-
-	const filteredChallenges = availableChallenges.filter((ch) => {
-		const matchesSearch = ch.name
-			.toLowerCase()
-			.includes(challengeSearch.toLowerCase());
-		const notLinked = !linkedChallenges.some((lc) => lc.id === ch.id);
-		return matchesSearch && notLinked;
 	});
 
 	const handleLinkChallenge = (challenge: ChallengeOption) => {
-		setLinkedChallenges((prev) => [
+		setInputLinkedChallenges((prev) => [
 			...prev,
 			{
 				id: challenge.id,
@@ -181,89 +147,127 @@ export default function EventForm({
 				flag: '',
 			},
 		]);
-		setChallengeSearch('');
+		setSearchChallenges('');
 	};
-
 	const handleUnlinkChallenge = (challengeId: number) => {
-		setLinkedChallenges((prev) => prev.filter((ch) => ch.id !== challengeId));
+		setInputLinkedChallenges((prev) =>
+			prev.filter((ch) => ch.id !== challengeId)
+		);
 	};
-
 	const handleChallengeFlag = (challengeId: number, flag: string) => {
-		setLinkedChallenges((prev) =>
+		setInputLinkedChallenges((prev) =>
 			prev.map((ch) => (ch.id === challengeId ? { ...ch, flag } : ch))
 		);
 	};
-
 	const handleChallengeReward = (challengeId: number, reward: number) => {
-		setLinkedChallenges((prev) =>
+		setInputLinkedChallenges((prev) =>
 			prev.map((ch) => (ch.id === challengeId ? { ...ch, reward } : ch))
 		);
 	};
-
 	const handleChallengeRewardMin = (challengeId: number, rewardMin: number) => {
-		setLinkedChallenges((prev) =>
+		setInputLinkedChallenges((prev) =>
 			prev.map((ch) => (ch.id === challengeId ? { ...ch, rewardMin } : ch))
 		);
 	};
-
 	const handleChallengeFirstBlood = (
 		challengeId: number,
 		rewardFirstBlood: number
 	) => {
-		setLinkedChallenges((prev) =>
+		setInputLinkedChallenges((prev) =>
 			prev.map((ch) =>
 				ch.id === challengeId ? { ...ch, rewardFirstBlood } : ch
 			)
 		);
 	};
-
-	const handleSubmit = (e: React.FormEvent) => {
+	const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
-		if (!name.trim()) {
-			setFormError('Event name is required');
+		if (!input_name.trim()) {
+			setErrorForm('Event name is required');
 			return;
 		}
-		if (!startDate) {
-			setFormError('Start date is required');
+		if (!input_time_start) {
+			setErrorForm('Start date is required');
 			return;
 		}
-		if (!endDate) {
-			setFormError('End date is required');
+		if (!input_time_end) {
+			setErrorForm('End date is required');
 			return;
 		}
-		if (new Date(endDate) <= new Date(startDate)) {
-			setFormError('End date must be after start date');
+		if (new Date(input_time_end) <= new Date(input_time_start)) {
+			setErrorForm('End date must be after start date');
 			return;
 		}
+		setErrorForm('');
 
-		setFormError('');
-		onSubmit({
-			name,
-			description,
-			organizer,
-			startDate,
-			endDate,
-			registrationOpen,
-			teamMembersMin,
-			teamMembersMax,
-			maxTeams,
-			linkedChallenges,
+		mut_event.mutate({
+			name: input_name,
+			description: input_description,
+			is_open: input_open,
+
+			end_time: (new Date(input_time_end)).toISOString(),
+			start_time: (new Date(input_time_start)).toISOString(),
+
+			max_teams: parseInt(input_max_teams),
+			team_members_max: parseInt(input_team_members_max),
+			team_members_min: parseInt(input_team_members_min),
+
+			status: 'published',
+
+			role: user?.role,
+			token: user?.token_access,
 		});
+	};
+
+	const changeTeamMembersMin = (e: ChangeEvent<HTMLInputElement>) => {
+		const { value } = e.target;
+		const number = parseInt(value);
+		const upper_boundary = parseInt(input_team_members_min) || +Infinity;
+
+		if (isFinite(number) && number < upper_boundary)
+			setInputTeamMembersMin(number.toFixed(0));
+		else setInputTeamMembersMin('');
+	};
+	const changeTeamMembersMax = (e: ChangeEvent<HTMLInputElement>) => {
+		const { value } = e.target;
+		const number = parseInt(value);
+		const lower_boundary = parseInt(input_team_members_min) || 0;
+
+		if (isFinite(number) && number >= lower_boundary)
+			setInputTeamMembersMax(number.toFixed(0));
+		else setInputTeamMembersMax('');
+	};
+	const changeInputMaxTeams = (e: ChangeEvent<HTMLInputElement>) => {
+		const { value } = e.target;
+		const number = parseInt(value);
+		setInputMaxTeams(isFinite(number) && number > 0 ? number.toFixed(0) : '');
+	};
+
+	const changeInputTimeStart = (e: ChangeEvent<HTMLInputElement>) => {
+		const { value } = e.target;
+
+		const now = new Date();
+		const date = new Date(value);
+		if (now >= date) setInputTimeStart('');
+		else setInputTimeStart(value);
+		setInputTimeEnd('');
+	};
+	const changeInputTimeEnd = (e: ChangeEvent<HTMLInputElement>) => {
+		const { value } = e.target;
+
+		const start = new Date(input_time_start);
+		const date = new Date(value);
+		if (date <= start) setInputTimeEnd('');
+		else setInputTimeEnd(value);
 	};
 
 	// Use a plain className string so there's no dynamic component creation on re-render
 	// (inline components lose focus on every keystroke because React sees a new component type)
-	const sectionClass = compact
-		? 'pb-6 border-b border-neutral-200 last:border-b-0'
-		: 'bg-surface border border-neutral-300 rounded-md p-4 md:p-6';
-
+	const class_section = 'pb-6 border-b border-neutral-200 last:border-b-0';
+	const disabled = query_challenges.isPending || mut_event.isPending;
 	return (
-		<form
-			onSubmit={handleSubmit}
-			className={`space-y-6 ${compact ? '' : 'max-w-4xl'}`}
-		>
-			<div className={sectionClass}>
+		<form className="space-y-6" onSubmit={handleSubmit}>
+			<div className={class_section}>
 				<fieldset>
 					<legend className="text-xl font-semibold text-dark mb-4">
 						Event Details
@@ -273,8 +277,10 @@ export default function EventForm({
 							name="event-name"
 							type="text"
 							label="Event Name"
-							value={name}
-							onChange={(e) => setName(e.target.value)}
+							value={input_name}
+							onChange={(e: ChangeEvent<HTMLInputElement>) =>
+								setInputName(e.target.value)
+							}
 							placeholder="e.g. Winter Cyber Challenge 2026"
 							required
 						/>
@@ -283,72 +289,50 @@ export default function EventForm({
 							name="event-description"
 							type="textarea"
 							label="Description"
-							value={description}
-							onChange={(e) => setDescription(e.target.value)}
+							value={input_description}
+							onChange={(e: ChangeEvent<HTMLInputElement>) =>
+								setInputDescription(e.target.value)
+							}
 							placeholder="Describe the event, rules, and objectives..."
 							rows={5}
 						/>
 
-						<FormInput
-							name="event-organizer"
-							type="text"
-							label="Organizer"
-							value={organizer}
-							onChange={(e) => setOrganizer(e.target.value)}
-							placeholder="e.g. CyberSec Team"
-						/>
-
 						<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-							<div>
-								<label
-									htmlFor="event-start-date"
-									className="block text-sm font-semibold text-dark mb-2"
-								>
-									Start Date & Time
-								</label>
-								<input
-									type="datetime-local"
-									id="event-start-date"
-									value={startDate}
-									onChange={(e) => setStartDate(e.target.value)}
-									required
-									disabled={isSubmitting}
-									className="w-full px-4 py-2.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
-								/>
-							</div>
+							<FormInput
+								name="start_time"
+								label="Start Date & Time"
+								type="datetime-local"
+								id="event-start-date"
+								value={input_time_start}
+								onChange={changeInputTimeStart}
+								required
+								disabled={disabled}
+							/>
+							<FormInput
+								name="end_time"
+								label="End Date & Time"
+								type="datetime-local"
+								id="event-end-date"
+								value={input_time_end}
+								onChange={changeInputTimeEnd}
+								required
+								disabled={disabled}
+							/>
 
-							<div>
-								<label
-									htmlFor="event-end-date"
-									className="block text-sm font-semibold text-dark mb-2"
-								>
-									End Date & Time
-								</label>
-								<input
-									type="datetime-local"
-									id="event-end-date"
-									value={endDate}
-									onChange={(e) => setEndDate(e.target.value)}
-									required
-									disabled={isSubmitting}
-									className="w-full px-4 py-2.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
-								/>
-							</div>
+							<span></span>
+							<FormToggle
+								name="registration-open"
+								label="Registration Open"
+								description="Allow new teams to register for this event"
+								checked={input_open}
+								onChange={setInputOpen}
+								disabled={disabled}
+							/>
 						</div>
-
-						<FormToggle
-							name="registration-open"
-							label="Registration Open"
-							description="Allow new teams to register for this event"
-							checked={registrationOpen}
-							onChange={setRegistrationOpen}
-							disabled={isSubmitting}
-						/>
 					</div>
 				</fieldset>
 			</div>
-
-			<div className={sectionClass}>
+			<div className={class_section}>
 				<fieldset>
 					<legend className="text-xl font-semibold text-dark mb-4">
 						Team Settings
@@ -359,16 +343,17 @@ export default function EventForm({
 								htmlFor="team-members-min"
 								className="block text-sm font-semibold text-dark mb-2"
 							>
-								Min Team Size
+								Minimum members per team <span className="text-primary">*</span>
 							</label>
 							<input
 								type="number"
 								id="team-members-min"
-								value={teamMembersMin}
-								onChange={(e) => setTeamMembersMin(e.target.value)}
+								value={input_team_members_min}
 								min={1}
-								disabled={isSubmitting}
+								onChange={changeTeamMembersMin}
+								disabled={disabled}
 								className="w-full px-4 py-2.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
+								required
 							/>
 						</div>
 
@@ -377,16 +362,17 @@ export default function EventForm({
 								htmlFor="team-members-max"
 								className="block text-sm font-semibold text-dark mb-2"
 							>
-								Max Team Size
+								Maximum members per team <span className="text-primary">*</span>
 							</label>
 							<input
 								type="number"
 								id="team-members-max"
-								value={teamMembersMax}
-								onChange={(e) => setTeamMembersMax(e.target.value)}
-								min={1}
-								disabled={isSubmitting}
+								value={input_team_members_max}
+								min={0}
+								onChange={changeTeamMembersMax}
+								disabled={disabled}
 								className="w-full px-4 py-2.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
+								required
 							/>
 						</div>
 
@@ -395,29 +381,29 @@ export default function EventForm({
 								htmlFor="max-teams"
 								className="block text-sm font-semibold text-dark mb-2"
 							>
-								Max Teams
+								Maximum teams in the event <span className="text-primary">*</span>
 							</label>
 							<input
 								type="number"
 								id="max-teams"
-								value={maxTeams}
-								onChange={(e) => setMaxTeams(e.target.value)}
+								value={input_max_teams}
+								onChange={changeInputMaxTeams}
 								min={1}
-								disabled={isSubmitting}
+								disabled={disabled}
 								className="w-full px-4 py-2.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
+								required
 							/>
 						</div>
 					</div>
 				</fieldset>
 			</div>
-
-			<div className={sectionClass}>
+			<div className={class_section}>
 				<fieldset>
 					<legend className="text-xl font-semibold text-dark mb-4">
 						Linked Challenges
 					</legend>
 
-					{linkedChallenges.length > 0 && (
+					{input_challenges.length > 0 && (
 						<div className="mb-4">
 							<div
 								className="border border-neutral-300 rounded-md overflow-hidden"
@@ -447,7 +433,7 @@ export default function EventForm({
 										<span className="sr-only">Actions</span>
 									</span>
 								</div>
-								{linkedChallenges.map((ch) => (
+								{input_challenges.map((ch) => (
 									<div
 										key={ch.id}
 										className="grid grid-cols-12 gap-2 px-4 py-3 border-b border-neutral-200 last:border-b-0 items-center"
@@ -472,7 +458,7 @@ export default function EventForm({
 													handleChallengeReward(ch.id, Number(e.target.value))
 												}
 												min={0}
-												disabled={isSubmitting}
+												disabled={disabled}
 												className="w-full px-2 py-1.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-sm"
 											/>
 										</div>
@@ -494,7 +480,7 @@ export default function EventForm({
 													)
 												}
 												min={0}
-												disabled={isSubmitting}
+												disabled={disabled}
 												className="w-full px-2 py-1.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-sm"
 											/>
 										</div>
@@ -516,7 +502,7 @@ export default function EventForm({
 													)
 												}
 												min={0}
-												disabled={isSubmitting}
+												disabled={disabled}
 												className="w-full px-2 py-1.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-sm"
 											/>
 										</div>
@@ -532,7 +518,7 @@ export default function EventForm({
 													handleChallengeFlag(ch.id, e.target.value)
 												}
 												placeholder="flag{...}"
-												disabled={isSubmitting}
+												disabled={disabled}
 												className="w-full px-2 py-1.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-sm font-mono"
 											/>
 										</div>
@@ -540,7 +526,7 @@ export default function EventForm({
 											<button
 												type="button"
 												onClick={() => handleUnlinkChallenge(ch.id)}
-												disabled={isSubmitting}
+												disabled={disabled}
 												className="p-1.5 hover:bg-red-50 text-white hover:text-red-500 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
 												aria-label={`Remove ${ch.name} from event`}
 											>
@@ -557,7 +543,7 @@ export default function EventForm({
 						</div>
 					)}
 
-					{linkedChallenges.length === 0 && (
+					{input_challenges.length === 0 && (
 						<p className="text-sm text-muted mb-4">
 							No challenges linked yet. Add challenges to include them in this
 							event.
@@ -566,18 +552,18 @@ export default function EventForm({
 
 					<div className="space-y-3">
 						<SearchInput
-							value={challengeSearch}
-							onChange={setChallengeSearch}
+							value={search_challenges}
+							onChange={setSearchChallenges}
 							placeholder="Search challenges by name..."
 						/>
 
-						{filteredChallenges.length > 0 ? (
+						{data_challenges.length > 0 ? (
 							<ul
 								className="max-h-52 overflow-y-auto space-y-1 border border-neutral-200 rounded-md p-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-thumb]:rounded-full"
 								role="listbox"
 								aria-label="Available challenges to link"
 							>
-								{filteredChallenges.map((ch) => (
+								{data_challenges.map((ch) => (
 									<li key={ch.id} role="option" aria-selected={false}>
 										<button
 											type="button"
@@ -593,21 +579,19 @@ export default function EventForm({
 									</li>
 								))}
 							</ul>
-						) : (
+						) : 
+							search_challenges && 
 							<p className="text-sm text-muted py-2">
-								{challengeSearch
-									? 'No matching challenges found'
-									: 'All challenges already linked'}
+									No matching challenges found
 							</p>
-						)}
+						}
 					</div>
 				</fieldset>
 			</div>
-
 			<div className="flex items-center justify-between gap-4">
-				{formError && (
+				{error_form && (
 					<p className="text-sm text-red-600 flex-1" role="alert">
-						{formError}
+						{error_form}
 					</p>
 				)}
 				<div className="flex gap-3 ml-auto">
@@ -615,12 +599,12 @@ export default function EventForm({
 						type="button"
 						variant="secondary"
 						onClick={onCancel}
-						disabled={isSubmitting}
+						disabled={disabled}
 					>
 						Cancel
 					</Button>
-					<Button type="submit" variant="primary" disabled={isSubmitting}>
-						{submitLabel}
+					<Button type="submit" variant="primary" disabled={disabled}>
+						Create Event
 					</Button>
 				</div>
 			</div>

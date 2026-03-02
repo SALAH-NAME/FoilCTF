@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 )
@@ -27,6 +28,10 @@ func main() {
 	router := hub.RegisterRoutes()
 	srv, port := NewServer(router)
 	log.Printf("DEBUG - HTTP - Listening on http://localhost:%s", port)
+
+	ctxCron, cancelCron := context.WithCancel(context.Background())
+	go NewCron(hub, ctxCron)
+	defer cancelCron()
 
 	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("ERROR - HTTP - Could not start due to: %v", err)

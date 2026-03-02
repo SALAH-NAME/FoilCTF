@@ -33,12 +33,15 @@ export default function EventCard({
 				className="h-full group bg-white/70 rounded-md p-6 border border-dark/10 hover:border-primary transition-all duration-200 hover:shadow-lg no-underline block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 			>
 				<div className="flex flex-wrap gap-4 items-start justify-between mb-4">
-					<Link to={`/events/${slug}`} className="text-xl font-bold text-dark group-hover:text-primary transition-colors flex-1 break-all line-clamp-1 ">
+					<Link
+						to={`/events/${slug}`}
+						className="text-xl font-bold text-dark group-hover:text-primary transition-colors flex-1 break-all line-clamp-1 "
+					>
 						{name}
 					</Link>
 					<StatusBadge status={status} variant="outline" />
 				</div>
-				
+
 				{/* <InfoText icon="user" className="text-sm text-dark/60 mb-4"> */}
 				{/* 	by {organizer} */}
 				{/* </InfoText> */}
@@ -63,7 +66,9 @@ export default function EventCard({
 				<div className="flex flex-wrap gap-4 items-center justify-between pt-4 border-t border-dark/10">
 					<InfoText icon="user" className="text-sm text-dark/60">
 						<span className="font-semibold">
-							{typeof maxTeams === "number" ? `${teamsCount} / ${maxTeams}` : teamsCount}
+							{typeof maxTeams === 'number'
+								? `${teamsCount} / ${maxTeams}`
+								: teamsCount}
 						</span>
 						<span> Teams</span>
 					</InfoText>

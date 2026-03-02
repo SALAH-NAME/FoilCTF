@@ -3,16 +3,16 @@ package main
 import (
 	"net/http"
 
-	"github.com/go-chi/cors"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 func (h *Hub) RegisterRoutes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{"https://localhost:5173", "http://localhost:5173", "http://127.0.0.1:5173", "https://127.0.0.1:5173"},
-		AllowedMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodHead, http.MethodOptions},
+		AllowedMethods: []string{http.MethodHead, http.MethodGet, http.MethodPost, http.MethodDelete},
+		AllowedHeaders: []string{"*"},
 	}))
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
@@ -34,7 +34,8 @@ func (h *Hub) RegisterRoutes() http.Handler {
 				r.Get("/scoreboard", h.GetScoreboard)
 				r.Group(func(r chi.Router) {
 					r.Use(h.PlayerAuthMiddleware)
-					r.Get("/join", h.JoinEvent)
+					r.Post("/join", h.JoinEvent)
+					r.Delete("/leave", h.LeaveEvent)
 					r.Group(func(r chi.Router) {
 						r.Use(h.EnsureEventAccess)
 						r.Get("/challenges", h.ListCtfsChallenges)
@@ -50,7 +51,6 @@ func (h *Hub) RegisterRoutes() http.Handler {
 
 			r.Route("/{id}", func(r chi.Router) {
 				r.Use(h.EnsureEventOwnership)
-				// r.Get("/")
 				r.Put("/", h.UpdateEvent)
 				r.Delete("/", h.DeleteEvent)
 				r.Post("/start", h.StartEvent)

@@ -52,10 +52,10 @@ CREATE TABLE IF NOT EXISTS ctfs (
 
   name				TEXT NOT NULL DEFAULT 'New Event',
   status			TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'active', 'ended')),
+  description       TEXT NULL,
 
   start_time		TIMESTAMP NOT NULL DEFAULT now(),
   end_time			TIMESTAMP NOT NULL DEFAULT now(),
-  deleted_at		TIMESTAMP DEFAULT NULL,
 
   team_members_min  INTEGER DEFAULT 1 NOT NULL,
   team_members_max  INTEGER NULL,
@@ -75,22 +75,20 @@ CREATE TABLE IF NOT EXISTS ctf_organizers (
 );
 
 CREATE TABLE IF NOT EXISTS teams (
-  id              SERIAL PRIMARY KEY,
-  name            TEXT NOT NULL UNIQUE,
-
-  captain_name    TEXT NOT NULL,
-
-  members_count   INTEGER NOT NULL DEFAULT 1,
-
-  description     TEXT DEFAULT NULL,
-  is_locked       BOOLEAN DEFAULT FALSE,
-
-  CONSTRAINT constraint_captain_name FOREIGN KEY (captain_name) REFERENCES users(username) ON UPDATE CASCADE,
-
-  team_size		INTEGER NOT NULL DEFAULT 0,
-
-  profile_id	INTEGER,
-  CONSTRAINT constraint_profile FOREIGN KEY (profile_id) REFERENCES profiles
+	id				SERIAL PRIMARY KEY,
+	name			TEXT NOT NULL UNIQUE,
+	
+	captain_name	TEXT NOT NULL,
+	
+	members_count	INTEGER NOT NULL DEFAULT 1,
+	
+	description		TEXT DEFAULT NULL,
+	is_locked		BOOLEAN DEFAULT FALSE,
+	
+	profile_id		INTEGER,
+	
+	CONSTRAINT constraint_captain_name FOREIGN KEY (captain_name) REFERENCES users(username) ON UPDATE CASCADE,
+	CONSTRAINT constraint_profile FOREIGN KEY (profile_id) REFERENCES profiles
 );
 CREATE TABLE IF NOT EXISTS team_members (
   team_name    TEXT NOT NULL,
@@ -185,19 +183,19 @@ CREATE TABLE IF NOT EXISTS hints (
 
 -- Participations (Instance of the Team in the Challenge)
 CREATE TABLE IF NOT EXISTS participations (
-  id				SERIAL PRIMARY KEY,
-  score				INTEGER NOT NULL DEFAULT 0,
-  solves			INTEGER NOT NULL DEFAULT 0,
-
-  team_id			INTEGER NOT NULL,
-  ctf_id			INTEGER NOT NULL,
-
-  last_attempt_at	TIMESTAMP NULL,
-
-  CONSTRAINT unique_participation UNIQUE (team_id, ctf_id),
-
-  CONSTRAINT constraint_team FOREIGN KEY (team_id) REFERENCES teams,
-  CONSTRAINT constraint_ctfs FOREIGN KEY (ctf_id) REFERENCES ctfs
+	id				SERIAL PRIMARY KEY,
+	score			INTEGER NOT NULL DEFAULT 0,
+	solves			INTEGER NOT NULL DEFAULT 0,
+	
+	team_id			INTEGER NOT NULL,
+	ctf_id			INTEGER NOT NULL,
+	
+	last_attempt_at	TIMESTAMP NULL,
+	
+	CONSTRAINT unique_participation UNIQUE (team_id, ctf_id),
+	
+	CONSTRAINT constraint_team FOREIGN KEY (team_id) REFERENCES teams,
+	CONSTRAINT constraint_ctfs FOREIGN KEY (ctf_id) REFERENCES ctfs
 );
 
 -- CTF instantiation of the Challenges

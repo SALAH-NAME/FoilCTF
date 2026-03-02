@@ -21,11 +21,10 @@ export default function Sidebar({ session_user }: SidebarProps) {
 	const showText = isExpanded || isMobileOpen;
 
 	const location = useLocation();
-	const is_profile_active = (location.pathname === '/profile');
+	const is_profile_active = location.pathname === '/profile';
 
 	useEffect(() => {
-		if (!closeMobile)
-			return ;
+		if (!closeMobile) return;
 		closeMobile();
 	}, [location.pathname]);
 	useEffect(() => {
@@ -39,8 +38,7 @@ export default function Sidebar({ session_user }: SidebarProps) {
 		};
 	}, [isMobileOpen]);
 	useEffect(() => {
-		if (!closeMobile)
-			return ;
+		if (!closeMobile) return;
 
 		const handleEscape = (e: KeyboardEvent) => {
 			if (e.key === 'Escape' && isMobileOpen) {
@@ -97,11 +95,7 @@ export default function Sidebar({ session_user }: SidebarProps) {
 							className="flex items-center p-4 border-b border-dark/10 transition-all duration-300 w-full no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
 							title="FoilCTF"
 						>
-							<Logo
-								size="md"
-								showText={showText}
-								className="ml-2"
-							/>
+							<Logo size="md" showText={showText} className="ml-2" />
 						</Link>
 
 						<nav className="p-4 space-y-2" aria-label="Main navigation">
@@ -112,26 +106,26 @@ export default function Sidebar({ session_user }: SidebarProps) {
 								/>
 							)}
 							{user && (
-							<NavLink
-								item={{ to: '/dashboard', label: 'Dashboard', icon: 'chart' }}
-							>
 								<NavLink
-									item={{
-										to: '/challenges',
-										label: 'Challenges',
-										icon: 'challenge',
-									}}
-									isNested
-								/>
-								<NavLink
-									item={{
-										to: '/instances',
-										label: 'Instances',
-										icon: 'instance',
-									}}
-									isNested
-								/>
-							</NavLink>
+									item={{ to: '/dashboard', label: 'Dashboard', icon: 'chart' }}
+								>
+									<NavLink
+										item={{
+											to: '/challenges',
+											label: 'Challenges',
+											icon: 'challenge',
+										}}
+										isNested
+									/>
+									<NavLink
+										item={{
+											to: '/instances',
+											label: 'Instances',
+											icon: 'instance',
+										}}
+										isNested
+									/>
+								</NavLink>
 							)}
 							<NavLink
 								item={{ to: '/events', label: 'Events', icon: 'calendar' }}
@@ -220,8 +214,12 @@ export default function Sidebar({ session_user }: SidebarProps) {
 											}
 											${is_profile_active ? 'text-white hover:text-dark' : ''}`}
 										>
-											<p className="text-sm font-medium truncate">{user.username}</p>
-											{user.email && <p className="text-xs  truncate">{user.email}</p>}
+											<p className="text-sm font-medium truncate">
+												{user.username}
+											</p>
+											{user.email && (
+												<p className="text-xs  truncate">{user.email}</p>
+											)}
 										</div>
 									)}
 								</Link>

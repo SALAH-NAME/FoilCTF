@@ -79,8 +79,6 @@ export const getPublicProfile = async (
 
 	if (res.locals.user) {
 		const { user } = res.locals;
-		console.log(req_username, user);
-
 		const on_friends = or(
 			and(
 				eq(table_friends.username_1, table_profiles.username),
