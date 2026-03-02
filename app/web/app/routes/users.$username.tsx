@@ -14,6 +14,7 @@ import Icon from '~/components/Icon';
 import Button from '~/components/Button';
 import StatsCard from '~/components/StatsCard';
 import { request_session } from '~/session.server';
+import ProfileAvatar from '~/components/ProfileAvatar';
 
 export function meta({}: Route.MetaArgs) {
 	return [{ title: 'FoilCTF - Profile' }];
@@ -247,17 +248,10 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 									aria-label={`Upload ${profileData?.username}'s avatar`}
 									tabIndex={0}
 								>
-									{false ? (
-										<img
-											src="#"
-											alt={`${profileData?.username}'s avatar`}
-											className="w-full h-full object-cover"
-										/>
-									) : (
-										<span className="text-5xl md:text-6xl font-bold text-white">
-											{profileData?.username.charAt(0).toUpperCase()}
-										</span>
-									)}
+									<ProfileAvatar
+										avatar={profileData?.avatar ?? null}
+										className="w-full h-full rounded-full object-cover"
+									/>
 								</div>
 							</div>
 						</div>

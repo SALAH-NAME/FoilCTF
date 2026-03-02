@@ -66,7 +66,6 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 					method: 'post',
 					action: '/refresh',
 				});
-				console.debug('Session has been refreshed');
 			},
 			1_000 * parseInt(import.meta.env.BROWSER_REFRESH_INTERVAL_SECS ?? '60')
 		);
