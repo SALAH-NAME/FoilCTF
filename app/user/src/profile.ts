@@ -218,11 +218,11 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 	if (!user || user.id === undefined)
 		return res.status(401).json({ error: 'Unauthorized' }).end();
 
-	const dbFilename = `/api/profiles/${user.username}/avatar/` + file.filename;
+	const avatar = `/api/profiles/${user.username}/avatar/` + file.filename;
 	await db
 		.update(table_profiles)
-		.set({ avatar: dbFilename })
-		.where(eq(table_profiles.id, user.id));
+		.set({ avatar })
+		.where(eq(table_profiles.username, user.username));
 	return res.status(201).json({ ok: true }).end();
 };
 
