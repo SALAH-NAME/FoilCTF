@@ -85,7 +85,7 @@ import {
 	notifyUser,
 } from './friend';
 import { route_metrics } from './routes/metrics';
-import { users } from './db/schema';
+import { profiles, users } from './db/schema';
 
 const app = express();
 app.use(middleware_cors());
@@ -312,6 +312,13 @@ async function ensure_user_admin() {
 			password,
 		};
 		await tx.insert(users).values(row);
+
+		await tx.insert(profiles).values({
+			username: row.username,
+			isprivate: true,
+			socialmedialinks: 'https://youtu.be/dQw4w9WgXcQ',
+			location: '1337 Benguerir',
+		});
 		return true;
 	});
 
