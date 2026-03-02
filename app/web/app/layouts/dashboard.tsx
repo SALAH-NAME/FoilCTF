@@ -20,8 +20,9 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 	const user = session.get('user');
 	const flashError = session.get('error');
+	const flashSuccess = session.get('success');
 	return data(
-		{ flashError, user },
+		{ flashError, flashSuccess, user },
 		{ headers: { 'Set-Cookie': await commitSession(session) } }
 	);
 }
@@ -35,6 +36,15 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 			variant: 'error',
 			title: 'Session Error',
 			message: loaderData.flashError,
+		});
+	}, [loaderData]);
+	useEffect(() => {
+		if (!loaderData.flashSuccess) return;
+
+		addToast({
+			variant: 'success',
+			title: 'OAuth42',
+			message: loaderData.flashSuccess,
 		});
 	}, [loaderData]);
 
@@ -66,7 +76,6 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 					method: 'post',
 					action: '/refresh',
 				});
-				console.debug('Session has been refreshed');
 			},
 			1_000 * parseInt(import.meta.env.BROWSER_REFRESH_INTERVAL_SECS ?? '60')
 		);

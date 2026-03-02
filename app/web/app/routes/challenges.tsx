@@ -159,7 +159,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			addToast({
 				variant: 'success',
 				title: 'Challenge deleted',
-				message: 'The challenge has been deleted successfully',
+				message: 'Challenge has been deleted successfully',
 			});
 		},
 		onError: (err: Error) => {
