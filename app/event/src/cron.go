@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
- 	"encoding/json"
- 	"fmt"
+	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -17,8 +17,8 @@ func (h *Hub) SyncCtfStatus() {
 		now := time.Now()
 
 		type UserRow struct {
-			UserID int `gorm:"column:user_id"`
-			CtfID  int `gorm:"column:ctf_id"`
+			UserID  int    `gorm:"column:user_id"`
+			CtfID   int    `gorm:"column:ctf_id"`
 			CtfName string `gorm:"column:ctf_name"`
 		}
 
@@ -67,7 +67,7 @@ func (h *Hub) SyncCtfStatus() {
 		}
 		rowsAffectedEnded := res.RowsAffected
 
-		if rowsAffectedActive + rowsAffectedEnded > 0 {
+		if rowsAffectedActive+rowsAffectedEnded > 0 {
 			log.Printf("DEBUG - SyncCtfStatus - %d rows set as 'active', and %d set as 'ended'", rowsAffectedActive, rowsAffectedEnded)
 		}
 
@@ -78,9 +78,9 @@ func (h *Hub) SyncCtfStatus() {
 			for index, row := range usersStarting {
 				notificationID, exists := ctfIDToNotificationID[row.CtfID]
 				if !exists {
-					contentsMap := map[string]string {
-						"type": "event",
-						"title": "Event started",
+					contentsMap := map[string]string{
+						"type":    "event",
+						"title":   "Event started",
 						"message": fmt.Sprintf("%s has started", row.CtfName),
 					}
 					contentsJSON, err := json.Marshal(contentsMap)
@@ -100,15 +100,15 @@ func (h *Hub) SyncCtfStatus() {
 					notificationID = notif.ID
 				}
 
-				notificationUsers[index].UserID = row.UserID;
-				notificationUsers[index].NotificationID = notificationID;
+				notificationUsers[index].UserID = row.UserID
+				notificationUsers[index].NotificationID = notificationID
 			}
 
 			for _, notificationID := range ctfIDToNotificationID {
 				res = tx.
 					Table("notifications").
 					Where("id = ?", notificationID).
-					Updates(Notification{ IsPublished: true })
+					Updates(Notification{IsPublished: true})
 				if res.Error != nil {
 					return res.Error
 				}

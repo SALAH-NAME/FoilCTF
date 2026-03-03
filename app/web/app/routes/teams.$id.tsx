@@ -69,6 +69,28 @@ async function remote_request_team_join(token: string, team_name: string) {
 	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 }
 
+async function remote_fetch_team_stats(team_name: string) {
+	const url = new URL(
+		`/api/events/teams/${team_name}/stats`,
+		import.meta.env.BROWSER_REST_EVENTS_ORIGIN
+	);
+	const res = await fetch(url);
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
+
+	type JSONData_TeamStats = {
+		total_points: number;
+		participations_count: number;
+	};
+	return json as JSONData_TeamStats;
+}
+
 async function remote_request_team_cancel(token: string, team_name: string) {
 	const url = new URL(
 		`/api/teams/${team_name}/requests`,
@@ -136,6 +158,16 @@ export default function Page({ loaderData, params }: Route.ComponentProps) {
 		},
 	});
 	const members = query_members.data;
+
+	const query_team_stats = useQuery({
+		queryKey: ['team-stats', { team_name }],
+		initialData: null,
+		queryFn: async () => {
+			if (!team_name) return null;
+			return await remote_fetch_team_stats(team_name);
+		},
+	});
+	const team_stats = query_team_stats.data;
 
 	const query_user_requests = useQuery({
 		queryKey: ['user-requests', { username: session_user?.username }],
@@ -351,11 +383,15 @@ export default function Page({ loaderData, params }: Route.ComponentProps) {
 							Team Statistics
 						</h2>
 						<div className="space-y-4 sticky top-4">
-							<StatsCard iconName="trophy" label="Points Earned" value={0} />
+							<StatsCard
+								iconName="trophy"
+								label="Points Earned"
+								value={team_stats?.total_points ?? 0}
+							/>
 							<StatsCard
 								iconName="calendar"
 								label="Event Participations"
-								value={0}
+								value={team_stats?.participations_count ?? 0}
 							/>
 							<StatsCard
 								iconName="user"
