@@ -1,20 +1,19 @@
 import ms from 'ms';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import formidable from 'formidable';
 import { and, eq, or } from 'drizzle-orm';
-import multer, { FileFilterCallback } from 'multer';
 import { Request, Response, NextFunction } from 'express';
 
 import { db } from './utils/db';
 import { sessions } from './db/schema';
-import { UploadError } from './error';
 import {
 	profiles as table_profiles,
 	friend_requests as table_friend_requests,
 	friends as table_friends,
 } from './db/schema';
-import { AuthRequest, FoilCTF_Error, User } from './utils/types';
 import { AccessTokenSecret } from './utils/env';
+import { FoilCTF_Error, User } from './utils/types';
 import { JWT_Payload, JWT_verify } from './jwt';
 import { AvatarsDir, MaxFileSize, RefreshTokenExpiry } from './utils/env';
 import {
@@ -169,83 +168,52 @@ export const getPublicProfile = async (
 	return res.status(200).json(res_data).end();
 };
 
-const storage = multer.diskStorage({
-	destination: AvatarsDir,
-	filename: (
-		req: AuthRequest,
-		file: Express.Multer.File,
-		cb: (error: Error | null, destination: string) => void
-	) => {
-		if (!req.user) throw new FoilCTF_Error('Internal Server Error', 500);
-		const { username } = req.user;
-		const fileext =
-			path.extname(file.originalname) ||
-			(file.mimetype === 'image/png' ? '.png' : '.jpeg');
-		const filename = [username, new Date().getTime()].join('.') + fileext;
-		cb(null, filename); // username.12312312.png/jpeg
-	},
-});
-
-function fileFilterAdapter(
-	filter: (req: AuthRequest, file: Express.Multer.File) => boolean
-) {
-	return (
-		req: AuthRequest,
-		file: Express.Multer.File,
-		callback: FileFilterCallback
-	) => {
-		try {
-			const value = filter(req, file);
-			callback(null, value);
-		} catch (err) {
-			if (err instanceof Error) return callback(err);
-			return callback(new Error(`${err}`));
-		}
-	};
-}
-
-export const upload = multer({
-	storage,
-
-	limits: { fileSize: MaxFileSize },
-	fileFilter: fileFilterAdapter(
-		(req: AuthRequest, file: Express.Multer.File) => {
-			if (req.user?.username !== req.params?.username) {
-				// ownership check before uploading the file
-				throw new UploadError('unauthorized');
-			}
-
-			if (file.mimetype !== 'image/jpeg' && file.mimetype !== 'image/png') {
-				throw new UploadError('file-type-invalid');
-			}
-			return true;
-		}
-	),
-});
-
 export const uploadAvatar = async (req: Request, res: Response) => {
-	const file = req.file;
-	if (!file) return res.status(400).json({ error: 'File too large' }).end();
-
 	const user = res.locals.user;
 	if (!user || user.id === undefined)
 		return res.status(401).json({ error: 'Unauthorized' }).end();
 
-	const avatar = `/api/profiles/${user.username}/avatar/` + file.filename;
+	const form = formidable({
+		uploadDir: AvatarsDir,
+		keepExtensions: true,
+		maxFileSize: MaxFileSize,
+		filename(_name, ext, _part, _form) {
+			const parts = ["avatar", Date.now()];
+			return parts.join(".") + ext;
+		},
+	});
+
+	const [_form_fields, form_files] = await form.parse(req);
+	const form_file = form_files['avatar'];
+	if (!form_file)
+		return res.status(400).json({ error: 'Bad Request' }).end();
+
+	const [file] = form_file;
+	if (!file)
+		return res.status(400).json({ error: 'Bad Request' }).end();
+
+	if (!["image/jpeg", "image/png"].includes(file.mimetype ?? ""))
+		return res.status(400).json({ error: 'Unrecognized image format' }).end();
+
 	let oldAvatar: string | null = null;
+	const newAvatar = `/api/profiles/${user.username}/avatar/` + file.newFilename;
+
 	await db.transaction(async (tx) => {
 		const [profile] = await tx
 			.select({ avatar: table_profiles.avatar })
 			.from(table_profiles)
 			.where(eq(table_profiles.username, user.username));
-		if (!profile) throw new FoilCTF_Error('User has no profile', 403);
-		oldAvatar = profile.avatar;
+		if (!profile)
+			throw new FoilCTF_Error('User has no profile', 403);
 
 		await tx
 			.update(table_profiles)
-			.set({ avatar })
+			.set({ avatar: newAvatar })
 			.where(eq(table_profiles.username, user.username));
+
+		oldAvatar = profile.avatar;
 	});
+
 	if (oldAvatar) {
 		const filename = path.basename(oldAvatar);
 		const filepath = path.resolve(AvatarsDir, filename);

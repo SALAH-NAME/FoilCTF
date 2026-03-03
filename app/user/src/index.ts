@@ -30,7 +30,7 @@ import {
 	authenticateTokenProfile,
 	updateProfile,
 	uploadAvatar,
-	upload,
+	// upload,
 	updateTokens,
 	route_profile_avatar_delete,
 } from './profile';
@@ -139,7 +139,6 @@ app.post(
 	'/api/profiles/:username/avatar',
 	parseNonExistingParam,
 	middleware_auth,
-	upload.single('avatar'),
 	uploadAvatar
 );
 
