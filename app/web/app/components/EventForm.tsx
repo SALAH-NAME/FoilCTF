@@ -1,15 +1,14 @@
-import { useToast } from '~/contexts/ToastContext';
 import { useNavigate } from 'react-router';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState, type SubmitEvent, type ChangeEvent } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, type SubmitEvent, type ChangeEvent, useEffect } from 'react';
 
+import { useToast } from '~/contexts/ToastContext';
 import type { SessionUser } from '~/session.server';
 
-import Icon from '~/components/Icon';
 import Button from '~/components/Button';
 import FormInput from '~/components/FormInput';
 import FormToggle from '~/components/FormToggle';
-import SearchInput from '~/components/SearchInput';
+import { remote_fetch_event } from '~/routes/events.$id';
 
 export interface EventFormData {
 	name: string;
@@ -32,19 +31,11 @@ export interface LinkedChallenge {
 	flag: string;
 }
 
-interface ChallengeOption {
-	id: number;
-	name: string;
-	reward: number;
-	rewardMin?: number;
-	rewardFirstBlood?: number;
-	description: string;
-}
 interface EventFormProps {
 	user?: SessionUser;
+	event_id?: string;
 	onCancel: () => void;
 }
-
 interface EventCreate {
 	name: string;
 	start_time: string;
@@ -62,7 +53,7 @@ export async function remote_create_event(token: string, event: EventCreate) {
 	const url = new URL('/api/admin/events', import.meta.env.BROWSER_REST_EVENTS_ORIGIN);
 
 	const method = 'POST';
-	const headers = new Headers({ 'Authorization': `Bearer ${token}` });
+	const headers = new Headers({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' });
 	const body = JSON.stringify(event);
 	const res = await fetch(url, { method, headers, body });
 
@@ -79,9 +70,25 @@ export async function remote_create_event(token: string, event: EventCreate) {
 	};
 	return json as JSONData_EventCreate;
 }
+export async function remote_update_event(token: string, event_id: string, diff: unknown) {
+	const url = new URL(`/api/admin/events/${event_id}`, import.meta.env.BROWSER_REST_EVENTS_ORIGIN);
 
-export default function EventForm({ user, onCancel }: EventFormProps) {
+	const method = 'PUT';
+	const headers = new Headers({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' });
+	const body = JSON.stringify(diff);
+	const res = await fetch(url, { method, headers, body });
+
+	const content_type =
+		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
+	if (content_type !== 'application/json')
+		throw new Error('Unexpected response format');
+
+	const json = await res.json();
+	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
+}
+export default function EventForm({ user, event_id, onCancel }: EventFormProps) {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const { addToast } = useToast();
 
 	const [input_open, setInputOpen] = useState(true);
@@ -92,33 +99,53 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 	const [input_max_teams, setInputMaxTeams] = useState('8');
 	const [input_team_members_min, setInputTeamMembersMin] = useState('3');
 	const [input_team_members_max, setInputTeamMembersMax] = useState('5');
-	const [input_challenges, setInputLinkedChallenges] = useState<
-		LinkedChallenge[]
-	>([]);
 
 	const [error_form, setErrorForm] = useState('');
-	const [search_challenges, setSearchChallenges] = useState('');
 
-	// TODO(xenobas): Fetch available challenges for linking
-	const query_challenges = useQuery({
-		queryKey: ['challenges-for-linking'],
-		initialData: [],
-		queryFn: async () => {
-			// const result = await api_challenge_list();
-			//return (Array.isArray(result) ? result : []) as ChallengeOption[];
-			return [] as ChallengeOption[];
-		},
+	const toDateTimeInput = (d: Date): string => {
+		const pad = (n: number) => String(n).padStart(2, '0');
+		const year = d.getFullYear();
+		const month = pad(d.getMonth() + 1);
+		const day = pad(d.getDate());
+		const hours = pad(d.getHours());
+		const minutes = pad(d.getMinutes());
+		return `${year}-${month}-${day}T${hours}:${minutes}`;
+	}
+
+	const query_event = useQuery({
+		queryKey: ['event', { event_id }],
+		initialData: null,
+		async queryFn() {
+			if (!event_id || !user)
+				return null;
+			return await remote_fetch_event(event_id, user.token_access);
+		}
 	});
-	const data_challenges = query_challenges.data.filter(({ id }) => {
-		return !input_challenges.some((lc) => lc.id === id);
-	});
+	useEffect(() => {
+		if (!query_event.isSuccess)
+			return ;
+
+		const data = query_event.data;
+		if (!data)
+			return ;
+
+		const { event } = data;
+		setInputOpen(event.status === 'published');
+		setInputName(event.name);
+		setInputDescription(event.description);
+		setInputMaxTeams((event.max_teams ?? '').toString());
+		setInputTeamMembersMin(event.team_members_min.toString());
+		setInputTeamMembersMax(event.team_members_max.toString());
+		setInputTimeEnd(toDateTimeInput(new Date(event.end_time)));
+		setInputTimeStart(toDateTimeInput(new Date(event.start_time)));
+	}, [query_event.dataUpdatedAt]);
 
 	type MutationPayload<T> = {
 		token?: string | null;
 		role?: 'admin' | 'user';
 	} & T;
 	type MutationPayloadCreate = MutationPayload<EventCreate>
-	const mut_event = useMutation<Awaited<ReturnType<typeof remote_create_event>>, Error, MutationPayloadCreate>({
+	const mut_event_create = useMutation<Awaited<ReturnType<typeof remote_create_event>>, Error, MutationPayloadCreate>({
 		async mutationFn({ token, role, ...event }) {
 			if (!token || role !== 'admin')
 				throw new Error('Unauthorized');
@@ -133,52 +160,34 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 			await navigate(`/events/${id}`);
 		}
 	});
+	const mut_event_update = useMutation<void, Error, MutationPayload<{ event_id: string, diff: unknown }>>({
+		async mutationFn({ token, event_id, diff }) {
+			if (!token)
+				throw new Error('Unauthorized');
+			if (Object.keys(diff ?? {}).length === 0)
+				throw new Error('No fields have changed from their previous state');
+			await remote_update_event(token, event_id, diff);
+		},
+		async onSuccess() {
+			onCancel();
+			await queryClient.invalidateQueries({
+				queryKey: ['event', { event_id }],
+			});
+			addToast({
+				variant: 'success',
+				title: 'Event updated',
+				message: 'Event has been updated succesfully',
+			});
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Event update',
+				message: err.message,
+			});
+		}
+	});
 
-	const handleLinkChallenge = (challenge: ChallengeOption) => {
-		setInputLinkedChallenges((prev) => [
-			...prev,
-			{
-				id: challenge.id,
-				name: challenge.name,
-				reward: challenge.reward,
-				rewardMin: challenge.rewardMin ?? Math.floor(challenge.reward / 2),
-				rewardFirstBlood:
-					challenge.rewardFirstBlood ?? Math.floor(challenge.reward / 4),
-				flag: '',
-			},
-		]);
-		setSearchChallenges('');
-	};
-	const handleUnlinkChallenge = (challengeId: number) => {
-		setInputLinkedChallenges((prev) =>
-			prev.filter((ch) => ch.id !== challengeId)
-		);
-	};
-	const handleChallengeFlag = (challengeId: number, flag: string) => {
-		setInputLinkedChallenges((prev) =>
-			prev.map((ch) => (ch.id === challengeId ? { ...ch, flag } : ch))
-		);
-	};
-	const handleChallengeReward = (challengeId: number, reward: number) => {
-		setInputLinkedChallenges((prev) =>
-			prev.map((ch) => (ch.id === challengeId ? { ...ch, reward } : ch))
-		);
-	};
-	const handleChallengeRewardMin = (challengeId: number, rewardMin: number) => {
-		setInputLinkedChallenges((prev) =>
-			prev.map((ch) => (ch.id === challengeId ? { ...ch, rewardMin } : ch))
-		);
-	};
-	const handleChallengeFirstBlood = (
-		challengeId: number,
-		rewardFirstBlood: number
-	) => {
-		setInputLinkedChallenges((prev) =>
-			prev.map((ch) =>
-				ch.id === challengeId ? { ...ch, rewardFirstBlood } : ch
-			)
-		);
-	};
 	const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
@@ -200,23 +209,58 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 		}
 		setErrorForm('');
 
-		mut_event.mutate({
-			name: input_name,
-			description: input_description,
-			is_open: input_open,
+		if (event_id) {
+			const diff = new Map<string, any>();
 
-			end_time: (new Date(input_time_end)).toISOString(),
-			start_time: (new Date(input_time_start)).toISOString(),
+			const data = query_event.data;
+			if (data === null) {
+				setErrorForm('Unreachable attempt at edit submit, without an event_id');
+				return ;
+			}
 
-			max_teams: parseInt(input_max_teams),
-			team_members_max: parseInt(input_team_members_max),
-			team_members_min: parseInt(input_team_members_min),
+			const { event } = data;
 
-			status: 'published',
+			// TODO(xenobas): This introduces a matrix of problems with status transitions
+			if (input_name !== event.name)
+				diff.set('name', input_name);
+			if (new Date(input_time_end).getTime() !== new Date(event.end_time).getTime())
+				diff.set('end_time', new Date(input_time_end).toISOString());
+			if (new Date(input_time_start).getTime() !== new Date(event.start_time).getTime())
+				diff.set('start_time', new Date(input_time_start).toISOString());
+			if (input_description !== event.description)
+				diff.set('description', input_description);
+			if (input_max_teams !== (event.max_teams?.toString() ?? ''))
+				diff.set('max_teams', input_max_teams ? Number(input_max_teams) : null);
+			if (input_team_members_min !== event.team_members_min.toString())
+				diff.set('team_members_min', Number(input_team_members_min));
+			if (input_team_members_max !== event.team_members_max.toString())
+				diff.set('team_members_max', Number(input_team_members_max));
 
-			role: user?.role,
-			token: user?.token_access,
-		});
+			mut_event_update.mutate({
+				diff: Object.fromEntries(diff.entries()),
+				role: user?.role,
+				token: user?.token_access,
+				event_id,
+			});
+		} else {
+			mut_event_create.mutate({
+				name: input_name,
+				description: input_description,
+				is_open: input_open,
+
+				end_time: (new Date(input_time_end)).toISOString(),
+				start_time: (new Date(input_time_start)).toISOString(),
+
+				max_teams: parseInt(input_max_teams),
+				team_members_max: parseInt(input_team_members_max),
+				team_members_min: parseInt(input_team_members_min),
+
+				status: 'published',
+
+				role: user?.role,
+				token: user?.token_access,
+			});
+		}
 	};
 
 	const changeTeamMembersMin = (e: ChangeEvent<HTMLInputElement>) => {
@@ -264,7 +308,7 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 	// Use a plain className string so there's no dynamic component creation on re-render
 	// (inline components lose focus on every keystroke because React sees a new component type)
 	const class_section = 'pb-6 border-b border-neutral-200 last:border-b-0';
-	const disabled = query_challenges.isPending || mut_event.isPending;
+	const disabled = mut_event_create.isPending;
 	return (
 		<form className="space-y-6" onSubmit={handleSubmit}>
 			<div className={class_section}>
@@ -305,8 +349,8 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 								id="event-start-date"
 								value={input_time_start}
 								onChange={changeInputTimeStart}
-								required
-								disabled={disabled}
+								required={!Boolean(event_id)}
+								disabled={disabled || Boolean(event_id)}
 							/>
 							<FormInput
 								name="end_time"
@@ -315,8 +359,8 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 								id="event-end-date"
 								value={input_time_end}
 								onChange={changeInputTimeEnd}
-								required
-								disabled={disabled}
+								required={!Boolean(event_id)}
+								disabled={disabled || Boolean(event_id)}
 							/>
 
 							<span></span>
@@ -326,7 +370,7 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 								description="Allow new teams to register for this event"
 								checked={input_open}
 								onChange={setInputOpen}
-								disabled={disabled}
+								disabled={disabled || Boolean(event_id)}
 							/>
 						</div>
 					</div>
@@ -397,197 +441,6 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 					</div>
 				</fieldset>
 			</div>
-			<div className={class_section}>
-				<fieldset>
-					<legend className="text-xl font-semibold text-dark mb-4">
-						Linked Challenges
-					</legend>
-
-					{input_challenges.length > 0 && (
-						<div className="mb-4">
-							<div
-								className="border border-neutral-300 rounded-md overflow-hidden"
-								role="table"
-								aria-label="Linked challenges"
-							>
-								<div
-									className="bg-neutral-50 border-b border-neutral-300 grid grid-cols-12 gap-2 px-4 py-3 text-sm font-semibold text-dark"
-									role="row"
-								>
-									<span className="col-span-3" role="columnheader">
-										Challenge
-									</span>
-									<span className="col-span-2" role="columnheader">
-										Max Pts
-									</span>
-									<span className="col-span-2" role="columnheader">
-										Min Pts
-									</span>
-									<span className="col-span-2" role="columnheader">
-										First Blood
-									</span>
-									<span className="col-span-2" role="columnheader">
-										Flag
-									</span>
-									<span className="col-span-1" role="columnheader">
-										<span className="sr-only">Actions</span>
-									</span>
-								</div>
-								{input_challenges.map((ch) => (
-									<div
-										key={ch.id}
-										className="grid grid-cols-12 gap-2 px-4 py-3 border-b border-neutral-200 last:border-b-0 items-center"
-										role="row"
-									>
-										<span
-											className="col-span-3 text-sm text-dark font-medium truncate"
-											role="cell"
-											title={ch.name}
-										>
-											{ch.name}
-										</span>
-										<div className="col-span-2" role="cell">
-											<label htmlFor={`reward-${ch.id}`} className="sr-only">
-												Max points for {ch.name}
-											</label>
-											<input
-												type="number"
-												id={`reward-${ch.id}`}
-												value={ch.reward}
-												onChange={(e) =>
-													handleChallengeReward(ch.id, Number(e.target.value))
-												}
-												min={0}
-												disabled={disabled}
-												className="w-full px-2 py-1.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-sm"
-											/>
-										</div>
-										<div className="col-span-2" role="cell">
-											<label
-												htmlFor={`reward-min-${ch.id}`}
-												className="sr-only"
-											>
-												Min points for {ch.name}
-											</label>
-											<input
-												type="number"
-												id={`reward-min-${ch.id}`}
-												value={ch.rewardMin}
-												onChange={(e) =>
-													handleChallengeRewardMin(
-														ch.id,
-														Number(e.target.value)
-													)
-												}
-												min={0}
-												disabled={disabled}
-												className="w-full px-2 py-1.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-sm"
-											/>
-										</div>
-										<div className="col-span-2" role="cell">
-											<label
-												htmlFor={`first-blood-${ch.id}`}
-												className="sr-only"
-											>
-												First blood bonus for {ch.name}
-											</label>
-											<input
-												type="number"
-												id={`first-blood-${ch.id}`}
-												value={ch.rewardFirstBlood}
-												onChange={(e) =>
-													handleChallengeFirstBlood(
-														ch.id,
-														Number(e.target.value)
-													)
-												}
-												min={0}
-												disabled={disabled}
-												className="w-full px-2 py-1.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-sm"
-											/>
-										</div>
-										<div className="col-span-2" role="cell">
-											<label htmlFor={`flag-${ch.id}`} className="sr-only">
-												Flag for {ch.name}
-											</label>
-											<input
-												type="text"
-												id={`flag-${ch.id}`}
-												value={ch.flag}
-												onChange={(e) =>
-													handleChallengeFlag(ch.id, e.target.value)
-												}
-												placeholder="flag{...}"
-												disabled={disabled}
-												className="w-full px-2 py-1.5 rounded-md border border-dark/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-sm font-mono"
-											/>
-										</div>
-										<div className="col-span-1 flex justify-end" role="cell">
-											<button
-												type="button"
-												onClick={() => handleUnlinkChallenge(ch.id)}
-												disabled={disabled}
-												className="p-1.5 hover:bg-red-50 text-white hover:text-red-500 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-												aria-label={`Remove ${ch.name} from event`}
-											>
-												<Icon
-													name="close"
-													className="size-4 stroke-3"
-													aria-hidden={true}
-												/>
-											</button>
-										</div>
-									</div>
-								))}
-							</div>
-						</div>
-					)}
-
-					{input_challenges.length === 0 && (
-						<p className="text-sm text-muted mb-4">
-							No challenges linked yet. Add challenges to include them in this
-							event.
-						</p>
-					)}
-
-					<div className="space-y-3">
-						<SearchInput
-							value={search_challenges}
-							onChange={setSearchChallenges}
-							placeholder="Search challenges by name..."
-						/>
-
-						{data_challenges.length > 0 ? (
-							<ul
-								className="max-h-52 overflow-y-auto space-y-1 border border-neutral-200 rounded-md p-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-thumb]:rounded-full"
-								role="listbox"
-								aria-label="Available challenges to link"
-							>
-								{data_challenges.map((ch) => (
-									<li key={ch.id} role="option" aria-selected={false}>
-										<button
-											type="button"
-											onClick={() => handleLinkChallenge(ch)}
-											className="w-full text-left px-3 py-2 rounded-md text-white hover:text-primary hover:bg-primary/10 transition-colors flex items-center justify-between gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-											aria-label={`Link challenge ${ch.name}`}
-										>
-											<span className="text-sm font-medium truncate">
-												{ch.name}
-											</span>
-											<span className="text-xs  shrink-0">{ch.reward} pts</span>
-										</button>
-									</li>
-								))}
-							</ul>
-						) : 
-							search_challenges && 
-							<p className="text-sm text-muted py-2">
-									No matching challenges found
-							</p>
-						}
-					</div>
-				</fieldset>
-			</div>
 			<div className="flex items-center justify-between gap-4">
 				{error_form && (
 					<p className="text-sm text-red-600 flex-1" role="alert">
@@ -604,7 +457,7 @@ export default function EventForm({ user, onCancel }: EventFormProps) {
 						Cancel
 					</Button>
 					<Button type="submit" variant="primary" disabled={disabled}>
-						Create Event
+						{ Boolean(event_id) ? "Update" : "Create"}
 					</Button>
 				</div>
 			</div>

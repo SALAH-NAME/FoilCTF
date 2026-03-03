@@ -19,6 +19,7 @@ import CountdownCard from '~/components/CountdownCard';
 import EventStatCard from '~/components/EventStatCard';
 import AdminEventModal from '~/components/AdminEventModal';
 import { remote_fetch_challenges } from './challenges';
+import { remote_update_event } from '~/components/EventForm';
 
 export function meta({ params }: Route.MetaArgs) {
 	return [
@@ -177,6 +178,7 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 			const token = user?.token_access;
 			if (!token)
 				return null;
+
 			return await remote_fetch_team(token);
 		}
 	});
@@ -273,7 +275,7 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 	});
 
 	const is_registered = Boolean(user && data_event && data_event.user_status.is_joined);
-	const can_show_play = Boolean((is_registered && data_event?.event.status === 'active') || data_event?.user_status.is_organizer);
+	const can_show_play = Boolean(is_registered && data_event?.event.status === 'active');
 	const can_show_registration = Boolean(user && data_event && data_event?.event.status === 'published' && data_team?.captain_name === user.username);
 	const organizer = ((data_event?.organizers.map(x => x.username).filter(x => !!x).join(', ')) || 'FoilCTF');
 
@@ -718,6 +720,8 @@ export default function Page({ params, loaderData }: Route.ComponentProps) {
 			</Modal>
 
 			<AdminEventModal
+				user={user}
+				event_id={params.id}
 				isOpen={show_modal_edit}
 				onClose={() => setShowModalEdit(false)}
 			/>
@@ -812,7 +816,7 @@ export async function remote_link_event_challenges(token: string, event_id: stri
 export async function remote_update_event_challenges(token: string, event_id: string, challenge_id: number, payload: unknown) {
 	const url = new URL(`/api/admin/events/${event_id}/challenges/${challenge_id}`, import.meta.env.BROWSER_REST_EVENTS_ORIGIN);
 	const method = 'PATCH';
-	const headers = new Headers({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application.jsoin' });
+	const headers = new Headers({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' });
 	const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
 
 	const content_type =

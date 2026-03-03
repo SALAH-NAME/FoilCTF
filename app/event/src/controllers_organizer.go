@@ -110,29 +110,16 @@ func (h *Hub) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req EventRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var values map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&values); err != nil {
 		log.Printf("ERROR - HTTP - Invalid request format: %v", err)
 		JSONError(w, "Invalid Input", http.StatusBadRequest)
 		return
 	}
 
-	updatedEvent := Ctf{
-		Name:           req.Name,
-		MetaData:       req.MetaData,
-		TeamMembersMin: req.TeamMembersMin,
-		TeamMembersMax: req.TeamMembersMax,
-		EndTime:        req.EndTime,
-		Description:    req.Description,
-		MaxTeams:       intPtrOrNil(req.MaxTeams),
-	}
-	if currentEvent.Status == "draft" {
-		updatedEvent.StartTime = req.StartTime
-	}
-
 	err := h.Db.Table("ctfs").
 		Where("id = ?", currentEvent.ID).
-		Updates(updatedEvent).Error
+		Updates(values).Error
 	if err != nil {
 		log.Printf("ERROR - DATABASE - Could not update ctfs table due to: %v", err)
 		JSONError(w, "Update failed", http.StatusInternalServerError)
