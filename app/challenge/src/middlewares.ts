@@ -2,6 +2,7 @@ import cors from 'cors';
 import { and, eq } from 'drizzle-orm';
 import type { Request, Response, NextFunction } from 'express';
 
+import { JWT_verify } from './webtoken.js';
 import { respondJSON } from './web.js';
 import { metric_lats, metric_reqs } from './prometheus.js';
 
@@ -10,13 +11,39 @@ import orm, {
 	challenges_attachments as table_challenges_attachments,
 } from './orm/index.js';
 
-// TODO(xenobas): Authorization middleware
-
 const DateTimeFormatter = new Intl.DateTimeFormat('en-GB', { dateStyle: 'short', timeStyle: 'short' });
 
 export const middleware_cors = cors({
 	origin: '*',
 });
+export function middleware_auth(roles: string[] = ["user", "admin"]) {
+	return (req: Request, res: Response, next: NextFunction) => {
+		const query = req.query['token'];
+		const header = req.get('Authorization');
+
+		const source = query || header;
+		if (!source || typeof source !== 'string')
+			return respondJSON(res, { error: "Unauthorized" }, 401);
+
+		const HEADER_PREFIX = "Bearer ";
+		const token = source === header
+			? source.slice(HEADER_PREFIX.length)
+			: source;
+		
+		if (!token)
+			return respondJSON(res, { error: "Unauthorized" }, 401);
+
+		const webtoken = JWT_verify(token);
+		if (!webtoken)
+			return respondJSON(res, { error: "Invalid token" }, 401);
+
+		if (!roles.includes(webtoken.role))
+			return respondJSON(res, { error: "Insuficcient permissions" }, 403);
+
+		res.locals.webtoken = webtoken;
+		next();
+	};
+}
 export function middleware_error(
 	err: any,
 	_req: Request,
@@ -25,7 +52,7 @@ export function middleware_error(
 ) {
 	if (!(err instanceof SyntaxError))
 		console.error(err);
-	respondJSON(res, { err: err.message ?? "Internal Server Error" }, err.statusCode ?? 500);
+	respondJSON(res, { error: err.message ?? "Internal Server Error" }, err.statusCode ?? 500);
 }
 export function middleware_not_found(
 	req: Request,

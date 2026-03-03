@@ -130,9 +130,9 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		initialData: { challenges: [], count: 0 },
 		async queryFn() {
 			if (!user) return { challenges: [], count: 0 };
-			const { username } = user;
+			const { token_access } = user;
 			return await remote_fetch_challenges(
-				username,
+				token_access,
 				searchQuery,
 				itemsPerPage,
 				(currentPage - 1) * itemsPerPage,

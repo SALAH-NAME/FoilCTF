@@ -114,9 +114,24 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		});
 	};
 
-	const handleOAuth = () => {
-		// TODO: OAuth implementation
-		alert('OAuth register');
+	const handleOAuth = async () => {
+		const location = window.location;
+		const location_search = new URLSearchParams(location.search);
+
+		const uri_redirect = new URL(
+			'/oauth/42',
+			location.protocol + '//' + location.host
+		);
+		const uri_redirect_prev = location_search.get('redirect_uri');
+		if (uri_redirect_prev)
+			uri_redirect.searchParams.set('redirect_uri', uri_redirect_prev);
+
+		const origin =
+			import.meta.env.BROWSER_REST_USER_ORIGIN ?? 'http://localhost:3001';
+		const uri_oauth = new URL('/api/oauth/42/connect', origin);
+		uri_oauth.searchParams.set('redirect_uri', uri_redirect.toString());
+
+		window.location.href = uri_oauth.toString();
 	};
 
 	return (
