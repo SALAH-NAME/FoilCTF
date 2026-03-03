@@ -515,8 +515,10 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 
 	type ProfileData = {
 		username: string;
+
 		avatar?: string;
 		email?: string | null;
+		team_name?: string | null;
 
 		bio?: string | null;
 		location?: string | null;
@@ -566,8 +568,10 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 		password: '',
 	});
 
-	const mutDelete = useMutation<unknown, Error, { token: string, username: string, password: string }>({
-		async mutationFn({ token, username, password }) {
+	const mutDelete = useMutation<unknown, Error, { token: string; username: string; password: string; team_name?: string | null; }>({
+		async mutationFn({ token, username, password, team_name }) {
+			if (team_name)
+				throw new Error('You cannot delete your account while in a team');
 			await delete_user(token, username, password);
 		},
 		async onSuccess() {
@@ -603,6 +607,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 				...oldProfileData,
 
 				username: user.username,
+				team_name: user.team_name,
 				email: user.email ?? 'No Email',
 				['42login']: user.oauth42_login,
 			};
@@ -748,7 +753,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 		);
 
 		if (!confirmationError) {
-			mutDelete.mutate({ token: token_access, password: deleteForm.password, username });
+			mutDelete.mutate({ token: token_access, password: deleteForm.password, username, team_name: profileData.team_name });
 		}
 	};
 
