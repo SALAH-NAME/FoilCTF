@@ -1,5 +1,4 @@
 import { ZodError } from 'zod';
-import { MulterError } from 'multer';
 import type { Request, Response, NextFunction } from 'express';
 import { FoilCTF_Error } from './utils/types';
 
@@ -34,8 +33,7 @@ export function middleware_error(
 ) {
 	if (
 		err instanceof ZodError ||
-		err instanceof SyntaxError ||
-		err instanceof MulterError
+		err instanceof SyntaxError 
 	) {
 		return res.status(400).json({ error: err.message });
 	}

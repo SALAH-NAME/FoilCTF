@@ -88,6 +88,8 @@ import { route_metrics } from './routes/metrics';
 import { profiles, users } from './db/schema';
 
 const app = express();
+app.enable('trust proxy');
+
 app.use(middleware_cors());
 app.use(middleware_logger);
 app.use(middleware_json());
