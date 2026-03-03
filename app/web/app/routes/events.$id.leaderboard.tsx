@@ -7,6 +7,7 @@ import Pagination from '~/components/Pagination';
 import Icon from '~/components/Icon';
 import type { Route } from './+types/events.$id.leaderboard';
 import { request_session_user } from '~/session.server';
+import { remote_fetch_event } from './events.$id';
 
 export function meta({ params }: Route.ComponentProps) {
 	return [
@@ -75,6 +76,13 @@ export default function EventLeaderboard({
 		parseInt(searchParams.get('perPage') || '10'),
 		1
 	);
+
+	const query_event = useQuery({
+		queryKey: ['event', { id: params.id }],
+		async queryFn() {
+			return remote_fetch_event(params.id, user?.token_access);
+		},
+	});
 
 	const query_leaderboard = useQuery({
 		queryKey: [
@@ -170,6 +178,25 @@ export default function EventLeaderboard({
 
 	const isLoading = query_leaderboard.isFetching && leaderboard.length === 0;
 	const isError = query_leaderboard.isError;
+
+	if (query_event.isError) {
+		return (
+			<div className="flex flex-col gap-4">
+				<div className="flex flex-col items-center justify-center py-24 text-center gap-4">
+					<p
+						className="text-8xl font-bold text-primary/50 leading-none select-none"
+						aria-hidden="true"
+					>
+						404
+					</p>
+					<h1 className="text-3xl font-bold text-dark">Event not found</h1>
+					<p className="text-dark/70">
+						The event you're looking for doesn't exist or has been removed.
+					</p>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<>

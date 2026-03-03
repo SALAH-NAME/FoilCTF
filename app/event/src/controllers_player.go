@@ -537,7 +537,7 @@ func (h *Hub) ListCtfsChallenges(w http.ResponseWriter, r *http.Request) {
 	solvedMap := make(map[int]bool)
 	var solvedIDs []int
 	err = h.Db.Table("solves").
-		Where("team_id = ?", teamID).
+		Where("team_id = ? AND ctf_id = ?", teamID, event.ID).
 		Pluck("chall_id", &solvedIDs).Error
 	if err != nil {
 		log.Printf("ERROR - List Ctfs - Could not query solved challenge ids: %v", err)

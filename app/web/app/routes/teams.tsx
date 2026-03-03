@@ -399,7 +399,9 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 									<TeamCard
 										{...team}
 										can_request={
-											!Boolean(user?.team_name) && user?.team_name !== team.name
+											Boolean(session_user) &&
+											!Boolean(user?.team_name) &&
+											user?.team_name !== team.name
 										}
 										onRequestJoin={() => handleRequestJoin(team.name)}
 										onCancelRequest={() => handleCancelRequest(team.name)}
@@ -552,7 +554,7 @@ const ModalCreateTeam = ({
 					type="text"
 					label="Name"
 					value={teamName}
-					onChange={(ev:any) => setTeamName(ev.target.value)}
+					onChange={(ev: any) => setTeamName(ev.target.value)}
 					error={errorTeamName}
 					placeholder="hackers_1995"
 					required
