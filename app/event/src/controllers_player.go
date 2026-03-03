@@ -96,7 +96,7 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 		// update the reward based on the number of solves
 		oldReward := link.Reward
 		link.Reward = h.CalculateNewReward(&link)
-		pointsToAward = link.Reward
+		pointsToAward = oldReward
 		link.Solves++
 		// losspoints is used to update(subtract from) the score of teams who already solved the same challenge
 		lossPoints := oldReward - link.Reward

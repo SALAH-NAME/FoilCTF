@@ -1,9 +1,10 @@
-import { data } from 'react-router';
+import { data, useNavigate } from 'react-router';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 import mockData from '~/data/eventPlayMockData.json';
 import type { Route } from './+types/events.$id.play';
 import { request_session_user } from '~/session.server';
+import { remote_fetch_event } from './events.$id';
 
 import BackLink from '~/components/BackLink';
 import Countdown from '~/components/Countdown';
@@ -86,7 +87,7 @@ export async function remote_fetch_event_status(token: string, id: string) {
 		`/api/events/${id}/status`,
 		import.meta.env.BROWSER_REST_EVENTS_ORIGIN
 	);
-	const headers = new Headers({ 'Authorization': `Bearer ${token}` });
+	const headers = new Headers({ Authorization: `Bearer ${token}` });
 	const res = await fetch(uri, { headers });
 
 	const content_type =
@@ -112,7 +113,7 @@ export async function remote_fetch_event_challenges(token: string, id: string) {
 		`/api/events/${id}/challenges`,
 		import.meta.env.BROWSER_REST_EVENTS_ORIGIN
 	);
-	const headers = new Headers({ 'Authorization': `Bearer ${token}` });
+	const headers = new Headers({ Authorization: `Bearer ${token}` });
 	const res = await fetch(uri, { headers });
 
 	const content_type =
@@ -132,18 +133,30 @@ export async function remote_fetch_event_challenges(token: string, id: string) {
 			reward: number;
 			solves: number;
 			is_solved: boolean;
-		}[],
+		}[];
 	};
 	return json as JSONData_EventChallenges;
 }
-export async function remote_submit_event_flag(token: string, event_id: string, challenge_id: string, flag: string) {
+export async function remote_submit_event_flag(
+	token: string,
+	event_id: string,
+	challenge_id: string,
+	flag: string
+) {
 	const uri = new URL(
 		`/api/events/${event_id}/challenges/${challenge_id}/submit`,
 		import.meta.env.BROWSER_REST_EVENTS_ORIGIN
 	);
 	const method = 'POST';
-	const headers = new Headers({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' });
-	const res = await fetch(uri, { method, headers, body: JSON.stringify({ flag }) });
+	const headers = new Headers({
+		'Authorization': `Bearer ${token}`,
+		'Content-Type': 'application/json',
+	});
+	const res = await fetch(uri, {
+		method,
+		headers,
+		body: JSON.stringify({ flag }),
+	});
 
 	const content_type =
 		res.headers.get('Content-Type')?.split(';').at(0) ?? 'text/plain';
@@ -154,14 +167,17 @@ export async function remote_submit_event_flag(token: string, event_id: string, 
 	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 
 	type JSONData_FlagSubmit = {
-		status:			"correct";
-		first_blood:	boolean;
-		points_earned:	number;
+		status: 'correct';
+		first_blood: boolean;
+		points_earned: number;
 	};
 	return json as JSONData_FlagSubmit;
 }
 
-export default function EventPlay({ loaderData, params }: Route.ComponentProps) {
+export default function EventPlay({
+	loaderData,
+	params,
+}: Route.ComponentProps) {
 	const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(
 		null
 	);
@@ -172,47 +188,69 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 
 	const { addToast } = useToast();
 	const session_user = loaderData.user;
+	const navigate = useNavigate();
+
+	const query_event = useQuery({
+		queryKey: ['event', { id: params.id }],
+		async queryFn() {
+			const token = session_user?.token_access;
+			return remote_fetch_event(params.id, token);
+		},
+	});
+
+	useEffect(() => {
+		if (query_event.isPending) return;
+		if (query_event.isError) {
+			navigate(`/events/${params.id}`, { replace: true });
+			return;
+		}
+		if (!query_event.data) return;
+		const { event, user_status } = query_event.data;
+		if (event.status !== 'active' || !user_status.is_joined) {
+			navigate(`/events/${params.id}`, { replace: true });
+		}
+	}, [query_event.isPending, query_event.isError, query_event.data]);
 
 	const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 	const query_challenges = useQuery({
 		queryKey: ['event-challenges', { id: params.id }],
-		initialData: { },
+		initialData: {},
 		async queryFn() {
-			if (!session_user)
-				return { };
+			if (!session_user) return {};
 
 			const token = session_user.token_access;
 			const data = await remote_fetch_event_challenges(token, params.id);
-			const challenges: Record<string, Challenge[]> = { };
-			
+			const challenges: Record<string, Challenge[]> = {};
+
 			let challenge_category: keyof typeof data;
 			for (challenge_category in data) {
-				const challenges_sub: Challenge[] = data[challenge_category].map(x => ({
-					id: x.id,
-					name: x.name,
-					description: x.description,
-					category: x.category,
-					points: x.reward,
-					solved: x.is_solved,
-					solves: x.solves,
-					author: "Unknown",
-					attachments: [],
-					hasInstance: false,
-					firstBloodAvailable: false,
-					difficulty: 'easy',
-					hints: [],
-				}));
+				const challenges_sub: Challenge[] = data[challenge_category].map(
+					(x) => ({
+						id: x.id,
+						name: x.name,
+						description: x.description,
+						category: x.category,
+						points: x.reward,
+						solved: x.is_solved,
+						solves: x.solves,
+						author: 'Unknown',
+						attachments: [],
+						hasInstance: false,
+						firstBloodAvailable: false,
+						difficulty: 'easy',
+						hints: [],
+					})
+				);
 				challenges[challenge_category] = challenges_sub;
 			}
 			return challenges;
-		}
+		},
 	});
 	const query_status = useQuery({
 		queryKey: ['event-status', { id: params.id }],
 		initialData: null,
 		async queryFn() {
-			if (!session_user)
-				return null;
+			if (!session_user) return null;
 
 			const token = session_user.token_access;
 			const status = await remote_fetch_event_status(token, params.id);
@@ -224,7 +262,7 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 				solvedChallenges: status.solved_challenges,
 				totalChallenges: status.total_challenges,
 			};
-		}
+		},
 	});
 
 	const challenges = query_challenges.data;
@@ -327,7 +365,11 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 		event_id: string;
 		token: string;
 	} & T;
-	const mut_flag = useMutation<void, Error, MutationPayload<{ challenge_id: string, flag: string }>>({
+	const mut_flag = useMutation<
+		void,
+		Error,
+		MutationPayload<{ challenge_id: string; flag: string }>
+	>({
 		async mutationFn({ token, event_id, challenge_id, flag }) {
 			await remote_submit_event_flag(token, event_id, challenge_id, flag);
 		},
@@ -339,7 +381,10 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 			});
 
 			setSelectedChallenge(null);
-			await queryClient.invalidateQueries({ queryKey: ['event-challenges'] });
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: ['event-challenges'] }),
+				queryClient.invalidateQueries({ queryKey: ['event-status'] }),
+			]);
 		},
 		onError(err) {
 			addToast({
@@ -347,11 +392,10 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 				title: 'Flag submission',
 				message: err.message,
 			});
-		}
+		},
 	});
 	const handleSubmitFlag = (chall_id: number, flag: string) => {
-		if (!session_user)
-			return ;
+		if (!session_user) return;
 
 		console.log(chall_id, flag);
 		const token = session_user.token_access;
@@ -365,32 +409,37 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 		: { isRunning: false };
 
 	const ref_socket = useRef<WebSocket>(null);
-	const sendMessage = useCallback((message: string) => {
-		try {
-			if (!ref_socket.current || !isConnected || !session_user)
-				throw new Error('Cannot send message while disconnected');
+	const sendMessage = useCallback(
+		(message: string) => {
+			try {
+				if (!ref_socket.current || !isConnected || !session_user)
+					throw new Error('Cannot send message while disconnected');
 
-			const { current: socket } = ref_socket;
-			socket.send(JSON.stringify({
-				event: 'message',
-				content: message,
-				sender_id: session_user.id.toString(),
-				writer_id: session_user.id,
-				name: session_user.username,
-				sent_time: new Date().toISOString(),
-			}))
-		} catch (error: any) {
-			addToast({
-				variant: 'error',
-				title: 'Message failed',
-				message: error.message ?? 'Internal Server Error',
-			});
-		}
-	}, [ref_socket.current, isConnected, session_user?.token_refresh])
+				const { current: socket } = ref_socket;
+				socket.send(
+					JSON.stringify({
+						event: 'message',
+						content: message,
+						sender_id: session_user.id.toString(),
+						writer_id: session_user.id,
+						name: session_user.username,
+						sent_time: new Date().toISOString(),
+					})
+				);
+			} catch (error: any) {
+				addToast({
+					variant: 'error',
+					title: 'Message failed',
+					message: error.message ?? 'Internal Server Error',
+				});
+			}
+		},
+		[ref_socket.current, isConnected, session_user?.token_refresh]
+	);
 
 	useEffect(() => {
 		if (ref_socket.current || !session_user) return;
-		if (!query_status.data?.chatroom_id) return ;
+		if (!query_status.data?.chatroom_id) return;
 
 		const chatroom_id = query_status.data.chatroom_id;
 		const url = new URL('/api/chat', import.meta.env.BROWSER_SOCKET_CHAT);
@@ -415,17 +464,16 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 		ref_socket.current.onmessage = (ev: MessageEvent<string>) => {
 			const { data } = ev;
 			type ChatMessageInc = {
-				"id": number;
-				"chatroom_id": number;
-				"sent_time": string;
-				"content": string;
-				"event": string;
-				"name": string;
-				"is_edited": boolean;
+				id: number;
+				chatroom_id: number;
+				sent_time: string;
+				content: string;
+				event: string;
+				name: string;
+				is_edited: boolean;
 			};
 			const messageInc: ChatMessageInc = JSON.parse(data);
-			if (messageInc.event === 'edit')
-				return ;
+			if (messageInc.event === 'edit') return;
 
 			const messageOut: ChatMessage = {
 				id: `${messageInc.id}`,
@@ -436,18 +484,34 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 				isAnnouncement: false,
 			};
 			setChatMessages((old) => {
-				if (old.findIndex(x => x.id === messageOut.id) !== -1)
-					return old;
-				return [...old, messageOut]
+				if (old.findIndex((x) => x.id === messageOut.id) !== -1) return old;
+				return [...old, messageOut];
 			});
 		};
 
-		return (() => {
+		return () => {
 			if (ref_socket.current?.readyState === WebSocket.OPEN)
 				ref_socket.current?.close();
 			ref_socket.current = null;
-		});
+		};
 	}, [query_status.data?.chatroom_id]);
+
+	if (query_event.isPending) {
+		return (
+			<div className="flex items-center justify-center min-h-screen">
+				<p className="text-gray-500">Loading...</p>
+			</div>
+		);
+	}
+
+	const eventData = query_event.data;
+	if (
+		!eventData ||
+		eventData.event.status !== 'active' ||
+		!eventData.user_status.is_joined
+	) {
+		return null;
+	}
 
 	return (
 		<div className="flex flex-col lg:flex-row lg:gap-4 min-h-screen">
@@ -459,30 +523,31 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 							<h2 id="status-heading" className="sr-only">
 								Event Status
 							</h2>
-							{eventStatus &&
-							<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-								<PlayStatusCard
-									label="Team"
-									value={eventStatus.teamName}
-									ariaLabel={`Team: ${eventStatus.teamName}`}
-								/>
-								<PlayStatusCard
-									label="Rank"
-									value={`#${eventStatus.rank}`}
-									className="text-primary"
-									ariaLabel={`Rank: ${eventStatus.rank}`}
-								/>
-								<PlayStatusCard
-									label="Points"
-									value={eventStatus.totalPoints}
-									ariaLabel={`Points: ${eventStatus.totalPoints}`}
-								/>
-								<PlayStatusCard
-									label="Solved"
-									value={eventStatus.solvedChallenges}
-									ariaLabel={`Solved challenges: ${eventStatus.solvedChallenges} out of ${eventStatus.totalChallenges}`}
-								/>
-							</div> }
+							{eventStatus && (
+								<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+									<PlayStatusCard
+										label="Team"
+										value={eventStatus.teamName}
+										ariaLabel={`Team: ${eventStatus.teamName}`}
+									/>
+									<PlayStatusCard
+										label="Rank"
+										value={`#${eventStatus.rank}`}
+										className="text-primary"
+										ariaLabel={`Rank: ${eventStatus.rank}`}
+									/>
+									<PlayStatusCard
+										label="Points"
+										value={eventStatus.totalPoints}
+										ariaLabel={`Points: ${eventStatus.totalPoints}`}
+									/>
+									<PlayStatusCard
+										label="Solved"
+										value={eventStatus.solvedChallenges}
+										ariaLabel={`Solved challenges: ${eventStatus.solvedChallenges} out of ${eventStatus.totalChallenges}`}
+									/>
+								</div>
+							)}
 						</div>
 					</PageSection>
 

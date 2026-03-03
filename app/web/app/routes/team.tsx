@@ -653,6 +653,39 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			description: details.description ?? '',
 		}));
 	}, [details?.is_locked, details?.description]);
+
+	if (!query_user.isPending && !user?.team_name) {
+		return (
+			<div className="flex flex-col items-center justify-center py-24 text-center gap-4">
+				<p
+					className="text-8xl font-bold text-primary/50 leading-none select-none"
+					aria-hidden="true"
+				>
+					404
+				</p>
+				<h1 className="text-3xl font-bold text-dark">No team found</h1>
+				<p className="text-dark/70">You are not a member of any team yet.</p>
+			</div>
+		);
+	}
+
+	if (query_details.isError) {
+		return (
+			<div className="flex flex-col items-center justify-center py-24 text-center gap-4">
+				<p
+					className="text-8xl font-bold text-primary/50 leading-none select-none"
+					aria-hidden="true"
+				>
+					404
+				</p>
+				<h1 className="text-3xl font-bold text-dark">Team not found</h1>
+				<p className="text-dark/70">
+					This team doesn't exist or has been removed.
+				</p>
+			</div>
+		);
+	}
+
 	return (
 		<>
 			<PageHeader
@@ -849,7 +882,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 						name="description"
 						type="textarea"
 						value={editSettings.description}
-						onChange={(e:any) => setEditSettingsDescription(e.target.value)}
+						onChange={(e: any) => setEditSettingsDescription(e.target.value)}
 						placeholder="Describe your team..."
 						rows={4}
 					/>

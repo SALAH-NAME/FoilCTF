@@ -311,6 +311,23 @@ export default function Page({ loaderData, params }: Route.ComponentProps) {
 		);
 	};
 
+	if (query_details.isError) {
+		return (
+			<div className="flex flex-col items-center justify-center py-24 text-center gap-4">
+				<p
+					className="text-8xl font-bold text-primary/50 leading-none select-none"
+					aria-hidden="true"
+				>
+					404
+				</p>
+				<h1 className="text-3xl font-bold text-dark">Team not found</h1>
+				<p className="text-dark/70">
+					This team doesn't exist or has been removed.
+				</p>
+			</div>
+		);
+	}
+
 	return (
 		<>
 			<PageHeader
