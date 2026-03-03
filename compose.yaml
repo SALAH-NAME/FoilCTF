@@ -96,6 +96,7 @@ services:
         - BROWSER_REST_USER_ORIGIN=${BROWSER_REST_USER_ORIGIN:-https://localhost:3443}
         - BROWSER_REST_EVENTS_ORIGIN=${BROWSER_REST_EVENTS_ORIGIN:-https://localhost:3443}
         - BROWSER_REST_NOTIFICATION_ORIGIN=${BROWSER_REST_NOTIFICATION_ORIGIN:-https://localhost:3443}
+        - BROWSER_REST_SANDBOX_ORIGIN=${BROWSER_REST_SANDBOX_ORIGIN:-https://localhost:3443}
         - BROWSER_SOCKET_CHAT=${BROWSER_SOCKET_CHAT:-wss://localhost:3443}
         - BROWSER_SOCKET_NOTIFICATION=${BROWSER_SOCKET_NOTIFICATION:-wss://localhost:3443}
     environment:
@@ -186,7 +187,7 @@ services:
       dockerfile: Containerfile
     environment:
       - PORT=${CHAT_SERVICE_PORT:-3003}
-      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET:-changeme-secret-key}
+      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET:?ACCESS_TOKEN_SECRET must be set}
       - DB_HOST=database
       - DB_PORT=5432
       - DB_USER=${DATABASE_DEVELOPER_USER:?DATABASE_DEVELOPER_USER must be set}
@@ -213,7 +214,7 @@ services:
       dockerfile: Containerfile
     environment:
       - PORT=${NOTIFICATION_SERVICE_PORT:-3004}
-      - SECRET_KEY=${ACCESS_TOKEN_SECRET:-changeme-secret-key}
+      - SECRET_KEY=${ACCESS_TOKEN_SECRET:?ACCESS_TOKEN_SECRET must be set}
       - DB_HOST=database
       - DB_PORT=5432
       - DB_USER=${DATABASE_DEVELOPER_USER:?DATABASE_DEVELOPER_USER must be set}
@@ -240,7 +241,7 @@ services:
       dockerfile: Containerfile
     environment:
       - PORT=${EVENT_SERVICE_PORT:-3005}
-      - SECRET_KEY=${ACCESS_TOKEN_SECRET:-changeme-secret-key}
+      - SECRET_KEY=${ACCESS_TOKEN_SECRET:?ACCESS_TOKEN_SECRET must be set}
       - DB_HOST=database
       - DB_PORT=5432
       - DB_USER=${DATABASE_DEVELOPER_USER:?DATABASE_DEVELOPER_USER must be set}
