@@ -169,6 +169,7 @@ export async function fetch_profile(token: string, username: string) {
 		events_participated: number | null;
 		total_points: number | null;
 
+		is_private: boolean | null;
 		bio: string | null | undefined;
 		location: string | null | undefined;
 		social_media_links: string | null | undefined;
@@ -521,12 +522,12 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 		location?: string | null;
 		link?: string | null;
 
-		isPrivateProfile: boolean;
+		is_private: boolean;
 		['42login']?: string | null;
 	};
 	const [profileData, setProfileData] = useState<ProfileData>({
 		username: username,
-		isPrivateProfile: false,
+		is_private: false,
 	});
 
 	const [avatar, setAvatar] = useState<string | null>(null);
@@ -590,7 +591,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 		}
 	});
 
-	const { logoutUserState, refreshUserState } = useContext(UserProvider)!;
+	const { logoutUserState } = useContext(UserProvider)!;
 
 	// NOTE(xenobas): ProfileData syncing
 	useEffect(() => {
@@ -622,6 +623,8 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 				bio: profile.bio ?? '',
 				location: profile.location ?? '',
 				link: profile.social_media_links ?? '',
+
+				is_private: profile.is_private ?? false,
 			};
 			return newProfileData;
 		});
@@ -772,7 +775,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 	};
 
 	const fields = {
-		isprivate: profileData.isPrivateProfile,
+		isprivate: profileData.is_private,
 		username: profileData.username,
 
 		bio: profileData.bio,
@@ -911,7 +914,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 								Sign out
 							</Button>
 						</div>
-						<div className="flex flex-row items-center justify-between pb-4 border-b border-dark/10">
+						{/* <div className="flex flex-row items-center justify-between pb-4 border-b border-dark/10">
 							<span></span>
 							<Button
 								variant="ghost"
@@ -922,7 +925,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 							>
 								Refresh
 							</Button>
-						</div>
+						</div> */}
 						<div className="flex flex-row items-center justify-between">
 							<h3 className="text-sm font-semibold text-dark leading-0 pr-4">
 								Delete Account

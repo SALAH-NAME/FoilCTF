@@ -218,7 +218,8 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 		});
 	}, [query_users.errorUpdateCount, query_users.errorUpdatedAt]);
 
-	const filtered_users = query_users.data.data.map((user) => ({
+	const { data: users } = query_users.data;
+	const filtered_users = users.map(user => ({
 		username: user.username,
 		teamName: user.team_name || '',
 

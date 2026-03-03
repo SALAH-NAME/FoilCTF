@@ -45,7 +45,19 @@ export const authenticateTokenProfile = async (
 	if (req_username !== token_user.username) return next(); // ownership check
 
 	const [profile] = await db
-		.select()
+		.select({
+			avatar: table_profiles.avatar,
+			username: table_profiles.username,
+
+			challenges_solved: table_profiles.challengessolved,
+			events_participated: table_profiles.eventsparticipated,
+			total_points: table_profiles.totalpoints,
+
+			is_private: table_profiles.isprivate,
+			bio: table_profiles.bio,
+			location: table_profiles.location,
+			social_media_links: table_profiles.socialmedialinks,
+		})
 		.from(table_profiles)
 		.where(eq(table_profiles.username, req_username));
 	if (!profile)
@@ -54,19 +66,7 @@ export const authenticateTokenProfile = async (
 			.json({ error: 'User has no profile attached' })
 			.end();
 
-	const res_data = {
-		avatar: profile.avatar,
-		username: profile.username,
-
-		challenges_solved: profile.challengessolved,
-		events_participated: profile.eventsparticipated,
-		total_points: profile.totalpoints,
-
-		bio: profile.bio,
-		location: profile.location,
-		social_media_links: profile.socialmedialinks,
-	};
-	return res.json(res_data);
+	return res.json(profile);
 };
 
 export const getPublicProfile = async (
@@ -159,6 +159,7 @@ export const getPublicProfile = async (
 		events_participated: profile.eventsparticipated,
 		total_points: profile.totalpoints,
 
+		is_private: profile.isprivate,
 		bio: profile.isprivate ? undefined : profile.bio,
 		location: profile.isprivate ? undefined : profile.location,
 		social_media_links: profile.isprivate
