@@ -1,13 +1,13 @@
 import { NextFunction, Request, Response } from 'express';
 import {
 	friends,
-	friendRequests,
+	friend_requests,
 	users,
 	notifications,
-	notificationUsers,
+	notification_users,
 } from './db/schema';
 import { db } from './utils/db';
-import { eq, and, or, ilike } from 'drizzle-orm';
+import { eq, and, or, ilike, count as sql_count } from 'drizzle-orm';
 
 export class FoilCTF_Error extends Error {
 	public statusCode: number;
@@ -44,11 +44,7 @@ export class FoilCTF_Success {
 	}
 }
 
-export async function listFriends(
-	req: Request,
-	res: Response,
-	next: NextFunction
-) {
+export async function listFriends(req: Request, res: Response) {
 	const decodedUser = res.locals.user;
 	const limit = Math.max(Number(req.query.limit) || 10, 1);
 	const page = Math.max(Number(req.query.page) || 1, 1);
@@ -57,18 +53,24 @@ export async function listFriends(
 	const searchFilter = search
 		? or(
 				and(
-					eq(friends.username1, decodedUser.username),
-					ilike(friends.username2, `${search}%`)
+					eq(friends.username_1, decodedUser.username),
+					search ? ilike(friends.username_2, `%${search}%`) : undefined
 				),
 				and(
-					eq(friends.username2, decodedUser.username),
-					ilike(friends.username1, `${search}%`)
+					eq(friends.username_2, decodedUser.username),
+					search ? ilike(friends.username_1, `%${search}%`) : undefined
 				)
 			)
 		: or(
-				eq(friends.username1, decodedUser.username),
-				eq(friends.username2, decodedUser.username)
+				eq(friends.username_1, decodedUser.username),
+				eq(friends.username_2, decodedUser.username)
 			);
+
+	const count_result = await db
+		.select({ total: sql_count() })
+		.from(friends)
+		.where(searchFilter);
+	const total = count_result[0]?.total ?? 0;
 
 	const dbFriends = await db
 		.select()
@@ -78,42 +80,69 @@ export async function listFriends(
 		.offset(limit * (page - 1));
 
 	const decodedUserFriends = dbFriends.map((row) =>
-		row.username1 === decodedUser.username ? row.username2 : row.username1
+		row.username_1 === decodedUser.username ? row.username_2 : row.username_1
 	);
 
 	return res.status(200).json({
 		data: decodedUserFriends,
 		limit,
 		page,
+		count: total,
 	});
 }
 
-export async function listReceivedFriendRequests(
+export async function listFriendRequests(
 	req: Request,
 	res: Response,
-	next: NextFunction
+	_next: NextFunction
 ) {
 	const decodedUser = res.locals.user;
+
 	const limit = Math.max(Number(req.query.limit) || 10, 1);
 	const page = Math.max(Number(req.query.page) || 1, 1);
 	const search = req.query.q as string;
+	const type = (req.query.type as string) || 'all'; // 'sent' | 'received' | 'all'
 
-	const filters = [eq(friendRequests.receiverName, decodedUser.username)];
-	if (search) filters.push(ilike(friendRequests.senderName, `${search}%`));
+	let whereClause;
+	if (type === 'sent') {
+		whereClause = search
+			? and(
+					eq(friend_requests.sender_name, decodedUser.username),
+					ilike(friend_requests.receiver_name, `%${search}%`)
+				)
+			: eq(friend_requests.sender_name, decodedUser.username);
+	} else if (type === 'received') {
+		whereClause = search
+			? and(
+					eq(friend_requests.receiver_name, decodedUser.username),
+					ilike(friend_requests.sender_name, `%${search}%`)
+				)
+			: eq(friend_requests.receiver_name, decodedUser.username);
+	} else {
+		whereClause = or(
+			eq(friend_requests.receiver_name, decodedUser.username),
+			eq(friend_requests.sender_name, decodedUser.username)
+		);
+	}
+
+	const count_result = await db
+		.select({ total: sql_count() })
+		.from(friend_requests)
+		.where(whereClause);
+	const total = count_result[0]?.total ?? 0;
 
 	const requests = await db
 		.select()
-		.from(friendRequests)
-		.where(and(...filters))
+		.from(friend_requests)
+		.where(whereClause)
 		.limit(limit)
 		.offset(limit * (page - 1));
-
-	// filter receiver name before responding?
 
 	return res.status(200).json({
 		data: requests,
 		limit,
 		page,
+		count: total,
 	});
 }
 
@@ -130,74 +159,65 @@ export async function sendFriendRequest(
 			.status(403)
 			.json(new FoilCTF_Error('No self requests allowed', 403));
 
-	try {
-		await db.transaction(async (tx) => {
-			const [dbUser] = await tx
-				.select()
-				.from(users)
-				.where(eq(users.username, target));
-			if (!dbUser) {
-				throw new FoilCTF_Error('No such user', 403);
-			}
+	await db.transaction(async (tx) => {
+		const [dbUser] = await tx
+			.select()
+			.from(users)
+			.where(eq(users.username, target));
+		if (!dbUser) {
+			throw new FoilCTF_Error('No such user', 403);
+		}
 
-			const [existingRequest] = await tx
-				.select()
-				.from(friendRequests)
-				.where(
-					or(
-						and(
-							eq(friendRequests.senderName, decodedUser.username),
-							eq(friendRequests.receiverName, target)
-						),
-						and(
-							eq(friendRequests.senderName, target),
-							eq(friendRequests.receiverName, decodedUser.username)
-						)
+		const [existingRequest] = await tx
+			.select()
+			.from(friend_requests)
+			.where(
+				or(
+					and(
+						eq(friend_requests.sender_name, decodedUser.username),
+						eq(friend_requests.receiver_name, target)
+					),
+					and(
+						eq(friend_requests.sender_name, target),
+						eq(friend_requests.receiver_name, decodedUser.username)
 					)
-				);
-			if (existingRequest) {
-				throw new FoilCTF_Error('Request already exists', 403);
-			}
+				)
+			);
+		if (existingRequest) {
+			throw new FoilCTF_Error('Request already exists', 403);
+		}
 
-			await tx.insert(friendRequests).values({
-				senderName: decodedUser.username,
-				receiverName: target,
-			});
-
-			res.locals.userNameToNotify = target;
-			res.locals.contents = {
-				title: 'New Friend Request',
-				message: `${decodedUser.username} has sent a request to you`,
-			};
+		await tx.insert(friend_requests).values({
+			sender_name: decodedUser.username,
+			receiver_name: target,
 		});
 
-		return next();
-	} catch (err) {
-		if (err instanceof FoilCTF_Error)
-			return res.status(err.statusCode).json(err);
-
-		console.error(err);
-		return res
-			.status(500)
-			.json(new FoilCTF_Error('Internal Server Error', 500));
-	}
+		res.locals.userNameToNotify = target;
+		res.locals.contents = {
+			type: 'friend',
+			title: 'New Friend Request',
+			message: `${decodedUser.username} sent you a friend request`,
+			link: `/users/${decodedUser.username}`,
+		};
+	});
+	next();
 }
 
 export async function cancelFriendRequest(
 	req: Request,
 	res: Response,
-	next: NextFunction
+	_next: NextFunction
 ) {
 	const decodedUser = res.locals.user;
 	const target = req.params.username as string;
 
 	try {
 		await db
-			.delete(friendRequests)
+			.delete(friend_requests)
 			.where(
 				and(
-					eq(friendRequests.senderName, decodedUser.username),
-					eq(friendRequests.receiverName, target)
+					eq(friend_requests.sender_name, decodedUser.username),
+					eq(friend_requests.receiver_name, target)
 				)
 			);
 
@@ -224,11 +244,11 @@ export async function acceptFriendRequest(
 		await db.transaction(async (tx) => {
 			const [existingRequest] = await tx
 				.select()
-				.from(friendRequests)
+				.from(friend_requests)
 				.where(
 					and(
-						eq(friendRequests.senderName, target),
-						eq(friendRequests.receiverName, decodedUser.username)
+						eq(friend_requests.sender_name, target),
+						eq(friend_requests.receiver_name, decodedUser.username)
 					)
 				);
 			if (!existingRequest) throw new FoilCTF_Error('Forbidden', 403);
@@ -239,28 +259,28 @@ export async function acceptFriendRequest(
 				.where(
 					or(
 						and(
-							eq(friends.username1, target),
-							eq(friends.username2, decodedUser.username)
+							eq(friends.username_1, target),
+							eq(friends.username_2, decodedUser.username)
 						),
 						and(
-							eq(friends.username1, decodedUser.username),
-							eq(friends.username2, target)
+							eq(friends.username_1, decodedUser.username),
+							eq(friends.username_2, target)
 						)
 					)
 				);
 			if (existingFriendship) throw new FoilCTF_Error('Forbidden', 403);
 
 			await tx
-				.delete(friendRequests)
+				.delete(friend_requests)
 				.where(
 					and(
-						eq(friendRequests.senderName, target),
-						eq(friendRequests.receiverName, decodedUser.username)
+						eq(friend_requests.sender_name, target),
+						eq(friend_requests.receiver_name, decodedUser.username)
 					)
 				);
 			await tx.insert(friends).values({
-				username1: decodedUser.username,
-				username2: target,
+				username_1: decodedUser.username,
+				username_2: target,
 			});
 
 			res.locals.userNameToNotify = target;
@@ -282,25 +302,28 @@ export async function acceptFriendRequest(
 	}
 }
 
-export async function rejectFriendRequest(
-	req: Request,
-	res: Response,
-	next: NextFunction
-) {
+export async function rejectFriendRequest(req: Request, res: Response, next: NextFunction) {
 	const target = req.params.username as string;
 	const decodedUser = res.locals.user;
 
 	try {
 		await db
-			.delete(friendRequests)
+			.delete(friend_requests)
 			.where(
 				and(
-					eq(friendRequests.senderName, target),
-					eq(friendRequests.receiverName, decodedUser.username)
+					eq(friend_requests.sender_name, target),
+					eq(friend_requests.receiver_name, decodedUser.username)
 				)
 			);
 
-		return res.status(200).json(new FoilCTF_Success('No Content', 200));
+		res.locals.userNameToNotify = target;
+		res.locals.contents = {
+			type: 'friend',
+			title: 'Friend Request Declined',
+			message: `${decodedUser.username} declined your friend request`,
+			link: `/users/${decodedUser.username}`,
+		};
+		return next();
 	} catch (err) {
 		console.error(err);
 		return res
@@ -309,11 +332,7 @@ export async function rejectFriendRequest(
 	}
 }
 
-export async function removeFriend(
-	req: Request,
-	res: Response,
-	next: NextFunction
-) {
+export async function removeFriend(req: Request, res: Response) {
 	const target = req.params.username as string;
 	const decodedUser = res.locals.user;
 
@@ -323,12 +342,12 @@ export async function removeFriend(
 			.where(
 				or(
 					and(
-						eq(friends.username1, decodedUser.username),
-						eq(friends.username2, target)
+						eq(friends.username_1, decodedUser.username),
+						eq(friends.username_2, target)
 					),
 					and(
-						eq(friends.username1, target),
-						eq(friends.username2, decodedUser.username)
+						eq(friends.username_1, target),
+						eq(friends.username_2, decodedUser.username)
 					)
 				)
 			);
@@ -342,11 +361,7 @@ export async function removeFriend(
 	}
 }
 
-export const notifyUser = async (
-	req: Request,
-	res: Response,
-	next: NextFunction
-) => {
+export const notifyUser = async (_req: Request, res: Response) => {
 	const username = res.locals.userNameToNotify;
 	const notification = res.locals.contents;
 
@@ -371,14 +386,14 @@ export const notifyUser = async (
 			}
 
 			const notificationUserRow = {
-				notificationId: insertedNotification.id,
-				userId: dbUser.id,
+				notification_id: insertedNotification.id,
+				user_id: dbUser.id,
 			};
-			await tx.insert(notificationUsers).values(notificationUserRow);
+			await tx.insert(notification_users).values(notificationUserRow);
 
 			await tx
 				.update(notifications)
-				.set({ isPublished: true })
+				.set({ is_published: true })
 				.where(eq(notifications.id, insertedNotification.id));
 		});
 

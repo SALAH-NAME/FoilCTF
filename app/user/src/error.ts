@@ -1,5 +1,4 @@
 import { ZodError } from 'zod';
-import { MulterError } from 'multer';
 import type { Request, Response, NextFunction } from 'express';
 import { FoilCTF_Error } from './utils/types';
 
@@ -34,15 +33,21 @@ export function middleware_error(
 ) {
 	if (
 		err instanceof ZodError ||
-		err instanceof SyntaxError ||
-		err instanceof MulterError
+		err instanceof SyntaxError 
 	) {
-		return res.status(400).json(new FoilCTF_Error("Bad Request", 400));
+		return res.status(400).json({ error: err.message });
 	}
 	if (err instanceof UploadError) {
-		return res.status(err.status_code).json(new FoilCTF_Error(err.message, err.status_code));
+		return res.status(err.status_code).json({ error: err.message });
+	}
+	if (err instanceof FoilCTF_Error) {
+		return res.status(err.statusCode).json({ error: err.message });
 	}
 
 	console.error(err);
-	return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
+	res.status(500).json({
+		error:
+			(err instanceof Error ? err.message : err?.toString()) ??
+			'An internal server error has occurred',
+	});
 }

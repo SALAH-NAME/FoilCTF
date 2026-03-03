@@ -13,6 +13,13 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// ((b - a) * (1 - t)) + a
+
+// progress E [0, 1]
+// rewNew = ((rew - rewMin) * 1) + rewMin
+// rewNew - rewMin = (rew - rewMin) * progress
+// (rewNew - rewMin) / progress + rewMin = rew
+
 func (h *Hub) CalculateNewReward(link *CtfsChallenge) int {
 	if !link.RewardDecrements {
 		return link.Reward
@@ -20,45 +27,62 @@ func (h *Hub) CalculateNewReward(link *CtfsChallenge) int {
 	if link.Solves >= link.Decay {
 		return link.RewardMin
 	}
-	fInitial := float64(link.InitialReward)
-	fDecay := float64(link.Decay)
-	fMin := float64(link.RewardMin)
-	fSolves := float64(link.Solves)
-	value := ((fMin-fInitial)/math.Pow(fDecay, 2))*
-		math.Pow(fSolves, 2) + fInitial
-	nextReward := int(math.Ceil(value))
-	if nextReward < link.RewardMin {
-		return link.RewardMin
+
+	reward := float64(link.Reward)
+	rewardMin := float64(link.RewardMin)
+
+	rewardProgressPrev := 1.0 - float64(link.Solves)/float64(link.Decay)
+	if rewardProgressPrev < 0.0 {
+		rewardProgressPrev = 0.0
 	}
-	return nextReward
+
+	rewardProgressNext := 1.0 - float64(link.Solves+1)/float64(link.Decay)
+	if rewardProgressNext < 0.0 {
+		rewardProgressNext = 0.0
+	}
+
+	rewardOld := reward
+	if rewardProgressPrev != 0 {
+		rewardOld = (reward-rewardMin)/rewardProgressPrev + rewardMin
+	}
+
+	rewardNext := math.Round((rewardOld-rewardMin)*rewardProgressNext + rewardMin)
+	return int(rewardNext)
 }
 
-func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag string) (bool, int, error) {
+func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, username string, sumbittedFlag string) (bool, int, error) {
 	var isFirstBlood bool
 	var pointsToAward int
 	err := h.Db.Transaction(func(tx *gorm.DB) error {
 		now := time.Now()
 		// lock challenge instance
 		var link CtfsChallenge
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("ctf_id = ? AND challenge_id = ?", eventID, challengeID).
-			First(&link).Error
+
+		err := tx.Transaction(func(tx *gorm.DB) error {
+			err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Where("ctf_id = ? AND challenge_id = ?", eventID, challengeID).
+				First(&link).Error
+			if err != nil {
+				return err
+			}
+			// check if already solved
+			if tx.Table("solves").
+				Where("ctf_id = ? AND chall_id = ? AND team_id = ?", eventID, challengeID, teamID).
+				Find(&Solve{}).RowsAffected > 0 {
+				return errors.New("already solved")
+			}
+			// update attemps count and the time of last attempt
+			err = tx.Model(&link).
+				Update("attempts", link.Attempts+1).Error
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 		if err != nil {
 			return err
 		}
-		// check if already solved
-		if tx.Table("solves").
-			Where("ctf_id = ? AND chall_id = ? AND team_id = ?", eventID, challengeID, teamID).
-			Find(&Solve{}).RowsAffected > 0 {
-			return errors.New("already solved")
-		}
-		// update attemps count and the time of last attempt
-		link.Attempts++
-		err = tx.Model(&link).
-			Update("attempts", link.Attempts).Error
-		if err != nil {
-			return err
-		}
+
 		err = tx.Table("participations").
 			Where("ctf_id = ? AND team_id = ?", eventID, teamID).
 			Update("last_attempt_at", now).Error
@@ -72,7 +96,7 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 		// update the reward based on the number of solves
 		oldReward := link.Reward
 		link.Reward = h.CalculateNewReward(&link)
-		pointsToAward = link.Reward
+		pointsToAward = oldReward
 		link.Solves++
 		// losspoints is used to update(subtract from) the score of teams who already solved the same challenge
 		lossPoints := oldReward - link.Reward
@@ -84,6 +108,7 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 			link.FirstBloodAt = &now
 			link.FirstbloodId = &teamID
 		}
+
 		// update the number of solves and first blood related columns in challange instance
 		err = tx.Model(&link).
 			Select("solves", "first_blood_at", "first_blood_id", "reward").
@@ -91,6 +116,7 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 		if err != nil {
 			return err
 		}
+
 		// update the score of teams who already solved the challenge
 		if lossPoints > 0 {
 			subQuery := tx.Table("solves").
@@ -106,6 +132,7 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 				return err
 			}
 		}
+
 		// update the solve history table
 		updatedSolve := Solve{
 			CtfID:       eventID,
@@ -118,17 +145,30 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 		if err != nil {
 			return err
 		}
+
 		// update the score and number of solves of the team
-		updateParticipations := map[string]any{
-			"score":  gorm.Expr("score + ?", pointsToAward),
-			"solves": gorm.Expr("solves + 1"),
-		}
 		err = tx.Table("participations").
 			Where("ctf_id = ? AND team_id = ?", eventID, teamID).
-			Updates(&updateParticipations).Error
+			Updates(map[string]interface{}{
+			"score":  gorm.Expr("score + ?", pointsToAward),
+			"solves": gorm.Expr("solves + 1"),
+		}).Error
 		if err != nil {
 			return err
 		}
+
+		// update the user statistics
+		err = tx.Table("users").
+			Where("username = ?", username).
+			Updates(map[string]interface{}{
+				"totalpoints":  gorm.Expr("totalpoints + ?", pointsToAward),
+				"challengessolved": gorm.Expr("challengessolved + 1"),
+			}).
+			Error
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 	return isFirstBlood, pointsToAward, err
@@ -144,8 +184,8 @@ func (h *Hub) SubmitFlag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, _, err := GetUserInfo(r)
-	if err != nil {
+	userID, username, err := GetUserInfo(r)
+	if err != nil || userID == nil {
 		log.Printf("DEBUG - Flag Submission - Unauthorized: %v", err)
 		JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -165,14 +205,14 @@ func (h *Hub) SubmitFlag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isFirstBlood, finalPoints, err := h.ProcessSolve(eventID, challengeID, teamID, req.Flag)
+	isFirstBlood, finalPoints, err := h.ProcessSolve(eventID, challengeID, teamID, username, req.Flag)
 	if err != nil {
 		HandleSubmitError(w, err)
 		return
 	}
 	if isFirstBlood {
-		msg := fmt.Sprintf("Team %d solved chalenge %d!", teamID, challengeID)
-		if err := h.Notify("🩸 First Blood!", msg, eventID); err != nil {
+		msg := fmt.Sprintf("Team %d solved challenge %d!", teamID, challengeID)
+		if err := h.Notify("First Blood!", msg, fmt.Sprintf("/events/%d", eventID), eventID); err != nil {
 			log.Printf("ERROR - Flag Submission - Could not send first blood notification: %v", err)
 		}
 	}
@@ -189,6 +229,79 @@ func (h *Hub) SubmitFlag(w http.ResponseWriter, r *http.Request) {
 		"points_earned": finalPoints,
 	}
 	JSONResponse(w, resp, http.StatusOK)
+}
+
+func (h *Hub) StatusEvent(w http.ResponseWriter, r *http.Request) {
+	userID, _, err := GetUserInfo(r)
+	if err != nil {
+		log.Printf("DEBUG - Status - Unauthorized: %v", err)
+		JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	event, ok := r.Context().Value(eventKey).(Ctf)
+	if !ok {
+		log.Printf("DEBUG - Status - Could not get event from the request context")
+		JSONError(w, "event not found", http.StatusNotFound)
+		return
+	}
+
+	teamID, ok := r.Context().Value(teamIDKey).(int)
+	if !ok {
+		log.Printf("DEBUG - Status - Could not get team id for user %d from the request context", *userID)
+		JSONError(w, "Team not found", http.StatusNotFound)
+		return
+	}
+
+	type EventDetails struct {
+		TeamName         string `json:"team_name" gorm:"column:team_name"`
+		Rank             int    `json:"rank" gorm:"column:rank"`
+		TotalPoints      int    `json:"total_points" gorm:"column:total_points"`
+		SolvedChallenges int    `json:"solved_challenges" gorm:"column:solved_challenges"`
+		TotalChallenges  int64  `json:"total_challenges" gorm:"column:total_challenges"`
+		ChatroomID       int    `json:"chatroom_id" gorm:"column:chatroom_id"`
+	}
+	var eventDetails EventDetails
+	err = h.Db.Transaction(func(tx *gorm.DB) (err error) {
+		err = h.Db.
+			Table("ctfs_challenges").
+			Where("ctf_id = ?", event.ID).
+			Count(&eventDetails.TotalChallenges).
+			Error
+		if err != nil {
+			return err
+		}
+
+		err = h.Db.
+			Table("participations p").
+			Select("t.name as team_name, p.score as total_points, p.solves as solved_challenges, ROW_NUMBER() OVER (PARTITION BY p.ctf_id ORDER BY p.score) AS rank").
+			Joins("LEFT JOIN teams t ON t.id = p.team_id").
+			Where("ctf_id = ? AND team_id = ?", event.ID, teamID).
+			Scan(&eventDetails).
+			Error
+		if err != nil {
+			return err
+		}
+
+		err = h.Db.
+			Table("chat_rooms").
+			Select("id as chatroom_id").
+			Where("ctf_id = ? AND room_type = 'global'", event.ID).
+			Scan(&eventDetails.ChatroomID).
+			Error
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		log.Printf("ERROR - Database - %v", err)
+		JSONResponse(w, map[string]string{"error": "Internal Server Error"}, http.StatusInternalServerError)
+		return
+	}
+
+	JSONResponse(w, eventDetails, http.StatusCreated)
 }
 
 func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
@@ -223,18 +336,46 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 			return errors.New("team not found")
 		}
 
-		var currentPanticipants int64
-		err := tx.Table("participations").Where("ctf_id = ?", event.ID).
-			Count(&currentPanticipants).Error
+		var user User
+		err = tx.First(&user, *userID).Error
 		if err != nil {
-			return err
+			return errors.New("user not found")
+		}
+		if user.Username != team.CaptainName {
+			return errors.New("user is not captain")
 		}
 
-		if event.MaxTeams != nil && *event.MaxTeams <= int(currentPanticipants) {
+		var participationsOld []Participation
+		err := tx.
+			Table("participations").
+			Where("ctf_id = ? AND team_id = ?", event.ID, team.ID).
+			Find(&participationsOld).
+			Error
+		if err != nil {
+			return fmt.Errorf("could not query old participations: %v", err)
+		}
+		if len(participationsOld) > 0 {
+			return errors.New("already registered")
+		}
+
+		var currentParticipants int64
+		err = tx.
+			Table("participations").
+			Where("ctf_id = ?", event.ID).
+			Count(&currentParticipants).
+			Error
+		if err != nil {
+			return fmt.Errorf("could not query current participations: %v", err)
+		}
+
+		if event.MaxTeams != nil && *event.MaxTeams <= int(currentParticipants) {
 			return errors.New("event is full")
 		}
-		if team.TeamSize < event.TeamMembersMin || team.TeamSize > event.TeamMembersMax {
-			return errors.New("invalid team size")
+		if team.MembersCount < event.TeamMembersMin {
+			return errors.New("team is too small")
+		}
+		if team.MembersCount > event.TeamMembersMax {
+			return errors.New("team is too large")
 		}
 
 		participation := Participation{
@@ -242,20 +383,25 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 			CtfID:  event.ID,
 			Score:  0,
 		}
-		err = tx.Table("participations").
-			Create(&participation).Error
+		err = tx.
+			Table("participations").
+			Create(&participation).
+			Error
 		if err != nil {
-			return errors.New("already registered")
+			return fmt.Errorf("could not create participation: %v", err)
 		}
 
 		roomInstance = ChatRoom{
-			CtfID:     event.ID,
-			TeamID:    &teamID,
-			Room_Type: "team",
+			CtfID:    event.ID,
+			TeamID:   &teamID,
+			RoomType: "team",
 		}
-		err = tx.Table("chat_rooms").Create(&roomInstance).Error
+		err = tx.
+			Table("chat_rooms").
+			Create(&roomInstance).
+			Error
 		if err != nil {
-			return err
+			return fmt.Errorf("could not create chatroom: %v", err)
 		}
 
 		err = tx.Table("chat_rooms").
@@ -265,6 +411,30 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 		if err != nil || globalChatRoomID == 0 {
 			return errors.New("ctf chat room not found")
 		}
+
+		// query all users
+		var usernamesThatParticipated []string
+		err = tx.
+			Table("users").
+			Where("team_name = ?", team.Name).
+			Pluck("username", &usernamesThatParticipated).
+			Error
+		if err != nil {
+			return fmt.Errorf("could not query users that just participated: %v", err)
+		}
+
+		log.Printf("DEBUG - Join - usernames that participated %v", usernamesThatParticipated)
+
+		// update all profiles
+		err = tx.
+			Table("profiles").
+			Where("username IN ?", usernamesThatParticipated).
+			Updates(map[string]interface{}{ "eventsparticipated": gorm.Expr("eventsparticipated + 1") }).
+			Error
+		if err != nil {
+			return fmt.Errorf("could not update profiles that just participated: %v", err)
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -273,13 +443,72 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := map[string]any{
-		"event":          event,
-		"registered":     true,
-		"team_id":        teamID,
-		"team_chat_room": roomInstance.ID,
-		"ctf_chat_room":  globalChatRoomID,
+		"ok": true,
 	}
 	JSONResponse(w, resp, http.StatusCreated)
+}
+
+func (h *Hub) LeaveEvent(w http.ResponseWriter, r *http.Request) {
+	userID, _, err := GetUserInfo(r)
+	if err != nil {
+		log.Printf("DEBUG - Leave - Unauthorized: %v", err)
+		JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	event, ok := r.Context().Value(eventKey).(Ctf)
+	if !ok {
+		log.Printf("DEBUG - Leave - Could not get event from the request context")
+		JSONError(w, "event not found", http.StatusNotFound)
+		return
+	}
+
+	teamID, ok := r.Context().Value(teamIDKey).(int)
+	if !ok {
+		log.Printf("DEBUG - Leave - Could not get team id for user %d from the request context", *userID)
+		JSONError(w, "Team not found", http.StatusNotFound)
+		return
+	}
+
+	err = h.Db.Transaction(func(tx *gorm.DB) error {
+		var team Team
+		err = tx.First(&team, teamID).Error
+		if err != nil {
+			return errors.New("team not found")
+		}
+
+		var user User
+		err = tx.First(&user, *userID).Error
+		if err != nil {
+			return errors.New("user not found")
+		}
+		if user.Username != team.CaptainName {
+			return errors.New("user is not captain")
+		}
+
+		var participation Participation
+		result := tx.
+			Table("participations").
+			Where("ctf_id = ? AND team_id = ?", event.ID, team.ID).
+			Delete(&participation)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return errors.New("team has no active participation in the event")
+		}
+
+		return nil
+	})
+	if err != nil {
+		HandleLeaveError(w, err)
+		return
+	}
+
+	resp := map[string]any{
+		"ok": true,
+	}
+	JSONResponse(w, resp, http.StatusOK)
 }
 
 func (h *Hub) ListCtfsChallenges(w http.ResponseWriter, r *http.Request) {
@@ -308,7 +537,7 @@ func (h *Hub) ListCtfsChallenges(w http.ResponseWriter, r *http.Request) {
 	solvedMap := make(map[int]bool)
 	var solvedIDs []int
 	err = h.Db.Table("solves").
-		Where("team_id = ?", teamID).
+		Where("team_id = ? AND ctf_id = ?", teamID, event.ID).
 		Pluck("chall_id", &solvedIDs).Error
 	if err != nil {
 		log.Printf("ERROR - List Ctfs - Could not query solved challenge ids: %v", err)
@@ -363,4 +592,31 @@ func (h *Hub) ListCtfsChallenges(w http.ResponseWriter, r *http.Request) {
 	}
 
 	JSONResponse(w, grouped, http.StatusOK)
+}
+
+func (h *Hub) ListCtfsChallengesAdmin(w http.ResponseWriter, r *http.Request) {
+	event, ok := r.Context().Value(eventKey).(Ctf)
+	if !ok {
+		log.Printf("DEBUG - List Ctfs - Could not get event from the request context")
+		JSONError(w, "event not found", http.StatusNotFound)
+		return
+	}
+
+	var challenges []struct {
+		CtfsChallenge
+		Name string `json:"name" gorm:"column:name"`
+	}
+	err := h.Db.
+		Select("ctfs_challenges.*, challenges.name as name").
+		Table("ctfs_challenges").
+		Where("ctfs_challenges.ctf_id = ?", event.ID).
+		Joins("LEFT JOIN challenges ON challenges.id = ctfs_challenges.challenge_id").
+		Find(&challenges).
+		Error
+	if err != nil {
+		log.Printf("ERROR - Admin List Ctf Challenges - Could not query challenge data: %v", err)
+		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	JSONResponse(w, challenges, http.StatusOK)
 }

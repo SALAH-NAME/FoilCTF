@@ -5,27 +5,48 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 func (h *Hub) RegisterRoutes() http.Handler {
 	r := chi.NewRouter()
+	r.Use(cors.Handler(cors.Options{
+		AllowedMethods: []string{http.MethodHead, http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPatch, http.MethodPut},
+		AllowedHeaders: []string{"*"},
+	}))
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RealIP)
-
+	r.Use(h.MetricsMiddleware)
 	r.Use(h.IdentityMiddleware)
+
+	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	r.Handle("/metrics", h.MetricsHandler())
+
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/events", func(r chi.Router) {
 			r.Get("/", h.ListEvents)
+			r.Get("/teams/{team_name}/stats", h.GetTeamStats)
+
 			r.Route("/{id}", func(r chi.Router) {
 				r.Use(h.EnsureEventExists)
+
 				r.Get("/", h.GetEvent)
 				r.Get("/scoreboard", h.GetScoreboard)
+				r.Get("/leaderboard", h.GetLeaderboard)
+
 				r.Group(func(r chi.Router) {
 					r.Use(h.PlayerAuthMiddleware)
-					r.Get("/join", h.JoinEvent)
+
+					r.Get("/status", h.StatusEvent)
+					r.Post("/join", h.JoinEvent)
+					r.Delete("/leave", h.LeaveEvent)
+
 					r.Group(func(r chi.Router) {
 						r.Use(h.EnsureEventAccess)
+
 						r.Get("/challenges", h.ListCtfsChallenges)
 						r.Post("/challenges/{chall_id}/submit", h.SubmitFlag)
 					})
@@ -34,17 +55,23 @@ func (h *Hub) RegisterRoutes() http.Handler {
 		})
 		r.Route("/admin/events", func(r chi.Router) {
 			r.Use(h.OrganizerAuthMiddleware)
+
 			r.Get("/", h.ListAllEvents)
 			r.Post("/", h.CreateEvent)
 
 			r.Route("/{id}", func(r chi.Router) {
 				r.Use(h.EnsureEventOwnership)
-				// r.Get("/")
+
 				r.Put("/", h.UpdateEvent)
 				r.Delete("/", h.DeleteEvent)
+
 				r.Post("/start", h.StartEvent)
 				r.Post("/stop", h.StopEvent)
+
+				r.Get("/challenges", h.ListCtfsChallengesAdmin)
 				r.Post("/challenges", h.LinkChallenge)
+
+				r.Patch("/challenges/{chall_id}", h.UpdateChallenge)
 				r.Delete("/challenges/{chall_id}", h.UnlinkChallenge)
 			})
 		})

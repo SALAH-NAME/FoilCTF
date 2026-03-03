@@ -18,7 +18,7 @@ func (h *Hub) ServeChatHistory(w http.ResponseWriter, r *http.Request) {
 
 	response := []Message{}
 	err = h.Db.Model(&Message{}).
-		Where("chatroom_id", roomID).
+		Where("chatroom_id = ?", roomID).
 		Order("sent_at Desc").
 		Limit(50).
 		Find(&response).Error

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -14,8 +14,8 @@ func GetNonDeletedRecords(tx *gorm.DB, userID int) ([]UserNotification, error) {
 	var ids []int
 
 	err := tx.Table("notifications").
-		Joins("LEFT JOIN notification_users on notification_users.notification_id = notifications.id AND notification_users.notified_id = ?", userID).
-		Where("notification_users.notified_id IS NULL OR notification_users.is_dismissed = ? ", false).
+		Joins("LEFT JOIN notification_users on notification_users.notification_id = notifications.id AND notification_users.user_id = ?", userID).
+		Where("notification_users.read_at IS NULL OR notification_users.is_dismissed = ? ", false).
 		Pluck("notifications.id", &ids).Error
 
 	lenIDs := len(ids)
@@ -49,7 +49,7 @@ func (hub *Hub) HandleDeleteAll(w http.ResponseWriter, r *http.Request) {
 
 		err = tx.Table("notification_users").
 			Clauses(clause.OnConflict{
-				Columns: []clause.Column{{Name: "notification_id"}, {Name: "notified_id"}},
+				Columns: []clause.Column{{Name: "notification_id"}, {Name: "user_id"}},
 				DoUpdates: clause.Assignments(map[string]interface{}{
 					"is_dismissed": true,
 					"is_read":      true,
@@ -64,7 +64,7 @@ func (hub *Hub) HandleDeleteAll(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		log.Printf("Transaction failed for userId %s while deleting all notifications: %v", userID, err)
+		log.Printf("Transaction failed for userId %d while deleting all notifications: %v", userID, err)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -86,7 +86,7 @@ func (hub *Hub) HandleDeleteSingle(w http.ResponseWriter, r *http.Request) {
 	}
 	err = hub.Db.Table("notification_users").
 		Clauses(clause.OnConflict{
-			Columns: []clause.Column{{Name: "notification_id"}, {Name: "notified_id"}},
+			Columns: []clause.Column{{Name: "notification_id"}, {Name: "user_id"}},
 			DoUpdates: clause.Assignments(map[string]interface{}{
 				"is_dismissed": true,
 				"is_read":      true,
@@ -100,7 +100,7 @@ func (hub *Hub) HandleDeleteSingle(w http.ResponseWriter, r *http.Request) {
 		}).Error
 
 	if err != nil {
-		log.Printf("Error dismissing notification %d for user %s: %v", notifID, userID, err)
+		log.Printf("Error dismissing notification %d for user %d: %v", notifID, userID, err)
 		JSONError(w, "internal Server Error", 500)
 		return
 	}
@@ -113,8 +113,7 @@ func (hub *Hub) HandleDeleteSingle(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetID(w http.ResponseWriter, r *http.Request) (int, error) {
-	vars := mux.Vars(r)
-	idStr := vars["id"]
+	idStr := chi.URLParam(r, "id")
 	notifID, err := strconv.Atoi(idStr)
 	if err != nil {
 		return notifID, err

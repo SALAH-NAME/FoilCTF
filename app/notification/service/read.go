@@ -11,8 +11,8 @@ import (
 func GetNonReadRecords(tx *gorm.DB, userID int) ([]UserNotification, error) {
 	var ids []int
 	err := tx.Table("notifications").
-		Joins("LEFT JOIN notification_users on notification_users.notification_id = notifications.id AND notification_users.notified_id = ?", userID).
-		Where("notification_users.notified_id IS NULL").
+		Joins("LEFT JOIN notification_users on notification_users.notification_id = notifications.id AND notification_users.user_id = ?", userID).
+		Where("notification_users.read_at IS NULL").
 		Pluck("notifications.id", &ids).Error
 
 	lenIDs := len(ids)
@@ -42,7 +42,7 @@ func (hub *Hub) HandleReadAll(w http.ResponseWriter, r *http.Request) {
 
 		err = tx.Table("notification_users").
 			Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "notification_id"}, {Name: "notified_id"}},
+				Columns:   []clause.Column{{Name: "notification_id"}, {Name: "user_id"}},
 				DoUpdates: clause.Assignments(map[string]interface{}{"is_read": true}),
 			}).
 			Create(&newRecords).Error
@@ -53,7 +53,7 @@ func (hub *Hub) HandleReadAll(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		log.Printf("Transaction failed for userId %s while making all notifications as read: %v", userID, err)
+		log.Printf("Transaction failed for userId %d while making all notifications as read: %v", userID, err)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -76,16 +76,16 @@ func (hub *Hub) HandleReadSingle(w http.ResponseWriter, r *http.Request) {
 	}
 	err = hub.Db.Table("notification_users").
 		Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "notification_id"}, {Name: "notified_id"}},
+			Columns:   []clause.Column{{Name: "notification_id"}, {Name: "user_id"}},
 			DoUpdates: clause.Assignments(map[string]interface{}{"is_read": true}),
 		}).
-		Create(UserNotification{
+		Create(&UserNotification{
 			NotificationID: notifID,
 			NotifiedID:     userID,
 			IsRead:         true,
 		}).Error
 	if err != nil {
-		log.Printf("Error while marking notification %d as read for userId %s: %v", notifID, userID, err)
+		log.Printf("Error while marking notification %d as read for userId %d: %v", notifID, userID, err)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}

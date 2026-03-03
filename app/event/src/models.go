@@ -3,18 +3,32 @@ package main
 import (
 	"encoding/json"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 type EventRequest struct {
 	Name           string         `json:"name"`
+	Description    string         `json:"description"`
 	TeamMembersMin int            `json:"team_members_min"`
 	TeamMembersMax int            `json:"team_members_max"`
 	MetaData       map[string]any `json:"metadata"`
 	StartTime      time.Time      `json:"start_time"`
 	EndTime        time.Time      `json:"end_time"`
 	MaxTeams       int            `json:"max_teams"`
+	IsOpen         bool           `json:"is_open"`
+}
+
+type User struct {
+	ID           int    `json:"id" gorm:"column:id;primaryKey"`
+	Password     string `json:"password" gorm:"column:password;type:varchar(256)"`
+	Email        string `json:"email" gorm:"column:email"`
+	Username     string `json:"username" gorm:"column:username"`
+	Role         string `json:"role" gorm:"column:role"`
+	OAuth42Login string `json:"oauth42_login" gorm:"column:oauth42_login"`
+	ProfileID    int    `json:"profile_id" gorm:"column:profile_id"`
+	TeamName     string `json:"team_name" gorm:"column:team_name"`
+
+	CreatedAt   time.Time `json:"created_at" gorm:"column:created_at"`
+	BannedUntil time.Time `json:"banned_until" gorm:"column:banned_until"`
 }
 
 type Ctf struct {
@@ -25,9 +39,10 @@ type Ctf struct {
 	MetaData       map[string]any `json:"metadata" gorm:"column:metadata;serializer:json"`
 	StartTime      time.Time      `json:"start_time" gorm:"column:start_time"`
 	EndTime        time.Time      `json:"end_time" gorm:"column:end_time"`
-	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index"`
 	Status         string         `json:"status" gorm:"column:status"`
+	Description    string         `json:"description" gorm:"column:description"`
 	MaxTeams       *int           `json:"max_teams" gorm:"column:max_teams"`
+	TeamsCount     int            `json:"teams_count" gorm:"<-:false"`
 }
 
 type CtfOrganizers struct {
@@ -65,8 +80,15 @@ type Participation struct {
 }
 
 type Team struct {
-	ID       int `gorm:"primaryKey"`
-	TeamSize int `gorm:"column:team_size"`
+	ID           int    `gorm:"primaryKey"`
+	Name         string `gorm:"column:name"`
+	MembersCount int    `gorm:"column:members_count"`
+	CaptainName  string `gorm:"column:captain_name"`
+}
+
+type TeamMember struct {
+	TeamName   string `json:"team_name" gorm:"column:team_name;primaryKey"`
+	MemberName string `json:"member_name" gorm:"column:member_name"`
 }
 
 type FlagRequest struct {
@@ -109,14 +131,15 @@ type WsEvent struct {
 }
 
 type ChatRoom struct {
-	ID        int    `gorm:"primaryKey"`
-	CtfID     int    `gorm:"column:ctf_id"`
-	TeamID    *int   `gorm:"column:team_id"`
-	Room_Type string `gorm:"column:room_type"`
+	ID       int    `gorm:"primaryKey"`
+	CtfID    int    `gorm:"column:ctf_id"`
+	TeamID   *int   `gorm:"column:team_id"`
+	RoomType string `gorm:"column:room_type"`
 }
 
 type EventDetails struct {
 	Name               string         `json:"name"`
+	Description        string         `json:"description"`
 	TeamMembersMin     int            `json:"team_members_min"`
 	TeamMembersMax     int            `json:"team_members_max"`
 	MetaData           map[string]any `json:"metadata"`
@@ -125,11 +148,12 @@ type EventDetails struct {
 	Status             string         `json:"status"`
 	ParticipationCount int64          `json:"participation_count"`
 	ChallengeCount     int64          `json:"challenge_count"`
+	MaxTeams           *int           `json:"max_teams"`
 }
 
 type OrganizersInfo struct {
-	Username string `json:"username"`
-	Avatar   string `json:"avatar"`
+	Username string `json:"username" gorm:"column:username"`
+	Avatar   string `json:"avatar" gorm:"column:avatar"`
 }
 
 type UserStatus struct {

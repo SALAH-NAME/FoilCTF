@@ -1,7 +1,7 @@
-import express, { request as app_req } from 'express';
+import express from 'express';
 
-import { ENV_API_PORT, ENV_API_HOST } from './env.ts';
-import orm, { ormInitModels, ORM_CONNECTION_STRING } from './orm/index.ts';
+import { pool } from './orm/index.js';
+import { ENV_API_PORT, ENV_API_HOST } from './env.js';
 
 import {
 	middleware_cors,
@@ -12,10 +12,11 @@ import {
 	middleware_attachment_exists,
 	middleware_challenge_exists,
 	middleware_not_found,
-} from './middlewares.ts';
+    middleware_auth,
+} from './middlewares.js';
 
-import { route_health } from './routes/health.ts';
-import { route_metrics } from './routes/metrics.ts';
+import { route_health } from './routes/health.js';
+import { route_metrics } from './routes/metrics.js';
 
 import {
 	route_challenges_list,
@@ -24,13 +25,13 @@ import {
 	route_challenge_update,
 	route_challenge_inspect,
 	route_challenge_delete,
-} from './routes/challenges.ts';
+} from './routes/challenges.js';
 
 import {
 	route_attachments_list,
 	route_attachment_create,
 	route_attachment_delete,
-} from './routes/attachments.ts';
+} from './routes/attachments.js';
 
 const web = express();
 
@@ -40,6 +41,7 @@ web.get('/health', route_health);
 web.get('/metrics', route_metrics);
 
 web.use(middleware_metric_reqs);
+web.use(middleware_auth(["admin"]));
 
 // SECTION: Bulk actions
 web.get('/api/challenges', route_challenges_list);
@@ -100,21 +102,42 @@ web.delete(
 web.use(middleware_not_found);
 web.use(middleware_error); // NOTE(xenobas): This must be always the last middleware, in order to guarantee that it catches all exceptions
 
-try {
-	await orm.authenticate();
-	console.log('DATABASE established connection at', ORM_CONNECTION_STRING);
-
-	ormInitModels();
-} catch (error) {
-	console.error('Could not establish connection to the database:', error);
-	process.exit(1);
-}
-
-web.listen(ENV_API_PORT, ENV_API_HOST, (error?: Error) => {
+const server = web.listen(ENV_API_PORT, ENV_API_HOST, (error?: any) => {
 	if (error) {
 		console.error(error);
 		return;
 	}
-
 	console.log(`REST API listening on port ${ENV_API_PORT}`);
 });
+
+const gracefulShutdown = (signal: string) => {
+	console.log(`Received ${signal}, shutting down gracefully...`);
+
+	const forceTimer = setTimeout(() => {
+		console.error(
+			'Could not close connections in time, forcefully shutting down'
+		);
+		process.exit(1);
+	}, 10000);
+
+	server.close(async (err) => {
+		if (err) {
+			console.error('Error closing HTTP server:', err);
+		} else {
+			console.log('HTTP server closed.');
+		}
+
+		try {
+			await pool.end();
+			console.log('Database connection closed.');
+			clearTimeout(forceTimer);
+			process.exit(err ? 1 : 0);
+		} catch (dbErr) {
+			console.error('Error closing database connection:', dbErr);
+			process.exit(1);
+		}
+	});
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

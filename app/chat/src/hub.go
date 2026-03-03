@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/gorilla/websocket"
-	"gorm.io/gorm"
 	"log"
 	"net/http"
 	"strconv"
 	"sync"
+
+	"github.com/gorilla/websocket"
+	"gorm.io/gorm"
 )
 
 type Hub struct {
@@ -83,27 +84,32 @@ func (h *Hub) TrackChannels() {
 	for {
 		select {
 		case eventMessage, ok := <-h.MessageChannel:
-			{
-				if !ok {
-					log.Print("DEBUG: EVENTS: Global Message channel closed")
-					return
-				}
-				switch eventMessage.Event {
-				case "message":
-					HandleMessageEvent(h, &eventMessage)
-				case "typing":
-					HandleTypingEvent(h, &eventMessage)
-				case "edit":
-					HandleEditEvent(h, &eventMessage)
-				case "delete":
-					HandleDeleteEvent(h, &eventMessage)
-				default:
-					log.Printf("ERROR: EVENTS: Unknown event type received %q", eventMessage.Event)
-				}
+			if !ok {
+				log.Print("DEBUG: EVENTS: Global Message channel closed")
+				return
+			}
+			switch eventMessage.Event {
+			case "message":
+				websocketMessagesTotal.Inc()
+				websocketEventsTotal.WithLabelValues("message").Inc()
+				HandleMessageEvent(h, &eventMessage)
+			case "typing":
+				websocketEventsTotal.WithLabelValues("typing").Inc()
+				HandleTypingEvent(h, &eventMessage)
+			case "edit":
+				websocketEventsTotal.WithLabelValues("edit").Inc()
+				HandleEditEvent(h, &eventMessage)
+			case "delete":
+				websocketEventsTotal.WithLabelValues("delete").Inc()
+				HandleDeleteEvent(h, &eventMessage)
+			default:
+				log.Printf("ERROR: EVENTS: Unknown event type received %q", eventMessage.Event)
 			}
 		case client := <-h.Register:
+			websocketConnectedClients.Inc()
 			HandleJoinEvent(h, client)
 		case client := <-h.Unregister:
+			websocketConnectedClients.Dec()
 			HandleLeaveEvent(h, client)
 		}
 	}

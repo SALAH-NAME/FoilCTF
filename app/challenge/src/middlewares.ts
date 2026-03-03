@@ -1,22 +1,49 @@
 import cors from 'cors';
+import { and, eq } from 'drizzle-orm';
 import type { Request, Response, NextFunction } from 'express';
 
-import { respondStatus } from './web.ts';
-import { ENV_API_ORIGINS_WHITELIST } from './env.ts';
-import { metric_lats, metric_reqs } from './prometheus.ts';
+import { JWT_verify } from './webtoken.js';
+import { respondJSON } from './web.js';
+import { metric_lats, metric_reqs } from './prometheus.js';
 
-import {
-	challenges as Challenges,
-	challenges_attachments as ChallengesAttachments,
-} from './orm/entities/init-models.ts';
+import orm, {
+	challenges as table_challenges,
+	challenges_attachments as table_challenges_attachments,
+} from './orm/index.js';
 
-// TODO(xenobas): Authorization middleware
-
-const DateTimeFormatter = new Intl.DateTimeFormat();
+const DateTimeFormatter = new Intl.DateTimeFormat('en-GB', { dateStyle: 'short', timeStyle: 'short' });
 
 export const middleware_cors = cors({
-	origin: ENV_API_ORIGINS_WHITELIST,
+	origin: '*',
 });
+export function middleware_auth(roles: string[] = ["user", "admin"]) {
+	return (req: Request, res: Response, next: NextFunction) => {
+		const query = req.query['token'];
+		const header = req.get('Authorization');
+
+		const source = query || header;
+		if (!source || typeof source !== 'string')
+			return respondJSON(res, { error: "Unauthorized" }, 401);
+
+		const HEADER_PREFIX = "Bearer ";
+		const token = source === header
+			? source.slice(HEADER_PREFIX.length)
+			: source;
+		
+		if (!token)
+			return respondJSON(res, { error: "Unauthorized" }, 401);
+
+		const webtoken = JWT_verify(token);
+		if (!webtoken)
+			return respondJSON(res, { error: "Invalid token" }, 401);
+
+		if (!roles.includes(webtoken.role))
+			return respondJSON(res, { error: "Insuficcient permissions" }, 403);
+
+		res.locals.webtoken = webtoken;
+		next();
+	};
+}
 export function middleware_error(
 	err: any,
 	_req: Request,
@@ -25,16 +52,15 @@ export function middleware_error(
 ) {
 	if (!(err instanceof SyntaxError))
 		console.error(err);
-	respondStatus(res, err.statusCode ?? 500);
+	respondJSON(res, { error: err.message ?? "Internal Server Error" }, err.statusCode ?? 500);
 }
 export function middleware_not_found(
 	req: Request,
 	res: Response,
 	next: NextFunction
 ) {
-	if (!req.route) {
-		return respondStatus(res, 404);
-	}
+	if (!req.route)
+		return respondJSON(res, { error: 'Not found' }, 404);
 	next();
 }
 export function middleware_id_format(
@@ -44,9 +70,8 @@ export function middleware_id_format(
 	return async function (req: Request, res: Response, next: NextFunction) {
 		for (const key of param_keys) {
 			const id = req.params[key];
-			if (typeof id !== 'string' || !re.test(id)) {
-				return respondStatus(res, 404);
-			}
+			if (typeof id !== 'string' || !re.test(id))
+				return respondJSON(res, { error: `Parameter "${key}" is invalid` }, 400);
 		}
 		next();
 	};
@@ -72,11 +97,13 @@ export async function middleware_challenge_exists(
 	res: Response,
 	next: NextFunction
 ) {
-	const id = req.params['challenge_id'];
+	const id = Number(req.params.challenge_id);
+	if (!isFinite(id))
+		return respondJSON(res, { error: "Challenge identifier is invalid" }, 400);
 
-	const challenge = await Challenges.findByPk(Number(id));
-	if (challenge === null)
-		return respondStatus(res, 404);
+	const [challenge] = await orm.select().from(table_challenges).where(eq(table_challenges.id, id));
+	if (!challenge)
+		return respondJSON(res, { error: "Challenge doesn't exist" }, 404);
 
 	res.locals.challenge = challenge;
 	next();
@@ -88,13 +115,15 @@ export async function middleware_attachment_exists(
 ) {
 	const challenge_id = Number(req.params['challenge_id']);
 	const attachment_id = Number(req.params['attachment_id']);
+	if (!isFinite(challenge_id) || !isFinite(attachment_id))
+		return respondJSON(res, { error: "Invalid challenge attachment identifiers" }, 400);
 
-	const challenge_attachment = await ChallengesAttachments.findOne({
-		where: { challenge_id, attachment_id },
-	});
-	if (challenge_attachment === null) {
-		return respondStatus(res, 404);
-	}
+	const [challenge_attachment] = await orm
+		.select()
+		.from(table_challenges_attachments)
+		.where(and(eq(table_challenges_attachments.challenge_id, challenge_id), eq(table_challenges_attachments.attachment_id, attachment_id)));
+	if (!challenge_attachment)
+		return respondJSON(res, { error: "Challenge attachment does not exist" }, 404);
 
 	res.locals.challenge_attachment = challenge_attachment;
 	next();

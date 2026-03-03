@@ -6,9 +6,12 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	_ "github.com/lib/pq"
 )
+
+const GormLoggerLevel = logger.Silent
 
 func DbDsn() string {
 	dbHost := GetEnv("DB_HOST", "localhost")
@@ -36,7 +39,7 @@ func DbInit() (*gorm.DB, error) {
 	sqlDB.SetMaxIdleConns(5)
 
 	gormPostgresDialect := postgres.New(postgres.Config{Conn: sqlDB})
-	gormDB, err := gorm.Open(gormPostgresDialect)
+	gormDB, err := gorm.Open(gormPostgresDialect, &gorm.Config{Logger: logger.Default.LogMode(GormLoggerLevel)})
 	if err != nil {
 		return nil, fmt.Errorf("could not establish the gorm layer: %v", err)
 	}

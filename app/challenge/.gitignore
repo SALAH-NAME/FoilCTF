@@ -1,1 +1,3 @@
 node_modules/
+src/orm/entities/*.sql
+src/orm/entities/meta/

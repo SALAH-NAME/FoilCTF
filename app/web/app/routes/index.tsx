@@ -1,0 +1,42 @@
+import { data, Link } from 'react-router';
+import type { Route } from './+types/index';
+import { request_session_user } from '~/session.server';
+
+export function meta({}: Route.MetaArgs) {
+	return [{ title: 'FoilCTF - Home' }];
+}
+
+export async function loader({ request }: Route.LoaderArgs) {
+	const user = await request_session_user(request);
+	return data({ user });
+}
+
+export default function Page({ loaderData }: Route.ComponentProps) {
+	return (
+		<>
+			<main
+				id="main-content"
+				className="min-h-full text-dark flex items-center justify-center px-4"
+			>
+				<div className="max-w-3xl w-full text-center">
+					<h1 className="text-7xl md:text-8xl lg:text-9xl font-bold mb-6 tracking-wide">
+						FoilCTF
+					</h1>
+
+					<p className="text-gray-900 text-lg md:text-xl mb-8 leading-relaxed">
+						CTF hosting platform The goal of this project is to let you create,
+						manage
+						<br /> and run cybersecurity Capture The Flag (CTF) competitions.
+					</p>
+
+					<Link
+						to={ Boolean(loaderData.user) ? "/events" : "/register" }
+						className="inline-block px-8 py-3 border-2 border-dark text-lg font-semibold rounded hover:bg-primary hover:text-white transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+					>
+						{ Boolean(loaderData.user) ? 'Jump in' : 'Join us' }
+					</Link>
+				</div>
+			</main>
+		</>
+	);
+}

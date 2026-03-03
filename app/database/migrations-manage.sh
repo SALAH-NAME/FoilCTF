@@ -3,7 +3,7 @@ set -Eeu -o pipefail
 
 DATABASE_MIGRATIONS_MOUNT="${DATABASE_MIGRATIONS_MOUNT:-/migrations}"
 function command_internal_list {
-	find "$DATABASE_MIGRATIONS_MOUNT" -type f -regex '.*\.sql' | sort
+	find "$DATABASE_MIGRATIONS_MOUNT" -type f \( -name "*.sql" -o -name "*.sh" \) | sort
 }
 
 DATABASE_NAME="${DATABASE_NAME:-foilctf}"
@@ -16,7 +16,12 @@ function command_internal_apply {
 		ID=$(echo "$SLUG" | cut -c '-3')
 		TITLE=$(echo "$SLUG" | cut -c '5-')
 		if [[ "$ID" -gt "$ID_LAST" ]]; then
-			psql --dbname="$POSTGRES_DB" --username="$POSTGRES_USER" --file="$FILE" # 1>/dev/null # to see migration logs
+			if [[ "$SLUG" == *.sql ]]; then
+				psql --dbname="$POSTGRES_DB" --username="$POSTGRES_USER" --file="$FILE"
+			elif [[ "$SLUG" == *.sh ]]; then
+				bash "$FILE"
+			fi
+
 			if [[ $? -eq 0 ]]; then
 				echo "Migration" "'$TITLE'" "has been applied successfully"
 				echo "$ID" > "$DATABASE_MIGRATIONS_FILE"

@@ -1,34 +1,33 @@
 import fs from 'node:fs';
-import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
+import { eq, or } from 'drizzle-orm';
+import { ZodObject } from 'zod';
 import { Request, Response, NextFunction } from 'express';
-import { User, AuthRequest, FoilCTF_Error } from './types';
+
 import {
 	AccessTokenSecret,
 	AccessTokenExpiry,
 	RefreshTokenSecret,
 	RefreshTokenExpiry,
 } from './env';
-import { ZodObject, ZodType } from 'zod';
 import { db } from './db';
-import { eq, or } from 'drizzle-orm';
 import { users } from '../db/schema';
-import bcrypt from 'bcrypt';
+import { User, AuthRequest } from './types';
+import { JWT_Payload, JWT_sign, JWT_verify } from '../jwt';
 
 export function generateAccessToken(
 	username: string,
 	role: string,
 	id: number
 ): string {
-	return jwt.sign(
-		{ username: username, role: role, id: id },
-		AccessTokenSecret,
-		{ expiresIn: AccessTokenExpiry as any }
-	);
+	const payload = { username, role, id };
+	return JWT_sign(payload, AccessTokenSecret, { expiresIn: AccessTokenExpiry });
 }
 
 export function generateRefreshToken(username: string, id: number): string {
-	return jwt.sign({ username: username, id: id }, RefreshTokenSecret, {
-		expiresIn: RefreshTokenExpiry as any,
+	const payload = { username, id };
+	return JWT_sign(payload, RefreshTokenSecret, {
+		expiresIn: RefreshTokenExpiry,
 	});
 }
 
@@ -38,13 +37,17 @@ export const parseNonExistingParam = async (
 	next: NextFunction
 ) => {
 	const username = req.params?.username as string | undefined;
-	if (!username) return res.status(400).json(new FoilCTF_Error("Bad Request", 400));
+	if (!username)
+		return res
+			.status(400)
+			.json({ error: 'Missing user pathname parameter' })
+			.send();
 
 	const [user] = await db
 		.select({ id: users.id })
 		.from(users)
 		.where(eq(users.username, username));
-	if (!user) return res.status(404).json(new FoilCTF_Error("Not Found", 404));
+	if (!user) return res.status(404).json({ error: "User doesn't exist" }).end();
 
 	next();
 };
@@ -54,25 +57,56 @@ export function authenticateToken(
 	res: Response,
 	next: NextFunction
 ) {
-	const authHeader = req.get('authorization');
-	if (!authHeader) {
-		return res.status(401).json(new FoilCTF_Error("Unauthorized", 401));
+	const header_value = req.get('authorization');
+	const query_value = req.query.token;
+	if (!header_value && !query_value)
+		return res.status(401).json({ error: 'Unauthorized' }).end();
+
+	let token = '';
+	if (header_value) {
+		if (!header_value.startsWith('Bearer '))
+			return res
+				.status(401)
+				.json({ error: 'Authorization protocol is invalid' })
+				.end();
+		token = header_value.slice('Bearer '.length);
+	} else if (typeof query_value === 'string') {
+		token = query_value;
 	}
-	const [bearer, ...tokens] = authHeader.split(' ');
-	if (bearer !== 'Bearer' || tokens.length != 1) {
-		return res.status(401).json(new FoilCTF_Error("Unauthorized", 401));
-	}
-	try {
-		const decoded = jwt.verify(tokens[0] ?? ' ', AccessTokenSecret) as User;
-		res.locals.user = decoded;
-		req.user = decoded; // multer expects the request not the ressponse (meaning I can't use the res.locals)
-		next();
-	} catch (err) {
-		return res.status(401).json(new FoilCTF_Error("Unauthorized", 401));
-	}
+
+	const user = JWT_verify<User>(token, AccessTokenSecret);
+	if (!user)
+		return res.status(401).json({ error: 'Invalid access token' }).end();
+
+	req.user = user;
+	res.locals.user = user;
+
+	next();
 }
 
-export function middleware_schema_validate(schema: ZodObject) {
+export function extractor_request_token(req: Request): string | null {
+	const token_query = req.query['token'];
+	if (typeof token_query === 'string' && token_query) return token_query;
+
+	const value_header = req.get('Authorization');
+	if (typeof value_header !== 'string' || !value_header.startsWith('Bearer '))
+		return null;
+
+	return value_header.slice('Bearer '.length) || null;
+}
+
+export function middleware_auth_optional(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	const token = extractor_request_token(req);
+	if (!token) return next();
+	res.locals.user = JWT_verify<JWT_Payload>(token, AccessTokenSecret);
+	return next();
+}
+
+export function middleware_schema_validate<T extends ZodObject>(schema: T) {
 	return async (req: Request, _res: Response, next: NextFunction) => {
 		const { body } = schema.parse({ body: req.body });
 		req.body = body;
@@ -108,23 +142,27 @@ export async function password_validate(
 
 export async function user_exists(
 	username: string,
-	email?: string
-): Promise<boolean>;
-export async function user_exists(
-	username: string | undefined,
 	email: string
-): Promise<boolean>;
-export async function user_exists(
-	username?: string,
-	email?: string
 ): Promise<boolean> {
-	if (!username) return false;
-	if (!email) return false;
-
 	const [existingUser] = await db
 		.select()
 		.from(users)
 		.where(or(eq(users.username, username), eq(users.email, email)));
+	return Boolean(existingUser);
+}
+
+export async function user_exists_username(username: string) {
+	const [existingUser] = await db
+		.select({ id: users.id })
+		.from(users)
+		.where(eq(users.username, username));
+	return Boolean(existingUser);
+}
+export async function user_exists_email(email: string) {
+	const [existingUser] = await db
+		.select({ id: users.id })
+		.from(users)
+		.where(eq(users.email, email));
 	return Boolean(existingUser);
 }
 
@@ -142,17 +180,27 @@ export function folder_exists(folder_path: string): boolean {
 	}
 }
 
-// TODO(xenobas): Metrics
+// SECTION: Metrics
+import { metric_lats, metric_reqs } from '../prometheus';
+
 export function middleware_logger(
 	req: Request,
 	res: Response,
 	next: NextFunction
 ) {
 	const time_start = Date.now();
-	const DateTimeFormatter = new Intl.DateTimeFormat(); // NOTE(xenobas): Useless instantiation on each request!
+	const DateTimeFormatter = new Intl.DateTimeFormat();
+
 	res.on('finish', () => {
 		const time_end = Date.now();
-		const latency = time_end - time_start;
+		const latency = (time_end - time_start) / 1000;
+
+		metric_lats.observe(latency);
+		metric_reqs.inc({
+			status_code: res.statusCode,
+			method: req.method,
+			path: req.path,
+		});
 
 		const datetime = DateTimeFormatter.format(new Date(time_end));
 		console.log(
@@ -161,7 +209,7 @@ export function middleware_logger(
 			req.path,
 			req.method,
 			res.statusCode,
-			latency
+			time_end - time_start
 		);
 	});
 

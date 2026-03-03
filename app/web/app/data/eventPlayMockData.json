@@ -1,0 +1,402 @@
+{
+	"eventData": {
+		"id": "1",
+		"name": "Spring CTF 2026",
+		"startTime": "2026-02-14T10:00:00Z",
+		"endTime": "2026-02-16T22:00:00Z",
+		"status": {
+			"teamName": "CyberNinjas",
+			"rank": 3,
+			"totalPoints": 1250,
+			"solvedChallenges": 8,
+			"totalChallenges": 15
+		}
+	},
+	"chatMessages": [
+		{
+			"id": 1,
+			"username": "System",
+			"message": "Welcome to Spring CTF 2026! Good luck to all teams!",
+			"timestamp": "2026-02-14T10:00:00Z",
+			"isSystem": true
+		},
+		{
+			"id": 2,
+			"username": "admin",
+			"message": "Server issues have been resolved. All challenges are now accessible.",
+			"timestamp": "2026-02-14T10:15:00Z",
+			"isAnnouncement": true
+		},
+		{
+			"id": 3,
+			"username": "hacker123",
+			"team": "TeamRocket",
+			"message": "Is the web challenge server down?",
+			"timestamp": "2026-02-14T10:30:00Z"
+		},
+		{
+			"id": 4,
+			"username": "ctf_pro",
+			"team": "CyberNinjas",
+			"message": "Working fine for me. Try refreshing?",
+			"timestamp": "2026-02-14T10:31:00Z"
+		},
+		{
+			"id": 5,
+			"username": "System",
+			"message": "TeamRocket scored first blood on 'SQL Injection'!",
+			"timestamp": "2026-02-14T10:45:00Z",
+			"isSystem": true
+		},
+		{
+			"id": 6,
+			"username": "n00b_hacker",
+			"team": "SoloWarriors",
+			"message": "Can someone give a hint on the crypto challenge?",
+			"timestamp": "2026-02-14T11:00:00Z"
+		},
+		{
+			"id": 7,
+			"username": "security_expert",
+			"team": "RedTeam",
+			"message": "Read the description carefully, the key is in the encoding method.",
+			"timestamp": "2026-02-14T11:05:00Z"
+		},
+		{
+			"id": 8,
+			"username": "admin",
+			"message": "New forensics challenge 'Hidden Data' has been released!",
+			"timestamp": "2026-02-14T11:30:00Z",
+			"isAnnouncement": true
+		},
+		{
+			"id": 9,
+			"username": "System",
+			"message": "CyberNinjas scored first blood on 'Buffer Overflow'!",
+			"timestamp": "2026-02-14T12:00:00Z",
+			"isSystem": true
+		},
+		{
+			"id": 10,
+			"username": "binary_wizard",
+			"team": "BinaryBusters",
+			"message": "GG! That was a tough one!",
+			"timestamp": "2026-02-14T12:02:00Z"
+		}
+	],
+	"challenges": [
+		{
+			"id": 1,
+			"name": "SQL Injection",
+			"description": "Find and exploit the SQL injection vulnerability to retrieve the admin password.",
+			"category": "Web",
+			"points": 100,
+			"solved": true,
+			"solves": 23,
+			"author": "admin",
+			"attachments": [],
+			"hasInstance": true,
+			"firstBloodAvailable": false,
+			"firstBloodBy": "TeamRocket",
+			"difficulty": "easy",
+			"hints": [
+				{
+					"id": 1,
+					"content": "Look for input fields that interact with the database.",
+					"penalty": 10,
+					"purchased": false
+				},
+				{
+					"id": 2,
+					"content": "Try using UNION SELECT to extract data.",
+					"penalty": 20,
+					"purchased": false
+				}
+			]
+		},
+		{
+			"id": 2,
+			"name": "XSS Hunter",
+			"description": "Exploit a cross-site scripting vulnerability to steal the admin's session cookie.",
+			"category": "Forensics",
+			"points": 200,
+			"solved": false,
+			"solves": 15,
+			"author": "security_team",
+			"attachments": [
+				{
+					"id": 1,
+					"name": "source.zip",
+					"url": "/attachments/xss-source.zip"
+				}
+			],
+			"hasInstance": true,
+			"firstBloodAvailable": true,
+			"difficulty": "medium",
+			"hints": [
+				{
+					"id": 1,
+					"content": "Check all input fields for sanitization.",
+					"penalty": 15,
+					"purchased": false
+				}
+			]
+		},
+		{
+			"id": 3,
+			"name": "Authentication Bypass + Authentication Bypass",
+			"description": "Bypass the authentication mechanism to access the admin panel.",
+			"category": "Forensics",
+			"points": 300,
+			"solved": false,
+			"solves": 8,
+			"author": "admin",
+			"attachments": [],
+			"hasInstance": true,
+			"firstBloodAvailable": true,
+			"difficulty": "hard",
+			"hints": []
+		},
+		{
+			"id": 4,
+			"name": "Caesar Cipher",
+			"description": "Decrypt the message encrypted with a simple Caesar cipher.",
+			"category": "Crypto",
+			"points": 100,
+			"solved": true,
+			"solves": 42,
+			"author": "crypto_master",
+			"attachments": [
+				{
+					"id": 1,
+					"name": "encrypted.txt",
+					"url": "/attachments/caesar.txt"
+				}
+			],
+			"hasInstance": false,
+			"firstBloodAvailable": false,
+			"firstBloodBy": "CyberNinjas",
+			"difficulty": "easy",
+			"hints": []
+		},
+		{
+			"id": 5,
+			"name": "RSA Weaknesses",
+			"description": "Exploit weak RSA parameters to decrypt the flag.",
+			"category": "Crypto",
+			"points": 200,
+			"solved": false,
+			"solves": 12,
+			"author": "crypto_master",
+			"attachments": [
+				{
+					"id": 1,
+					"name": "public_key.pem",
+					"url": "/attachments/rsa-public.pem"
+				},
+				{
+					"id": 2,
+					"name": "encrypted_flag.txt",
+					"url": "/attachments/rsa-encrypted.txt"
+				}
+			],
+			"hasInstance": false,
+			"firstBloodAvailable": true,
+			"difficulty": "medium",
+			"hints": [
+				{
+					"id": 1,
+					"content": "Check if the modulus is small enough to factor.",
+					"penalty": 20,
+					"purchased": false
+				}
+			]
+		},
+		{
+			"id": 6,
+			"name": "AES Madness",
+			"description": "Break the AES encryption by analyzing the implementation flaws.",
+			"category": "Crypto",
+			"points": 300,
+			"solved": false,
+			"solves": 5,
+			"author": "crypto_master",
+			"attachments": [],
+			"hasInstance": false,
+			"firstBloodAvailable": true,
+			"difficulty": "hard",
+			"hints": []
+		},
+		{
+			"id": 7,
+			"name": "Buffer Overflow",
+			"description": "Overflow the buffer to overwrite the return address and execute arbitrary code.",
+			"category": "Binary",
+			"points": 100,
+			"solved": true,
+			"solves": 18,
+			"author": "binary_expert",
+			"attachments": [
+				{
+					"id": 1,
+					"name": "vulnerable_binary",
+					"url": "/attachments/buffer-overflow"
+				}
+			],
+			"hasInstance": true,
+			"firstBloodAvailable": false,
+			"firstBloodBy": "CyberNinjas",
+			"difficulty": "easy",
+			"hints": [
+				{
+					"id": 1,
+					"content": "Use a debugger to find the offset.",
+					"penalty": 10,
+					"purchased": false
+				}
+			]
+		},
+		{
+			"id": 8,
+			"name": "Format String",
+			"description": "Exploit the format string vulnerability to leak memory and gain control.",
+			"category": "Binary",
+			"points": 200,
+			"solved": false,
+			"solves": 10,
+			"author": "binary_expert",
+			"attachments": [],
+			"hasInstance": true,
+			"firstBloodAvailable": true,
+			"difficulty": "medium",
+			"hints": []
+		},
+		{
+			"id": 9,
+			"name": "ROP Chain",
+			"description": "Build a return-oriented programming chain to bypass protections.",
+			"category": "Binary",
+			"points": 300,
+			"solved": false,
+			"solves": 4,
+			"author": "binary_expert",
+			"attachments": [],
+			"hasInstance": true,
+			"firstBloodAvailable": true,
+			"difficulty": "hard",
+			"hints": []
+		},
+		{
+			"id": 10,
+			"name": "Network Analysis",
+			"description": "Analyze the network traffic to find the hidden flag.",
+			"category": "Forensics",
+			"points": 100,
+			"solved": true,
+			"solves": 28,
+			"author": "forensics_pro",
+			"attachments": [
+				{
+					"id": 1,
+					"name": "capture.pcap",
+					"url": "/attachments/network.pcap"
+				}
+			],
+			"hasInstance": false,
+			"firstBloodAvailable": false,
+			"firstBloodBy": "RedTeam",
+			"difficulty": "easy",
+			"hints": []
+		},
+		{
+			"id": 11,
+			"name": "Image Steganography",
+			"description": "Extract the hidden message from the image file.",
+			"category": "Forensics",
+			"points": 200,
+			"solved": true,
+			"solves": 20,
+			"author": "forensics_pro",
+			"attachments": [
+				{
+					"id": 1,
+					"name": "hidden.png",
+					"url": "/attachments/stego.png"
+				}
+			],
+			"hasInstance": false,
+			"firstBloodAvailable": false,
+			"firstBloodBy": "TeamRocket",
+			"difficulty": "medium",
+			"hints": [
+				{
+					"id": 1,
+					"content": "Try checking the LSB of the image pixels.",
+					"penalty": 15,
+					"purchased": false
+				}
+			]
+		},
+		{
+			"id": 12,
+			"name": "Memory Dump",
+			"description": "Analyze the memory dump to recover the encryption key.",
+			"category": "Forensics",
+			"points": 300,
+			"solved": false,
+			"solves": 6,
+			"author": "forensics_pro",
+			"attachments": [],
+			"hasInstance": false,
+			"firstBloodAvailable": true,
+			"difficulty": "hard",
+			"hints": []
+		},
+		{
+			"id": 13,
+			"name": "Command Injection",
+			"description": "Exploit the command injection to execute system commands.",
+			"category": "Misc",
+			"points": 100,
+			"solved": true,
+			"solves": 25,
+			"author": "misc_admin",
+			"attachments": [],
+			"hasInstance": true,
+			"firstBloodAvailable": false,
+			"firstBloodBy": "BinaryBusters",
+			"difficulty": "easy",
+			"hints": []
+		},
+		{
+			"id": 14,
+			"name": "OSINT Challenge",
+			"description": "Use open-source intelligence techniques to find the target's location.",
+			"category": "Misc",
+			"points": 200,
+			"solved": false,
+			"solves": 11,
+			"author": "misc_admin",
+			"attachments": [],
+			"hasInstance": false,
+			"firstBloodAvailable": true,
+			"difficulty": "medium",
+			"hints": []
+		},
+		{
+			"id": 15,
+			"name": "Reverse Engineering",
+			"description": "Reverse engineer the binary to understand its functionality and find the flag.",
+			"category": "Forensics",
+			"points": 300,
+			"solved": false,
+			"solves": 7,
+			"author": "misc_admin",
+			"attachments": [],
+			"hasInstance": false,
+			"firstBloodAvailable": true,
+			"difficulty": "hard",
+			"hints": []
+		}
+	]
+}

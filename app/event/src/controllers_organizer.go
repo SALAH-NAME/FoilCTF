@@ -44,6 +44,7 @@ func (h *Hub) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
 	var req EventRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("ERROR - HTTP - Invalid request format: %v", err)
@@ -51,18 +52,33 @@ func (h *Hub) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	status := "draft"
+	if req.IsOpen {
+		status = "published"
+	}
+
 	newCtf := Ctf{
 		Name:           req.Name,
+		MetaData:       req.MetaData,
 		TeamMembersMin: req.TeamMembersMin,
 		TeamMembersMax: req.TeamMembersMax,
-		MetaData:       req.MetaData,
 		StartTime:      req.StartTime,
 		EndTime:        req.EndTime,
+		Description:    req.Description,
 		MaxTeams:       intPtrOrNil(req.MaxTeams),
-		Status:         "draft",
+		Status:         status,
 	}
+
 	err = h.Db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Table("ctfs").Create(&newCtf).Error; err != nil {
+			return err
+		}
+
+		newChatRoom := ChatRoom{
+			CtfID:    newCtf.ID,
+			RoomType: "global",
+		}
+		if err := tx.Table("chat_rooms").Create(&newChatRoom).Error; err != nil {
 			return err
 		}
 
@@ -70,7 +86,11 @@ func (h *Hub) CreateEvent(w http.ResponseWriter, r *http.Request) {
 			CtfID:       newCtf.ID,
 			OrganizerID: *userID,
 		}
-		return tx.Table("ctf_organizers").Create(&ctfToOrganizer).Error
+		if err := tx.Table("ctf_organizers").Create(&ctfToOrganizer).Error; err != nil {
+			return err
+		}
+
+		return nil
 	})
 	if err != nil {
 		log.Printf("ERROR - DATABASE - Could not commit transaction due to: %v", err)
@@ -90,28 +110,16 @@ func (h *Hub) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req EventRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var values map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&values); err != nil {
 		log.Printf("ERROR - HTTP - Invalid request format: %v", err)
 		JSONError(w, "Invalid Input", http.StatusBadRequest)
 		return
 	}
 
-	updatedEvent := Ctf{
-		Name:           req.Name,
-		TeamMembersMin: req.TeamMembersMin,
-		TeamMembersMax: req.TeamMembersMax,
-		MetaData:       req.MetaData,
-		EndTime:        req.EndTime,
-		MaxTeams:       intPtrOrNil(req.MaxTeams),
-	}
-	if currentEvent.Status == "draft" {
-		updatedEvent.StartTime = req.StartTime
-	}
-
 	err := h.Db.Table("ctfs").
 		Where("id = ?", currentEvent.ID).
-		Updates(updatedEvent).Error
+		Updates(values).Error
 	if err != nil {
 		log.Printf("ERROR - DATABASE - Could not update ctfs table due to: %v", err)
 		JSONError(w, "Update failed", http.StatusInternalServerError)
@@ -143,12 +151,27 @@ func (h *Hub) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.Db.Delete(&event).Error; err != nil {
+	err := h.Db.Transaction(func(tx *gorm.DB) (err error) {
+		if err = h.Db.Table("participations").Where("ctf_id = ?", event.ID).Delete(&Participation{}).Error; err != nil {
+			return err
+		}
+		if err = h.Db.Table("ctf_organizers").Where("ctf_id = ?", event.ID).Delete(&CtfOrganizers{}).Error; err != nil {
+			return err
+		}
+		if err = h.Db.Table("chat_rooms").Where("ctf_id = ?", event.ID).Delete(&ChatRoom{}).Error; err != nil {
+			return err
+		}
+		if err = h.Db.Table("ctfs").Where("id = ?", event.ID).Delete(&Ctf{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		log.Printf("ERROR - DATABASE - Could not delete event %d due to: %v", event.ID, err)
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	JSONResponse(w, nil, http.StatusNoContent)
+	JSONResponse(w, map[string]any{"ok": true}, http.StatusOK)
 }
 
 func (h *Hub) LinkChallenge(w http.ResponseWriter, r *http.Request) {
@@ -213,6 +236,45 @@ func (h *Hub) LinkChallenge(w http.ResponseWriter, r *http.Request) {
 	JSONResponse(w, resp, http.StatusCreated)
 }
 
+func (h *Hub) UpdateChallenge(w http.ResponseWriter, r *http.Request) {
+	event, okEvent := r.Context().Value(eventKey).(Ctf)
+	if !okEvent {
+		log.Printf("ERROR - HTTP - Could not get event from the request context")
+		JSONError(w, "Event not found", http.StatusNotFound)
+		return
+	}
+
+	challengeID, err := h.ReadIntParam(r, "chall_id")
+	if err != nil {
+		log.Printf("ERROR - REQUEST - could not get challenge id due to: %v", err)
+		JSONResponse(w, map[string]string{"error": "Invalid challenge id parameter"}, http.StatusBadRequest)
+		return
+	}
+
+	var values map[string]any
+	if err := json.NewDecoder(r.Body).Decode(&values); err != nil {
+		log.Printf("ERROR - HTTP - Invalid request format: %v", err)
+		JSONError(w, "Invalid Input", http.StatusBadRequest)
+		return
+	}
+
+	result := h.Db.Table("ctfs_challenges").
+		Where("ctf_id = ? AND challenge_id = ?", event.ID, challengeID).
+		Limit(1).
+		Updates(values)
+	if err := result.Error; err != nil {
+		log.Printf("ERROR - DATABASE - %v", err)
+		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if result.RowsAffected == 0 {
+		JSONError(w, "Event challenge not found", http.StatusNotFound)
+		return
+	}
+
+	JSONResponse(w, map[string]bool{"ok": true}, http.StatusCreated)
+}
+
 func (h *Hub) UnlinkChallenge(w http.ResponseWriter, r *http.Request) {
 	event, ok := r.Context().Value(eventKey).(Ctf)
 	if !ok {
@@ -242,7 +304,7 @@ func (h *Hub) UnlinkChallenge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	JSONResponse(w, nil, http.StatusNoContent)
+	JSONResponse(w, map[string]bool{"ok": true}, http.StatusOK)
 }
 
 func (h *Hub) StartEvent(w http.ResponseWriter, r *http.Request) {
@@ -286,8 +348,8 @@ func (h *Hub) StartEvent(w http.ResponseWriter, r *http.Request) {
 		}
 
 		roomInstance = ChatRoom{
-			CtfID:     event.ID,
-			Room_Type: "global",
+			CtfID:    event.ID,
+			RoomType: "global",
 		}
 		return tx.Table("chat_rooms").Create(&roomInstance).Error
 	})
@@ -303,7 +365,7 @@ func (h *Hub) StartEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	msg := fmt.Sprintf("Event %s has officially started! Good luck", event.Name)
-	errNotif := h.Notify("Event Started", msg, event.ID)
+	errNotif := h.Notify("Event Started", msg, fmt.Sprintf("/events/%d", event.ID), event.ID)
 	if errNotif != nil {
 		log.Printf("Failed to send start notification")
 	}
@@ -343,4 +405,9 @@ func (h *Hub) StopEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	JSONResponse(w, nil, http.StatusOK)
+
+	msg := fmt.Sprintf("Event %s has ended. Check the final scoreboard!", event.Name)
+	if err := h.Notify("Event Ended", msg, fmt.Sprintf("/events/%d", event.ID), event.ID); err != nil {
+		log.Printf("ERROR - Stop Event - Could not send end notification: %v", err)
+	}
 }

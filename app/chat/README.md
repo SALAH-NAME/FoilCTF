@@ -1,6 +1,6 @@
 **Core Dependencies**
 - **gorilla/websocket**: Handles protocol upgrading and low-level frame management.
-- **gorilla/mux**: request routing and middleware integration.
+- **go-chi/chi**: request routing and middleware integration.
 - **golang-jwt/jwt/v5**: Secure token parsing and identity verification.
 - **gorm.io/gorm**: ORM for database.
 

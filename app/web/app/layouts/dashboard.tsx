@@ -1,0 +1,126 @@
+import { useEffect } from 'react';
+import { data, Outlet, useFetcher } from 'react-router';
+
+import type { Route } from './+types/dashboard';
+
+import { useToast } from '~/contexts/ToastContext';
+import { useSidebar } from '~/contexts/SidebarContext';
+import { useNotificationSocketProvider } from '~/contexts/WebSocketContext';
+import { commitSession, request_session } from '~/session.server';
+
+import Icon from '~/components/Icon';
+import Logo from '~/components/Logo';
+import Footer from '~/components/Footer';
+import Sidebar from '~/components/Sidebar';
+import SkipLink from '~/components/SkipLink';
+import NotificationBell from '../components/NotificationBell';
+
+export async function loader({ request }: Route.LoaderArgs) {
+	const session = await request_session(request);
+
+	const user = session.get('user');
+	const flashError = session.get('error');
+	const flashSuccess = session.get('success');
+	return data(
+		{ flashError, flashSuccess, user },
+		{ headers: { 'Set-Cookie': await commitSession(session) } }
+	);
+}
+export default function Layout({ loaderData }: Route.ComponentProps) {
+	const { addToast } = useToast();
+	const { toggleMobile } = useSidebar();
+	useEffect(() => {
+		if (!loaderData.flashError) return;
+
+		addToast({
+			variant: 'error',
+			title: 'Session Error',
+			message: loaderData.flashError,
+		});
+	}, [loaderData]);
+	useEffect(() => {
+		if (!loaderData.flashSuccess) return;
+
+		addToast({
+			variant: 'success',
+			title: 'OAuth42',
+			message: loaderData.flashSuccess,
+		});
+	}, [loaderData]);
+
+	const { user } = loaderData;
+	const { performOpen } = useNotificationSocketProvider();
+	useEffect(() => {
+		if (!user?.token_access) return;
+
+		performOpen(user.token_access);
+	}, [user]);
+
+	const fetcher = useFetcher();
+	useEffect(() => {
+		if (!user) return;
+
+		const { token_access } = user;
+		if (!token_access) return;
+
+		let cancelled = false;
+		fetcher.submit(null, {
+			method: 'post',
+			action: '/refresh',
+		});
+		const intervalHandle = setInterval(
+			async () => {
+				if (cancelled) return;
+
+				await fetcher.submit(null, {
+					method: 'post',
+					action: '/refresh',
+				});
+			},
+			1_000 * parseInt(import.meta.env.BROWSER_REFRESH_INTERVAL_SECS ?? '60')
+		);
+		return () => {
+			cancelled = true;
+			clearInterval(intervalHandle);
+		};
+	}, [user?.token_refresh]);
+
+	return (
+		<>
+			<SkipLink />
+			<div className="flex min-h-screen">
+				<header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background border-b border-dark/10 flex items-center justify-between px-4 z-50">
+					<button
+						type="button"
+						onClick={toggleMobile}
+						className="p-2 hover:bg-accent/20 rounded-md transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-dark"
+						aria-label="Toggle menu"
+					>
+						<Icon
+							name="menu"
+							className="size-6 text-white"
+							aria-hidden={true}
+						/>
+					</button>
+
+					<div className="absolute left-1/2 -translate-x-1/2">
+						<Logo size="md" showText />
+					</div>
+
+					<NotificationBell variant="navbar" />
+				</header>
+
+				<Sidebar session_user={user} />
+				<div className="flex-1 flex flex-col">
+					<main
+						id="main-content"
+						className="flex-1 p-4 transition-all duration-300 md:pt-4 pt-20"
+					>
+						<Outlet />
+					</main>
+					<Footer />
+				</div>
+			</div>
+		</>
+	);
+}

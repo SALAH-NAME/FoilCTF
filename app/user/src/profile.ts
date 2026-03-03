@@ -1,254 +1,298 @@
+import ms from 'ms';
+import fs from 'node:fs/promises';
 import path from 'node:path';
-import bcrypt from 'bcrypt';
-import { eq } from 'drizzle-orm';
-import ms, { StringValue } from 'ms';
-import multer, { FileFilterCallback } from 'multer';
+import formidable from 'formidable';
+import { and, eq, or } from 'drizzle-orm';
 import { Request, Response, NextFunction } from 'express';
-import jwt, { JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 
-import { AccessTokenSecret } from './utils/env';
-import { profiles, users } from './db/schema';
 import { db } from './utils/db';
-import { Profile, AuthRequest, FoilCTF_Error, FoilCTF_Success } from './utils/types';
+import { sessions } from './db/schema';
+import {
+	profiles as table_profiles,
+	friend_requests as table_friend_requests,
+	friends as table_friends,
+} from './db/schema';
+import { AccessTokenSecret } from './utils/env';
+import { FoilCTF_Error, User } from './utils/types';
+import { JWT_Payload, JWT_verify } from './jwt';
+import { AvatarsDir, MaxFileSize, RefreshTokenExpiry } from './utils/env';
 import {
 	isEmpty,
 	generateAccessToken,
-	password_validate,
-	user_exists,
 	generateRefreshToken,
 } from './utils/utils';
-import { AvatarsDir, MaxFileSize, RefreshTokenExpiry } from './utils/env';
-import { sessions } from './db/schema';
-import { UploadError } from './error';
 
 export const authenticateTokenProfile = async (
 	req: Request,
 	res: Response,
 	next: NextFunction
 ) => {
-	try {
-		const authHeader = req.get('authorization');
-		if (authHeader === undefined) return next();
-		const [bearer, ...tokens] = authHeader?.split(' ') ?? '';
-		if (bearer !== 'Bearer' || tokens.length != 1) return next();
+	const header = req.get('authorization');
+	if (header === undefined) return next();
 
-		const decoded = jwt.verify(
-			tokens[0] ?? '',
-			AccessTokenSecret
-		) as JwtPayload;
-		const requestedUsername = req.params?.username as string;
-		if (decoded.username !== requestedUsername) return next(); // ownership check
-		const [profile] = await db
-			.select()
-			.from(profiles)
-			.where(eq(profiles.username, requestedUsername));
+	const [bearer, ...tokens] = header?.split(' ') ?? '';
+	if (bearer !== 'Bearer' || tokens.length !== 1) return next();
 
-		if (!profile) return res.status(404).json(new FoilCTF_Error("Not Found", 404));
-		const { avatar, id, ...data } = profile;
-		return res.status(200).json(data);
-	} catch (err) {
-		if (err instanceof TokenExpiredError) return next();
-		console.error(err);
-		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
-	}
+	const token = tokens.join(' ');
+	const token_user = JWT_verify<JWT_Payload>(token, AccessTokenSecret);
+	if (!token_user) return next();
+
+	res.locals.user = token_user;
+	const req_username = req.params.username;
+	if (typeof req_username !== 'string' || !req_username)
+		return res.status(404).json({ error: 'Invalid request format' }).end();
+
+	if (req_username !== token_user.username) return next(); // ownership check
+
+	const [profile] = await db
+		.select({
+			avatar: table_profiles.avatar,
+			username: table_profiles.username,
+
+			challenges_solved: table_profiles.challengessolved,
+			events_participated: table_profiles.eventsparticipated,
+			total_points: table_profiles.totalpoints,
+
+			is_private: table_profiles.isprivate,
+			bio: table_profiles.bio,
+			location: table_profiles.location,
+			social_media_links: table_profiles.socialmedialinks,
+		})
+		.from(table_profiles)
+		.where(eq(table_profiles.username, req_username));
+	if (!profile)
+		return res
+			.status(404)
+			.json({ error: 'User has no profile attached' })
+			.end();
+
+	return res.json(profile);
 };
 
-export const getPublicProfile = async (req: Request, res: Response) => {
-	try {
-		const requestedUsername = req.params?.username as string;
+export const getPublicProfile = async (
+	req: Request,
+	res: Response<any, { user?: JWT_Payload }>
+) => {
+	const req_username = req.params.username;
+	if (typeof req_username !== 'string' || !req_username)
+		return res.status(404).json({ error: 'Invalid username' }).end();
 
-		const [profile] = await db
-			.select()
-			.from(profiles)
-			.where(eq(profiles.username, requestedUsername));
+	if (res.locals.user) {
+		const { user } = res.locals;
+		const on_friends = or(
+			and(
+				eq(table_friends.username_1, table_profiles.username),
+				eq(table_friends.username_2, user.username)
+			),
+			and(
+				eq(table_friends.username_2, table_profiles.username),
+				eq(table_friends.username_1, user.username)
+			)
+		);
+		const on_friend_requests = or(
+			and(
+				eq(table_friend_requests.sender_name, user.username),
+				eq(table_friend_requests.receiver_name, table_profiles.username)
+			),
+			and(
+				eq(table_friend_requests.sender_name, table_profiles.username),
+				eq(table_friend_requests.receiver_name, user.username)
+			)
+		);
 
-		if (!profile) return res.status(404).json(new FoilCTF_Error("Not Found", 404));
-		const responseObject = {} as Profile;
-		responseObject.username = profile.username;
-		responseObject.challengessolved = profile.challengessolved;
-		responseObject.eventsparticipated = profile.eventsparticipated;
-		responseObject.totalpoints = profile.totalpoints;
-		if (profile.isprivate === false) {
-			// public profile
-			responseObject.bio = profile.bio;
-			responseObject.location = profile.location;
-			responseObject.socialmedialinks = profile.socialmedialinks;
-		}
-		return res.status(200).json(responseObject);
-	} catch (err) {
-		console.log(err);
-		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
+		const [row] = await db
+			.select({
+				profile: table_profiles,
+				friendship: table_friends,
+				request: table_friend_requests,
+			})
+			.from(table_profiles)
+			.leftJoin(table_friends, on_friends)
+			.leftJoin(table_friend_requests, on_friend_requests)
+			.where(eq(table_profiles.username, req_username));
+		if (!row)
+			return res.status(404).json({ error: "User profile doesn' exist" }).end();
+
+		const { request, friendship, profile } = row;
+		const friend_status = ((request, friendship) => {
+			console.log('Friendship:', friendship);
+			if (friendship) return 'friends';
+			if (request) {
+				if (request?.sender_name === res.locals.user?.username) return 'sent';
+				return 'received';
+			}
+			return 'none';
+		})(request, friendship);
+		const data = {
+			friend_status,
+
+			avatar: profile.avatar,
+			username: profile.username,
+
+			challenges_solved: profile.challengessolved,
+			events_participated: profile.eventsparticipated,
+			total_points: profile.totalpoints,
+
+			bio: profile.isprivate ? undefined : profile.bio,
+			location: profile.isprivate ? undefined : profile.location,
+			social_media_links: profile.isprivate
+				? undefined
+				: profile.socialmedialinks,
+		};
+		return res.status(200).json(data).end();
 	}
-};
 
-const storage = multer.diskStorage({
-	destination: AvatarsDir,
-	filename: (
-		req: AuthRequest,
-		file: Express.Multer.File,
-		cb: (error: Error | null, destination: string) => void
-	) => {
-		cb(null, req.user?.username + path.extname(file.originalname)); // username.png/jpeg
-	},
-});
+	const [profile] = await db
+		.select()
+		.from(table_profiles)
+		.where(eq(table_profiles.username, req_username));
+	if (!profile)
+		return res.status(404).json({ error: "User profile doesn't exist" }).end();
 
-function fileFilterAdapter(
-	filter: (req: AuthRequest, file: Express.Multer.File) => boolean
-) {
-	return (
-		req: AuthRequest,
-		file: Express.Multer.File,
-		callback: FileFilterCallback
-	) => {
-		try {
-			const value = filter(req, file);
-			callback(null, value);
-		} catch (err) {
-			if (err instanceof Error) return callback(err);
-			return callback(new Error(`${err}`));
-		}
+	const res_data = {
+		friend_status: 'none',
+
+		avatar: profile.avatar,
+		username: profile.username,
+
+		challenges_solved: profile.challengessolved,
+		events_participated: profile.eventsparticipated,
+		total_points: profile.totalpoints,
+
+		is_private: profile.isprivate,
+		bio: profile.isprivate ? undefined : profile.bio,
+		location: profile.isprivate ? undefined : profile.location,
+		social_media_links: profile.isprivate
+			? undefined
+			: profile.socialmedialinks,
 	};
-}
-
-export const upload = multer({
-	storage,
-
-	limits: { fileSize: MaxFileSize },
-	fileFilter: fileFilterAdapter(
-		(req: AuthRequest, file: Express.Multer.File) => {
-			if (req.user?.username !== req.params?.username) {
-				// ownership check before uploading the file
-				throw new UploadError('unauthorized');
-			}
-
-			if (file.mimetype !== 'image/jpeg' && file.mimetype !== 'image/png') {
-				throw new UploadError('file-type-invalid');
-			}
-			return true;
-		}
-	),
-});
+	return res.status(200).json(res_data).end();
+};
 
 export const uploadAvatar = async (req: Request, res: Response) => {
-	try {
-		const file = req.file;
-		if (!file) {
-			return res.status(400).json(new FoilCTF_Error("File Too Large", 400));; // no file | file too large
-		}
-		console.log(`received ${file.filename}, size: ${file.size} bytes`);
-		const user = res.locals.user;
-		if (!user || user.id === undefined) {
-			return res.status(400).json(new FoilCTF_Error("Bad Request", 400));
-		}
-		const dbFilename = `/api/profiles/${user.username}/avatar/` + file.filename;
-		await db
-			.update(profiles)
-			.set({ avatar: dbFilename })
-			.where(eq(profiles.id, user.id));
-		return res.status(201).json(new FoilCTF_Success("Created", 201));
-	} catch (err) {
-		console.error(err);
-		return res.status(500).json(new FoilCTF_Error("Internal Server Error", 500));
-	}
-};
+	const user = res.locals.user;
+	if (!user || user.id === undefined)
+		return res.status(401).json({ error: 'Unauthorized' }).end();
 
-export const updateProfile = async (req: Request, res: Response) => {
-	const profileData = req.body;
-	if (!profileData || !res.locals.user) {
-		return res.status(400).json(new FoilCTF_Error("Bad Request", 400));
-	}
-	if (res.locals.user?.username !== req.params?.username) {
-		// ownership check
-		return res.status(403).json(new FoilCTF_Error("Forbidden", 403));
-	}
+	const form = formidable({
+		uploadDir: AvatarsDir,
+		keepExtensions: true,
+		maxFileSize: MaxFileSize,
+		filename(_name, ext, _part, _form) {
+			const parts = ["avatar", Date.now()];
+			return parts.join(".") + ext;
+		},
+	});
 
-	if (!isEmpty(profileData)) {
-		await db
-			.update(profiles)
-			.set(profileData)
-			.where(eq(profiles.id, res.locals.user.id)); // "isprivate": "" to set the profile to private
-	}
-	return res.status(200).json(new FoilCTF_Success("OK", 200));
-};
+	const [_form_fields, form_files] = await form.parse(req);
+	const form_file = form_files['avatar'];
+	if (!form_file)
+		return res.status(400).json({ error: 'Bad Request' }).end();
 
-export const updateUser = async (
-	req: Request,
-	res: Response,
-	next: NextFunction
-) => {
-	if (!req.body || !res.locals.user) {
-		return res.status(400).json(new FoilCTF_Error("Bad Request", 400));
-	}
-	if (res.locals.user?.username !== req.params?.username) {
-		// ownership check
-		return res.status(403).json(new FoilCTF_Error("Forbidden", 403));
-	}
+	const [file] = form_file;
+	if (!file)
+		return res.status(400).json({ error: 'Bad Request' }).end();
 
-	let { username, email, oldPassword, newPassword } = req.body;
+	if (!["image/jpeg", "image/png"].includes(file.mimetype ?? ""))
+		return res.status(400).json({ error: 'Unrecognized image format' }).end();
 
-	const existingUser = await user_exists(username, email);
-	if (existingUser) {
-		return res.status(409).json(new FoilCTF_Error("Conflict", 409));
-	}
+	let oldAvatar: string | null = null;
+	const newAvatar = `/api/profiles/${user.username}/avatar/` + file.newFilename;
 
-	if (newPassword !== undefined) {
-		const passwordIsValid = await password_validate(
-			oldPassword,
-			res.locals.user.username
-		);
-		if (!passwordIsValid) return res.status(403).json(new FoilCTF_Error("Invalid Password", 403));
-		newPassword = await bcrypt.hash(newPassword, 10);
-	}
+	await db.transaction(async (tx) => {
+		const [profile] = await tx
+			.select({ avatar: table_profiles.avatar })
+			.from(table_profiles)
+			.where(eq(table_profiles.username, user.username));
+		if (!profile)
+			throw new FoilCTF_Error('User has no profile', 403);
 
-	if (username || email || newPassword) {
-		await db
-			.update(users)
-			.set({
-				username: username,
-				email: email,
-				password: newPassword,
-			})
-			.where(eq(users.id, res.locals.user.id));
+		await tx
+			.update(table_profiles)
+			.set({ avatar: newAvatar })
+			.where(eq(table_profiles.username, user.username));
+
+		oldAvatar = profile.avatar;
+	});
+
+	if (oldAvatar) {
+		const filename = path.basename(oldAvatar);
+		const filepath = path.resolve(AvatarsDir, filename);
+		await fs.rm(filepath, { force: true });
 	}
-	next();
+	return res.status(201).json({ ok: true }).end();
 };
 
 export const updateTokens = async (
 	_req: Request,
-	res: Response,
-	next: NextFunction
+	res: Response<any, { user: User }>
 ) => {
-	res.clearCookie('jwt', {
-		httpOnly: true,
-		secure: true,
-		sameSite: 'strict',
-	});
+	const { username, role, id } = res.locals.user;
 
-	const user = res.locals?.user;
-	const accessToken = generateAccessToken(
-		user.username as any,
-		user.role,
-		user.id
-	);
-	const refreshToken = generateRefreshToken(user.username as any, user.id);
-	const duration = ms(RefreshTokenExpiry as StringValue);
-	const expiryDate = new Date(Date.now() + duration);
+	const token_access = generateAccessToken(username, role, id);
+	const token_refresh = generateRefreshToken(username, id);
+	const expiry_date = new Date(Date.now() + ms(RefreshTokenExpiry));
 
 	await db
 		.update(sessions)
 		.set({
-			refreshtoken: refreshToken,
-			expiry: expiryDate.toISOString(),
+			refreshtoken: token_refresh,
+			expiry: expiry_date.toISOString(),
 		})
-		.where(eq(sessions.userId, user.id));
+		.where(eq(sessions.user_id, id));
 
-	res.cookie('jwt', refreshToken, {
-		httpOnly: true,
-		secure: true,
-		sameSite: 'strict',
-		maxAge: duration,
-	});
-	return res.status(200).json({ accessToken: accessToken, refreshToken: refreshToken });
+	return res
+		.status(200)
+		.json({ token_access, token_refresh, expiry: expiry_date.toISOString() })
+		.end();
+};
 
-	next();
+export const updateProfile = async (
+	req: Request,
+	res: Response<any, { user?: User }>
+) => {
+	const profileData = req.body;
+	if (!profileData || !res.locals.user)
+		return res.status(400).json({ error: 'Invalid request format' }).end();
+
+	const { user } = res.locals;
+	if (user.username !== req.params.username)
+		return res.status(403).json({ error: 'Unauthorized' }).end();
+
+	if (!isEmpty(profileData)) {
+		const result = await db
+			.update(table_profiles)
+			.set(profileData)
+			.where(eq(table_profiles.username, user.username)); // "isprivate": "" to set the profile to private
+		if (result.rowCount === 0)
+			return res
+				.status(404)
+				.json({ error: 'User profile was not found' })
+				.end();
+	}
+	return res.status(200).json({ ok: true }).end();
+};
+
+export const route_profile_avatar_delete = async (
+	_req: Request,
+	res: Response<any, { user: JWT_Payload }>
+) => {
+	const { user } = res.locals;
+	const [profile] = await db
+		.select({ avatar: table_profiles.avatar })
+		.from(table_profiles)
+		.where(eq(table_profiles.username, user.username));
+	if (!profile || !profile.avatar)
+		throw new FoilCTF_Error('User has no avatar', 400);
+
+	await db
+		.update(table_profiles)
+		.set({ avatar: null })
+		.where(eq(table_profiles.username, user.username));
+
+	const filename = path.basename(profile.avatar);
+	const filepath = path.resolve(AvatarsDir, filename);
+	await fs.rm(filepath, { force: true });
+
+	return res.status(200).json({ ok: true }).end();
 };

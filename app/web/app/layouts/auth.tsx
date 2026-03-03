@@ -1,0 +1,95 @@
+import { useMutation } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { data, redirect, Outlet, useNavigate, useFetcher } from 'react-router';
+
+import type { Route } from './+types/auth';
+
+import { useToast } from '~/contexts/ToastContext';
+import { request_session_user } from '~/session.server';
+import { UserProvider, type UserProviderValue } from '~/contexts/UserContext';
+
+async function fetch_signout(token: string) {
+	try {
+		const url = new URL(
+			'/api/auth/logout',
+			import.meta.env.BROWSER_REST_USER_ORIGIN
+		);
+		url.searchParams.set('token', token);
+
+		const res = await fetch(url, { method: 'DELETE' });
+		if (!res.ok) throw new Error(res.statusText);
+	} catch (error) {
+		const message =
+			(error instanceof Error ? error.message : error?.toString()) ??
+			'An internal server error';
+		console.error('Could not invalidate refresh token:', message);
+	}
+}
+
+export async function loader({ request }: Route.LoaderArgs) {
+	const user = await request_session_user(request);
+	if (!user) {
+		const uri_original = new URL(request.url);
+
+		const host = request.headers.get('X-Gateway-Host');
+		if (host) uri_original.host = host;
+
+		const protocol = request.headers.get('X-Gateway-Protocol');
+		if (protocol) uri_original.protocol = protocol + ':';
+		const uri_redirect = new URL(
+			'/signin',
+			uri_original.protocol + '//' + uri_original.host
+		);
+		uri_redirect.searchParams.set('redirect_uri', uri_original.toString());
+
+		return redirect(uri_redirect.toString());
+	}
+
+	return data({ user });
+}
+
+export default function Layout({ loaderData }: Route.ComponentProps) {
+	const fetcher = useFetcher();
+	const { addToast } = useToast();
+	useEffect(() => {
+		if (fetcher.state !== 'idle' || !fetcher.data) return;
+		fetcher.reset();
+	}, [fetcher.state, fetcher.data]);
+
+	const { user } = loaderData;
+	const [userState, setUserState] =
+		useState<UserProviderValue['userState']>(user);
+
+	// TODO(xenobas): Show some sort of overlay during logout
+	const navigate = useNavigate();
+	const mutLogout = useMutation<unknown, Error, string, unknown>({
+		async mutationFn(token: string) {
+			await fetch_signout(token);
+		},
+		async onSuccess() {
+			await navigate('/signout');
+		},
+		onError(err) {
+			addToast({
+				variant: 'error',
+				title: 'Sign out Error',
+				message: err.message,
+			});
+		},
+	});
+	const logoutUserState = () => mutLogout.mutate(user.token_refresh);
+	const refreshUserState = async () => {
+		await fetcher.submit(null, {
+			method: 'post',
+			action: '/refresh',
+		});
+	};
+
+	return (
+		<UserProvider
+			value={{ userState, setUserState, logoutUserState, refreshUserState }}
+		>
+			<Outlet />
+		</UserProvider>
+	);
+}

@@ -32,3 +32,6 @@ if (ENV_DATABASE_PASS === '') throw new Error('Please set DATABASE_PASS');
 
 export const ENV_DATABASE_NAME = process.env['DATABASE_NAME'] ?? '';
 if (ENV_DATABASE_NAME === '') throw new Error('Please set DATABASE_NAME');
+
+export const ENV_ACCESS_TOKEN_SECRET = process.env['ACCESS_TOKEN_SECRET'] ?? '';
+if (ENV_ACCESS_TOKEN_SECRET === '') throw new Error('Please set ACCESS_TOKEN_SECRET');

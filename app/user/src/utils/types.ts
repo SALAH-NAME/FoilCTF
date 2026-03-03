@@ -1,10 +1,8 @@
+import { z } from 'zod';
 import { Request } from 'express';
+
 import { users, sessions, profiles } from '../db/schema';
-import { boolean, object, z } from 'zod';
-import {
-	PASSWORD_MIN_CHARACTERS,
-	PASSWORD_MAX_CHARACTERS,
-} from './env'
+import { PASSWORD_MIN_CHARACTERS, PASSWORD_MAX_CHARACTERS } from './env';
 
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
@@ -30,10 +28,9 @@ export class FoilCTF_Error extends Error {
 
 	toJSON() {
 		return {
-			error: true,
-			message: this.message,
-			status: this.statusCode
-		}
+			ok: false,
+			error: this.message,
+		};
 	}
 }
 
@@ -43,17 +40,16 @@ export class FoilCTF_Success {
 
 	constructor(message: string, statusCode: number) {
 		this.statusCode = statusCode;
-		this.message = message
+		this.message = message;
 	}
 
 	toJSON() {
 		return {
+			ok: true,
 			message: this.message,
-			status: this.statusCode
-		}
+		};
 	}
 }
-
 
 export const registerSchema = z.object({
 	body: z.object({
@@ -67,6 +63,12 @@ export const registerSchema = z.object({
 			.string()
 			.min(PASSWORD_MIN_CHARACTERS)
 			.max(PASSWORD_MAX_CHARACTERS),
+		oauth42: z.optional(
+			z.object({
+				login: z.string().min(1),
+				token: z.string().min(1),
+			})
+		),
 	}),
 });
 
@@ -87,13 +89,13 @@ const userBody = z.object({
 		.string()
 		.min(3)
 		.max(15)
-		.regex(/^[a-zA-Z0-9_-]+$/), // add '-', so yait-nas is valid
+		.regex(/^[a-zA-Z0-9_-]+$/),
 	email: z.email(),
-	newPassword: z
+	password_new: z
 		.string()
 		.min(PASSWORD_MIN_CHARACTERS)
 		.max(PASSWORD_MAX_CHARACTERS),
-	oldPassword: z.string(),
+	password: z.string(),
 });
 
 export const updateUserSchema = z.object({
@@ -103,7 +105,7 @@ export const updateUserSchema = z.object({
 const profileBody = z.object({
 	bio: z.string().trim().max(500),
 	location: z.string().trim().max(50),
-	socialmedia: z.url(),
+	socialmedialinks: z.url(),
 	isprivate: z.coerce.boolean(),
 });
 
@@ -113,33 +115,27 @@ export const updateProfileSchema = z.object({
 
 export const teamCreationSchema = z.object({
 	body: z.object({
-		newTeamName: z
+		name: z
 			.string()
-			.min(3)
+			.min(4)
 			.max(15)
 			.regex(/^[a-zA-Z0-9_-]+$/),
-		maxMembers: z
-			.coerce
-			.number()
-			.min(1)
-			.optional()
 	}),
 });
 
 export const updateTeamSchema = z.object({
 	body: z.object({
-		isLocked: z.coerce.boolean().optional(),
+		is_locked: z.boolean().optional(),
 		description: z.string().max(500).optional(),
-		maxMembers: z.coerce.number().min(1).optional(),
 	}),
 });
 
 export const transferLeadershipSchema = z.object({
 	body: z.object({
 		username: z
-		.string()
-		.min(3)
-		.max(15)
-		.regex(/^[a-zA-Z0-9_-]+$/),
+			.string()
+			.min(3)
+			.max(15)
+			.regex(/^[a-zA-Z0-9_-]+$/),
 	}),
-})
+});
