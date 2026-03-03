@@ -28,6 +28,7 @@ func (h *Hub) RegisterRoutes() http.Handler {
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/events", func(r chi.Router) {
 			r.Get("/", h.ListEvents)
+			r.Get("/teams/{team_name}/stats", h.GetTeamStats)
 
 			r.Route("/{id}", func(r chi.Router) {
 				r.Use(h.EnsureEventExists)

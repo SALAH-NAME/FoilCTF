@@ -31,22 +31,22 @@ func (h *Hub) CalculateNewReward(link *CtfsChallenge) int {
 	reward := float64(link.Reward)
 	rewardMin := float64(link.RewardMin)
 
-	rewardProgressPrev := 1.0 - float64(link.Solves) / float64(link.Decay)
+	rewardProgressPrev := 1.0 - float64(link.Solves)/float64(link.Decay)
 	if rewardProgressPrev < 0.0 {
 		rewardProgressPrev = 0.0
 	}
 
-	rewardProgressNext := 1.0 - float64(link.Solves + 1) / float64(link.Decay)
+	rewardProgressNext := 1.0 - float64(link.Solves+1)/float64(link.Decay)
 	if rewardProgressNext < 0.0 {
 		rewardProgressNext = 0.0
 	}
 
 	rewardOld := reward
 	if rewardProgressPrev != 0 {
-		rewardOld = (reward - rewardMin) / rewardProgressPrev + rewardMin
+		rewardOld = (reward-rewardMin)/rewardProgressPrev + rewardMin
 	}
 
-	rewardNext := math.Round((rewardOld - rewardMin) * rewardProgressNext + rewardMin)
+	rewardNext := math.Round((rewardOld-rewardMin)*rewardProgressNext + rewardMin)
 	return int(rewardNext)
 }
 
@@ -58,7 +58,7 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 		// lock challenge instance
 		var link CtfsChallenge
 
-		err := tx.Transaction(func (tx *gorm.DB) error {
+		err := tx.Transaction(func(tx *gorm.DB) error {
 			err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 				Where("ctf_id = ? AND challenge_id = ?", eventID, challengeID).
 				First(&link).Error
@@ -73,7 +73,7 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 			}
 			// update attemps count and the time of last attempt
 			err = tx.Model(&link).
-				Update("attempts", link.Attempts + 1).Error
+				Update("attempts", link.Attempts+1).Error
 			if err != nil {
 				return err
 			}
@@ -238,15 +238,15 @@ func (h *Hub) StatusEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type EventDetails struct {
-		TeamName string `json:"team_name" gorm:"column:team_name"`
-		Rank int `json:"rank" gorm:"column:rank"`
-		TotalPoints int `json:"total_points" gorm:"column:total_points"`
-		SolvedChallenges int `json:"solved_challenges" gorm:"column:solved_challenges"`
-		TotalChallenges int64 `json:"total_challenges" gorm:"column:total_challenges"`
-		ChatroomID int `json:"chatroom_id" gorm:"column:chatroom_id"`
+		TeamName         string `json:"team_name" gorm:"column:team_name"`
+		Rank             int    `json:"rank" gorm:"column:rank"`
+		TotalPoints      int    `json:"total_points" gorm:"column:total_points"`
+		SolvedChallenges int    `json:"solved_challenges" gorm:"column:solved_challenges"`
+		TotalChallenges  int64  `json:"total_challenges" gorm:"column:total_challenges"`
+		ChatroomID       int    `json:"chatroom_id" gorm:"column:chatroom_id"`
 	}
 	var eventDetails EventDetails
-	err = h.Db.Transaction(func (tx *gorm.DB) (err error) {
+	err = h.Db.Transaction(func(tx *gorm.DB) (err error) {
 		err = h.Db.
 			Table("ctfs_challenges").
 			Where("ctf_id = ?", event.ID).
@@ -281,7 +281,7 @@ func (h *Hub) StatusEvent(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		log.Printf("ERROR - Database - %v", err)
-		JSONResponse(w, map[string]string{ "error": "Internal Server Error" }, http.StatusInternalServerError)
+		JSONResponse(w, map[string]string{"error": "Internal Server Error"}, http.StatusInternalServerError)
 		return
 	}
 

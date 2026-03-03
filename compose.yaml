@@ -22,6 +22,9 @@ services:
       - GATEWAY_NOTIFICATION_URL=http://notification:${NOTIFICATION_SERVICE_PORT:-3004}
       - GATEWAY_EVENT_URL=http://event:${EVENT_SERVICE_PORT:-3005}
       - GATEWAY_SANDBOX_URL=http://sandbox:${SANDBOX_SERVICE_PORT:-3006}
+      - RATE_LIMIT_RPS=${RATE_LIMIT_RPS:-60}
+      - RATE_LIMIT_BURST=${RATE_LIMIT_BURST:-100}
+      - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-false}
     networks:
       - foilctf_net
     ports:
@@ -161,6 +164,7 @@ services:
       - DATABASE_USER=${DATABASE_DEVELOPER_USER:?DATABASE_DEVELOPER_USER must be set}
       - DATABASE_PASS=${DATABASE_DEVELOPER_PASS:?DATABASE_DEVELOPER_PASS must be set}
       - DATABASE_NAME=${DATABASE_NAME:-foilctf}
+      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET:?ACCESS_TOKEN_SECRET must be set}
     networks:
       - foilctf_net
     depends_on:

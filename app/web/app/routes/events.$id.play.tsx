@@ -258,12 +258,6 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 		}
 	}, [selectedChallenge, instanceStatus]);
 
-	const handleSendMessage = (message: string) => {
-		// TODO: Implement WebSocket message sending
-		console.log('Mock sending message:', message);
-		alert('Chat is in demo mode. Message: ' + message);
-	};
-
 	const handleOpenChat = () => {
 		setIsChatOpen(true);
 	};
@@ -318,10 +312,13 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 		}));
 	};
 
-	const handleBuyHint = (hintId: number) => {
+	const handleBuyHint = (_hintId: number) => {
 		// TODO: Implement hint purchase
-		console.log('Buying hint:', hintId);
-		alert('Hint purchase functionality will be implemented');
+		addToast({
+			variant: 'info',
+			title: 'Hints',
+			message: 'Hint purchase is not yet available',
+		});
 	};
 
 	const queryClient = useQueryClient();

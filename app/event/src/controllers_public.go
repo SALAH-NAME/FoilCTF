@@ -4,7 +4,38 @@ import (
 	"log"
 	"net/http"
 	"slices"
+
+	"github.com/go-chi/chi/v5"
 )
+
+func (h *Hub) GetTeamStats(w http.ResponseWriter, r *http.Request) {
+	teamName := chi.URLParam(r, "team_name")
+	if teamName == "" {
+		JSONError(w, "team_name is required", http.StatusBadRequest)
+		return
+	}
+
+	type TeamStats struct {
+		TotalPoints         int `json:"total_points"`
+		ParticipationsCount int `json:"participations_count"`
+	}
+
+	var stats TeamStats
+	err := h.Db.
+		Table("participations p").
+		Select("COALESCE(SUM(p.score), 0) as total_points, COUNT(*) as participations_count").
+		Joins("LEFT JOIN teams t ON t.id = p.team_id").
+		Where("t.name = ?", teamName).
+		Scan(&stats).
+		Error
+	if err != nil {
+		log.Printf("ERROR - Database - Could not query team stats for %q: %v", teamName, err)
+		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	JSONResponse(w, stats, http.StatusOK)
+}
 
 func (h *Hub) ListEvents(w http.ResponseWriter, r *http.Request) {
 	userRole, _ := r.Context().Value(userRoleKey).(string)

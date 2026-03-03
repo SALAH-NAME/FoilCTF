@@ -151,7 +151,7 @@ func (h *Hub) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.Db.Transaction(func (tx *gorm.DB) (err error) {
+	err := h.Db.Transaction(func(tx *gorm.DB) (err error) {
 		if err = h.Db.Table("participations").Where("ctf_id = ?", event.ID).Delete(&Participation{}).Error; err != nil {
 			return err
 		}
@@ -171,7 +171,7 @@ func (h *Hub) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	JSONResponse(w, map[string]any{ "ok": true }, http.StatusOK)
+	JSONResponse(w, map[string]any{"ok": true}, http.StatusOK)
 }
 
 func (h *Hub) LinkChallenge(w http.ResponseWriter, r *http.Request) {
@@ -247,7 +247,7 @@ func (h *Hub) UpdateChallenge(w http.ResponseWriter, r *http.Request) {
 	challengeID, err := h.ReadIntParam(r, "chall_id")
 	if err != nil {
 		log.Printf("ERROR - REQUEST - could not get challenge id due to: %v", err)
-		JSONResponse(w, map[string]string{ "error": "Invalid challenge id parameter" }, http.StatusBadRequest)
+		JSONResponse(w, map[string]string{"error": "Invalid challenge id parameter"}, http.StatusBadRequest)
 		return
 	}
 
@@ -272,7 +272,7 @@ func (h *Hub) UpdateChallenge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	JSONResponse(w, map[string]bool{ "ok": true }, http.StatusCreated)
+	JSONResponse(w, map[string]bool{"ok": true}, http.StatusCreated)
 }
 
 func (h *Hub) UnlinkChallenge(w http.ResponseWriter, r *http.Request) {
@@ -304,7 +304,7 @@ func (h *Hub) UnlinkChallenge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	JSONResponse(w, map[string]bool{ "ok": true }, http.StatusOK)
+	JSONResponse(w, map[string]bool{"ok": true}, http.StatusOK)
 }
 
 func (h *Hub) StartEvent(w http.ResponseWriter, r *http.Request) {
