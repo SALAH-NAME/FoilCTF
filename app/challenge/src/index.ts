@@ -12,6 +12,7 @@ import {
 	middleware_attachment_exists,
 	middleware_challenge_exists,
 	middleware_not_found,
+    middleware_auth,
 } from './middlewares.js';
 
 import { route_health } from './routes/health.js';
@@ -40,6 +41,7 @@ web.get('/health', route_health);
 web.get('/metrics', route_metrics);
 
 web.use(middleware_metric_reqs);
+web.use(middleware_auth(["admin"]));
 
 // TODO(xenobas): Authorization admin only I think.
 
