@@ -1,7 +1,8 @@
-import { useState, useRef, type ChangeEvent, useEffect } from 'react';
-import Icon from './Icon';
-import ProfileAvatar from './ProfileAvatar';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useRef, type ChangeEvent, useEffect } from 'react';
+
+import Icon from '~/components/Icon';
+import ProfileAvatar from '~/components/ProfileAvatar';
 import { useToast } from '~/contexts/ToastContext';
 
 interface AvatarUploadProps {
@@ -198,10 +199,7 @@ export default function AvatarUpload({
 			>
 				<ProfileAvatar avatar={avatar ?? null} preview={previewUrl} className={ `peer w-full h-full object-cover ${uploadShow ? "brightness-50 grayscale-50" : ""}` } />
 				<div className="hidden group-hover:flex absolute inset-0 bg-black/60 flex-col items-center justify-center gap-2 transition-opacity">
-					<div className={`hidden group-hover:${uploadShow ? "contents" : "hidden"}`}>
-						<p className="text-3xl text-white" aria-label="Avatar upload progress">{(uploadProgress * 100).toFixed(2)}%</p>
-					</div>
-					<div className={uploadShow ? "hidden" : "contents"}>
+					<div className="contents">
 						<input
 							ref={fileInputRef}
 							type="file"
@@ -217,7 +215,7 @@ export default function AvatarUpload({
 								e.stopPropagation();
 								handleClick();
 							}}
-							className="p-2 opacity-75 hover:opacity-100 bg-white rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+							className="relative p-2 opacity-75 hover:opacity-100 bg-white rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
 							aria-label="Upload new avatar"
 						>
 							<Icon
@@ -247,6 +245,7 @@ export default function AvatarUpload({
 					}
 				</div>
 			</div>
+			{ uploadShow && <span className="absolute top-0 right-0 px-4 py-1 font-bold rounded-lg shadow-xl bg-primary text-white min-w-20 text-right">{(uploadProgress * 100).toFixed(0)}%</span> }
 		</div>
 	);
 }
