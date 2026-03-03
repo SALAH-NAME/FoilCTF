@@ -790,7 +790,7 @@ export const route_team_delete = async (
 					type: 'team',
 					title: 'Team Dissolved',
 					message: `Team ${team.name} has been dissolved by the captain`,
-					link: '/team',
+					link: '/teams',
 				},
 			})
 			.returning();
