@@ -43,8 +43,6 @@ web.get('/metrics', route_metrics);
 web.use(middleware_metric_reqs);
 web.use(middleware_auth(["admin"]));
 
-// TODO(xenobas): Authorization admin only I think.
-
 // SECTION: Bulk actions
 web.get('/api/challenges', route_challenges_list);
 web.delete(

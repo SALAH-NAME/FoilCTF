@@ -1,11 +1,11 @@
-import { data, Form, useFetcher, useNavigate } from 'react-router';
+import { data, Form } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useContext, useEffect, useState, type SubmitEvent } from 'react';
 
 import type { Route } from './+types/profile';
 
 import { useToast } from '~/contexts/ToastContext';
-import { UserProvider, useUserAuth } from '~/contexts/UserContext';
+import { UserProvider } from '~/contexts/UserContext';
 import { validationRules } from '~/utils/validation';
 import { useFormValidation } from '~/hooks/useFormValidation';
 import { commitSession, request_session } from '~/session.server';
@@ -216,17 +216,19 @@ interface ProfileInfoProps {
 		location?: string | null;
 		socialmedialinks?: string | null;
 	};
-	errors: {
-		[k in keyof ProfileInfoProps['fields']]?: string;
-	};
 	credentials: {
 		username: string;
 		token: string;
 	};
 }
-function SectionProfileInfo({ credentials, fields, errors }: ProfileInfoProps) {
+function SectionProfileInfo({ credentials, fields }: ProfileInfoProps) {
 	const queryClient = useQueryClient();
 	const { addToast } = useToast();
+
+	type Errors = {
+		[k in keyof ProfileInfoProps['fields']]?: string;
+	}
+	const [errors, setErrors] = useState<Errors>({});
 
 	type MutUpdateVariables = Partial<{
 		isprivate: boolean;
@@ -234,7 +236,7 @@ function SectionProfileInfo({ credentials, fields, errors }: ProfileInfoProps) {
 		location: string | null;
 		socialmedialinks: string | null;
 	}>;
-	const mutUpdate = useMutation<boolean, Error, MutUpdateVariables, unknown>({
+	const mutUpdate = useMutation<boolean, Error, MutUpdateVariables>({
 		async mutationFn(variables) {
 			const _keys = Object.keys(variables);
 			if (_keys.length === 0) return false;
@@ -283,17 +285,43 @@ function SectionProfileInfo({ credentials, fields, errors }: ProfileInfoProps) {
 		event.preventDefault();
 		if (mutUpdate.isPending) return;
 		// TODO(xenobas): Run validation logic
-		if (false) return;
 
 		const variables: MutUpdateVariables = {};
+
+		let ok = true;
 		let key: keyof typeof editedFields;
 		for (key in editedFields) {
 			if (key === 'username') continue;
 			if (editedFields[key] === fields[key]) continue;
+
+			switch (key) {
+				case "socialmedialinks": {
+					if ((editedFields.socialmedialinks?.length ?? 0) > 255) {
+						setErrors((errors) => ({ ...errors, socialmedialinks: 'Must not surpass 255 characters' }));
+						ok = false;
+					}
+				} break ;
+				case "location": {
+					if ((editedFields.location?.length ?? 0) > 96) {
+						setErrors((errors) => ({ ...errors, location: 'Must not surpass 96 characters' }));
+						ok = false;
+					}
+				} break ;
+				case "bio": {
+					if ((editedFields.bio?.length ?? 0) > 512) {
+						setErrors((errors) => ({ ...errors, bio: 'Must not surpass 512 characters' }));
+						ok = false;
+					}
+				} break ;
+				case "isprivate":
+				default:
+					break;
+			}
 			variables[key] = editedFields[key] as any;
 		}
 
-		mutUpdate.mutate(variables);
+		if (ok)
+			mutUpdate.mutate(variables);
 	};
 
 	interface FieldValueMapping {
@@ -833,7 +861,6 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
 				<SectionProfileInfo
 					credentials={{ username, token: token_access }}
 					fields={fields}
-					errors={{}}
 				/>
 
 				<div className="bg-white rounded-md p-6 md:p-8 border border-dark/10">
