@@ -189,7 +189,7 @@ export default function Page({ actionData }: Route.ComponentProps) {
 						type="text"
 						label="Username"
 						value={username}
-						onChange={(e: ChangeEvent<HTMLInputElement>) => {
+						onChange={(e) => {
 							const value = e.target.value;
 							setUsername(value);
 							handleChange('username', value);
@@ -207,7 +207,7 @@ export default function Page({ actionData }: Route.ComponentProps) {
 						label="Password"
 						autoComplete="on"
 						value={password}
-						onChange={(e: ChangeEvent<HTMLInputElement>) => {
+						onChange={(e) => {
 							const value = e.target.value;
 							setPassword(value);
 							handleChange('password', value);

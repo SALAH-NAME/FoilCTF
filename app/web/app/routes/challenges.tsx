@@ -67,6 +67,7 @@ export async function remote_fetch_challenges(
 			author_id: number;
 			created_at: string;
 			updated_at: string;
+			flag: string;
 		}[];
 		count: number;
 	};

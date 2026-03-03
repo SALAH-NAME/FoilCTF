@@ -30,7 +30,7 @@ export default function Logo({
 				F
 			</div>
 			<div
-				className={`${textSizeClasses[size]} font-bold text-dark leading-none translate-y-[2px] transition-opacity duration-300 ${
+				className={`${textSizeClasses[size]} font-bold text-dark leading-none translate-y-2px transition-opacity duration-300 ${
 					showText ? 'opacity-100 delay-300' : 'opacity-0 w-0 overflow-hidden'
 				}`}
 			>
