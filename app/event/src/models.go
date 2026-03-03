@@ -81,6 +81,7 @@ type Participation struct {
 
 type Team struct {
 	ID           int    `gorm:"primaryKey"`
+	Name         string `gorm:"column:name"`
 	MembersCount int    `gorm:"column:members_count"`
 	CaptainName  string `gorm:"column:captain_name"`
 }

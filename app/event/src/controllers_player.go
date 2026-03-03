@@ -50,7 +50,7 @@ func (h *Hub) CalculateNewReward(link *CtfsChallenge) int {
 	return int(rewardNext)
 }
 
-func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag string) (bool, int, error) {
+func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, username string, sumbittedFlag string) (bool, int, error) {
 	var isFirstBlood bool
 	var pointsToAward int
 	err := h.Db.Transaction(func(tx *gorm.DB) error {
@@ -108,6 +108,7 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 			link.FirstBloodAt = &now
 			link.FirstbloodId = &teamID
 		}
+
 		// update the number of solves and first blood related columns in challange instance
 		err = tx.Model(&link).
 			Select("solves", "first_blood_at", "first_blood_id", "reward").
@@ -115,6 +116,7 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 		if err != nil {
 			return err
 		}
+
 		// update the score of teams who already solved the challenge
 		if lossPoints > 0 {
 			subQuery := tx.Table("solves").
@@ -130,6 +132,7 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 				return err
 			}
 		}
+
 		// update the solve history table
 		updatedSolve := Solve{
 			CtfID:       eventID,
@@ -142,17 +145,30 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, sumbittedFlag strin
 		if err != nil {
 			return err
 		}
+
 		// update the score and number of solves of the team
-		updateParticipations := map[string]any{
-			"score":  gorm.Expr("score + ?", pointsToAward),
-			"solves": gorm.Expr("solves + 1"),
-		}
 		err = tx.Table("participations").
 			Where("ctf_id = ? AND team_id = ?", eventID, teamID).
-			Updates(&updateParticipations).Error
+			Updates(map[string]interface{}{
+			"score":  gorm.Expr("score + ?", pointsToAward),
+			"solves": gorm.Expr("solves + 1"),
+		}).Error
 		if err != nil {
 			return err
 		}
+
+		// update the user statistics
+		err = tx.Table("users").
+			Where("username = ?", username).
+			Updates(map[string]interface{}{
+				"totalpoints":  gorm.Expr("totalpoints + ?", pointsToAward),
+				"challengessolved": gorm.Expr("challengessolved + 1"),
+			}).
+			Error
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 	return isFirstBlood, pointsToAward, err
@@ -168,8 +184,8 @@ func (h *Hub) SubmitFlag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, _, err := GetUserInfo(r)
-	if err != nil {
+	userID, username, err := GetUserInfo(r)
+	if err != nil || userID == nil {
 		log.Printf("DEBUG - Flag Submission - Unauthorized: %v", err)
 		JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -189,7 +205,7 @@ func (h *Hub) SubmitFlag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isFirstBlood, finalPoints, err := h.ProcessSolve(eventID, challengeID, teamID, req.Flag)
+	isFirstBlood, finalPoints, err := h.ProcessSolve(eventID, challengeID, teamID, username, req.Flag)
 	if err != nil {
 		HandleSubmitError(w, err)
 		return
@@ -336,7 +352,7 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 			Find(&participationsOld).
 			Error
 		if err != nil {
-			return err
+			return fmt.Errorf("could not query old participations: %v", err)
 		}
 		if len(participationsOld) > 0 {
 			return errors.New("already registered")
@@ -349,7 +365,7 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 			Count(&currentParticipants).
 			Error
 		if err != nil {
-			return err
+			return fmt.Errorf("could not query current participations: %v", err)
 		}
 
 		if event.MaxTeams != nil && *event.MaxTeams <= int(currentParticipants) {
@@ -372,7 +388,7 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 			Create(&participation).
 			Error
 		if err != nil {
-			return err
+			return fmt.Errorf("could not create participation: %v", err)
 		}
 
 		roomInstance = ChatRoom{
@@ -385,7 +401,7 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 			Create(&roomInstance).
 			Error
 		if err != nil {
-			return err
+			return fmt.Errorf("could not create chatroom: %v", err)
 		}
 
 		err = tx.Table("chat_rooms").
@@ -395,6 +411,30 @@ func (h *Hub) JoinEvent(w http.ResponseWriter, r *http.Request) {
 		if err != nil || globalChatRoomID == 0 {
 			return errors.New("ctf chat room not found")
 		}
+
+		// query all users
+		var usernamesThatParticipated []string
+		err = tx.
+			Table("users").
+			Where("team_name = ?", team.Name).
+			Pluck("username", &usernamesThatParticipated).
+			Error
+		if err != nil {
+			return fmt.Errorf("could not query users that just participated: %v", err)
+		}
+
+		log.Printf("DEBUG - Join - usernames that participated %v", usernamesThatParticipated)
+
+		// update all profiles
+		err = tx.
+			Table("profiles").
+			Where("username IN ?", usernamesThatParticipated).
+			Updates(map[string]interface{}{ "eventsparticipated": gorm.Expr("eventsparticipated + 1") }).
+			Error
+		if err != nil {
+			return fmt.Errorf("could not update profiles that just participated: %v", err)
+		}
+
 		return nil
 	})
 	if err != nil {
