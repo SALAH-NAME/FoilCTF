@@ -66,9 +66,6 @@ importers:
       '@types/ms':
         specifier: ^2.1.0
         version: 2.1.0
-      '@types/multer':
-        specifier: ^2.0.0
-        version: 2.0.0
       '@types/node':
         specifier: ^25.2.3
         version: 25.2.3
@@ -434,9 +431,6 @@ packages:
 
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
-
-  '@types/multer@2.0.0':
-    resolution: {integrity: sha512-C3Z9v9Evij2yST3RSBktxP9STm6OdMc5uR1xF1SGr98uv8dUlAL2hqwrZ3GVB3uyMyiegnscEK6PGtYvNrjTjw==}
 
   '@types/node@25.2.3':
     resolution: {integrity: sha512-m0jEgYlYz+mDJZ2+F4v8D1AyQb+QzsNqRuI7xg1VQX/KlKS0qT9r1Mo16yo5F/MtifXFgaofIFsdFMox2SxIbQ==}
@@ -1322,10 +1316,6 @@ snapshots:
       '@types/node': 25.2.3
 
   '@types/ms@2.1.0': {}
-
-  '@types/multer@2.0.0':
-    dependencies:
-      '@types/express': 5.0.6
 
   '@types/node@25.2.3':
     dependencies:
