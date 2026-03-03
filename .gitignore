@@ -16,6 +16,7 @@ dist/
 build/
 node_modules/
 .cache/
+.pnpm-store/
 
 certs/
 

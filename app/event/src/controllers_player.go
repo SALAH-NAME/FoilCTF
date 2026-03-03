@@ -158,7 +158,7 @@ func (h *Hub) ProcessSolve(eventID, challengeID, teamID int, username string, su
 		}
 
 		// update the user statistics
-		err = tx.Table("users").
+		err = tx.Table("profiles").
 			Where("username = ?", username).
 			Updates(map[string]interface{}{
 				"totalpoints":  gorm.Expr("totalpoints + ?", pointsToAward),
@@ -184,9 +184,15 @@ func (h *Hub) SubmitFlag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, username, err := GetUserInfo(r)
+	userID, _, err := GetUserInfo(r)
 	if err != nil || userID == nil {
 		log.Printf("DEBUG - Flag Submission - Unauthorized: %v", err)
+		JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	username, ok := r.Context().Value(usernameKey).(string)
+	if !ok || username == "" {
+		log.Printf("DEBUG - Flag Submission - Could not get username from context for user %d", *userID)
 		JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}

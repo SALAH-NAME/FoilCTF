@@ -1,6 +1,6 @@
 FROM node:24.12-alpine3.23 AS builder
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@9 --activate
 
 WORKDIR /app
 
@@ -35,7 +35,7 @@ RUN pnpm run build
 # Production stage
 FROM node:24.12-alpine3.23
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@9 --activate
 
 WORKDIR /app
 
