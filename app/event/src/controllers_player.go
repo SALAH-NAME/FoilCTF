@@ -243,6 +243,7 @@ func (h *Hub) StatusEvent(w http.ResponseWriter, r *http.Request) {
 		TotalPoints int `json:"total_points" gorm:"column:total_points"`
 		SolvedChallenges int `json:"solved_challenges" gorm:"column:solved_challenges"`
 		TotalChallenges int64 `json:"total_challenges" gorm:"column:total_challenges"`
+		ChatroomID int `json:"chatroom_id" gorm:"column:chatroom_id"`
 	}
 	var eventDetails EventDetails
 	err = h.Db.Transaction(func (tx *gorm.DB) (err error) {
@@ -266,8 +267,23 @@ func (h *Hub) StatusEvent(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
+		err = h.Db.
+			Table("chat_rooms").
+			Select("id as chatroom_id").
+			Where("ctf_id = ? AND room_type = 'global'", event.ID).
+			Scan(&eventDetails.ChatroomID).
+			Error
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
+	if err != nil {
+		log.Printf("ERROR - Database - %v", err)
+		JSONResponse(w, map[string]string{ "error": "Internal Server Error" }, http.StatusInternalServerError)
+		return
+	}
 
 	JSONResponse(w, eventDetails, http.StatusCreated)
 }

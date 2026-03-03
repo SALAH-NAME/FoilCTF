@@ -98,6 +98,7 @@ export async function remote_fetch_event_status(token: string, id: string) {
 	if (!res.ok) throw new Error(json.error ?? 'Internal server error');
 
 	type JSONData_EventStatus = {
+		chatroom_id: number;
 		team_name: string;
 		rank: number;
 		total_points: number;
@@ -216,6 +217,7 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 			const token = session_user.token_access;
 			const status = await remote_fetch_event_status(token, params.id);
 			return {
+				chatroom_id: status.chatroom_id,
 				teamName: status.team_name,
 				rank: status.rank,
 				totalPoints: status.total_points,
@@ -391,10 +393,12 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 
 	useEffect(() => {
 		if (ref_socket.current || !session_user) return;
+		if (!query_status.data?.chatroom_id) return ;
 
+		const chatroom_id = query_status.data.chatroom_id;
 		const url = new URL('/api/chat', import.meta.env.BROWSER_SOCKET_CHAT);
 		url.searchParams.set('token', session_user?.token_access);
-		url.searchParams.set('room', '1'); // TODO(xenobas): Make this dynamic
+		url.searchParams.set('room', chatroom_id.toString());
 
 		ref_socket.current = new WebSocket(url.toString());
 		ref_socket.current.onopen = () => {
@@ -434,7 +438,11 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 				username: messageInc.name,
 				isAnnouncement: false,
 			};
-			setChatMessages((old) => [...old, messageOut]);
+			setChatMessages((old) => {
+				if (old.findIndex(x => x.id === messageOut.id) !== -1)
+					return old;
+				return [...old, messageOut]
+			});
 		};
 
 		return (() => {
@@ -442,7 +450,7 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 				ref_socket.current?.close();
 			ref_socket.current = null;
 		});
-	}, []);
+	}, [query_status.data?.chatroom_id]);
 
 	return (
 		<div className="flex flex-col lg:flex-row lg:gap-4 min-h-screen">
@@ -547,7 +555,7 @@ export default function EventPlay({ loaderData, params }: Route.ComponentProps) 
 				onClose={handleCloseChat}
 				messages={chatMessages}
 				isConnected={isConnected}
-				onSendMessage={handleSendMessage}
+				onSendMessage={sendMessage}
 			/>
 
 			<ChallengeModal
